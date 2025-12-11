@@ -2,10 +2,8 @@
 const nextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
-  turbopack: {
-    // Explicitly set the project root for Turbopack to avoid incorrect inference
-    root: __dirname
-  }
+  output: 'standalone', // slimmer deploy artifact
+  outputFileTracingRoot: __dirname,
 };
 
 module.exports = nextConfig;

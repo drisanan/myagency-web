@@ -1,13 +1,4 @@
 {
-  "/(app)/dashboard/page": "app/(app)/dashboard/page.js",
-  "/(app)/lists/page": "app/(app)/lists/page.js",
-  "/(app)/tasks/page": "app/(app)/tasks/page.js",
   "/(public)/page": "app/(public)/page.js",
-  "/_not-found/page": "app/_not-found/page.js",
-  "/api/auth/ghl-login/route": "app/api/auth/ghl-login/route.js",
-  "/api/commits/route": "app/api/commits/route.js",
-  "/api/metrics/stats/route": "app/api/metrics/stats/route.js",
-  "/api/recruiting-periods/route": "app/api/recruiting-periods/route.js",
-  "/api/tasks/route": "app/api/tasks/route.js",
-  "/auth/login/page": "app/auth/login/page.js"
+  "/_not-found/page": "app/_not-found/page.js"
 }
