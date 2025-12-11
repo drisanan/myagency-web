@@ -1,0 +1,20 @@
+{
+  "/(app)/clients/[id]/edit/page": "app/(app)/clients/[id]/edit/page.js",
+  "/(app)/clients/[id]/page": "app/(app)/clients/[id]/page.js",
+  "/(app)/clients/new/page": "app/(app)/clients/new/page.js",
+  "/(app)/clients/page": "app/(app)/clients/page.js",
+  "/(app)/dashboard/page": "app/(app)/dashboard/page.js",
+  "/(app)/recruiter/university/[id]/page": "app/(app)/recruiter/university/[id]/page.js",
+  "/(public)/page": "app/(public)/page.js",
+  "/_global-error/page": "app/_global-error/page.js",
+  "/_not-found/page": "app/_not-found/page.js",
+  "/ai/page": "app/ai/page.js",
+  "/auth/login/page": "app/auth/login/page.js",
+  "/coach/page": "app/coach/page.js",
+  "/paywall/page": "app/paywall/page.js",
+  "/radar/page": "app/radar/page.js",
+  "/recruiter/page": "app/recruiter/page.js",
+  "/settings/page": "app/settings/page.js",
+  "/social/page": "app/social/page.js",
+  "/weightroom/page": "app/weightroom/page.js"
+}

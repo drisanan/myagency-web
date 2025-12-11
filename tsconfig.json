@@ -1,0 +1,69 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "lib": [
+      "DOM",
+      "ES2021"
+    ],
+    "jsx": "react-jsx",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "allowJs": false,
+    "skipLibCheck": true,
+    "strict": true,
+    "noImplicitAny": true,
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "baseUrl": ".",
+    "paths": {
+      "@/app/*": [
+        "app/*"
+      ],
+      "@/config": [
+        "config/index.ts"
+      ],
+      "@/components/*": [
+        "components/*"
+      ],
+      "@/features/*": [
+        "features/*"
+      ],
+      "@/services/*": [
+        "services/*"
+      ],
+      "@/config/*": [
+        "config/*"
+      ],
+      "@/tenancy/*": [
+        "tenancy/*"
+      ],
+      "@/utils/*": [
+        "utils/*"
+      ],
+      "@/theme/*": [
+        "theme/*"
+      ],
+      "@/tests/*": [
+        "tests/*"
+      ]
+    },
+    "incremental": true,
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ]
+  },
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts",
+    ".next/dev/types/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
+}
