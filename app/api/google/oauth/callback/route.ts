@@ -36,7 +36,14 @@ export async function GET(req: NextRequest) {
       scope: tokens?.scope,
       expiry: tokens?.expiry_date,
     });
-    saveTokens(state || 'default', tokens);
+    const cleanTokens = {
+      access_token: tokens?.access_token ?? undefined,
+      refresh_token: tokens?.refresh_token ?? undefined,
+      scope: tokens?.scope ?? undefined,
+      token_type: tokens?.token_type ?? undefined,
+      expiry_date: tokens?.expiry_date,
+    };
+    saveTokens(state || 'default', cleanTokens);
     console.info('[gmail-oauth:callback:save]', { state, saved: true });
     return new Response(`<!doctype html>
 <html><body><script>

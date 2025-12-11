@@ -1,0 +1,6 @@
+{
+  "version": 3,
+  "sources": [],
+  "sections": [
+    {"offset": {"line": 10, "column": 0}, "map": {"version":3,"sources":["file:///Users/mrjames/Desktop/athletenarrative/web/web-app/app/%28app%29/tasks/page.tsx"],"sourcesContent":["'use client';\n\nimport React from 'react';\nimport { Box, Typography } from '@mui/material';\nimport { TasksPanel } from '@/features/tasks/TasksPanel';\n\nexport default function TasksPage() {\n  return (\n    <Box sx={{ p: 3 }}>\n      <Typography variant=\"h4\" gutterBottom>\n        Tasks\n      </Typography>\n      <TasksPanel />\n    </Box>\n  );\n}\n\n\n"],"names":[],"mappings":";;;;;AAGA;AAAA;AACA;AAJA;;;;AAMe,SAAS;IACtB,qBACE,8OAAC,+LAAG;QAAC,IAAI;YAAE,GAAG;QAAE;;0BACd,8OAAC,2NAAU;gBAAC,SAAQ;gBAAK,YAAY;0BAAC;;;;;;0BAGtC,8OAAC,8IAAU;;;;;;;;;;;AAGjB"}}]
+}

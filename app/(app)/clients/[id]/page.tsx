@@ -25,6 +25,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { getClient } from '@/services/clients';
 import { getMailEntries } from '@/services/mailStatus';
 import { NotesPanel } from '@/features/notes/NotesPanel';
+import { TasksPanel } from '@/features/tasks/TasksPanel';
 import { useSearchParams } from 'next/navigation';
 
 type MailEntry = ReturnType<typeof getMailEntries>[number] & {
@@ -125,6 +126,7 @@ export default function ClientProfilePage() {
       <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ mb: 1 }}>
         <Tab label="Emails" />
         <Tab label="Notes" data-testid="notes-tab" />
+        <Tab label="Tasks" data-testid="tasks-tab" />
       </Tabs>
 
       {tab === 0 && (
@@ -202,6 +204,11 @@ export default function ClientProfilePage() {
       {tab === 1 && (
         <Box sx={{ mt: 2 }}>
           <NotesPanel athleteId={client.id} />
+        </Box>
+      )}
+      {tab === 2 && (
+        <Box sx={{ mt: 2 }}>
+          <TasksPanel athleteId={client.id} />
         </Box>
       )}
     </Box>

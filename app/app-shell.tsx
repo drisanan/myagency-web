@@ -1,12 +1,16 @@
 'use client';
 import React from 'react';
-import { Box, CssBaseline, AppBar, Toolbar, Typography, Drawer, List, ListItemButton, ListItemText, Button, Alert, Stack } from '@mui/material';
+import { Box, CssBaseline, AppBar, Toolbar, Typography, Drawer, List, ListItemButton, ListItemText, Button, Alert, Stack, Avatar, Badge, IconButton, Menu, MenuItem, Divider } from '@mui/material';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useSession } from '@/features/auth/session';
 import { logImpersonationEnd } from '@/services/audit';
 import { colors } from '@/theme/colors';
 import { IoAppsOutline, IoBarbellOutline, IoFlaskOutline, IoClipboardOutline, IoSchoolOutline } from 'react-icons/io5';
+import { IoNotificationsOutline } from 'react-icons/io5';
+import { useQuery } from '@tanstack/react-query';
+import { tasksDueSoon, Task } from '@/services/tasks';
+import { listTasks } from '@/services/tasks';
 const drawerWidth = 240;
 
 export function AppShell({ children }: { children: React.ReactNode }) {
@@ -47,8 +51,28 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     { href: '/clients', label: 'Athletes', icon: <IoBarbellOutline /> },
     { href: '/ai/prompts', label: 'Prompts', icon: <IoFlaskOutline /> },
     { href: '/lists', label: 'Lists', icon: <IoClipboardOutline /> },
+    { href: '/tasks', label: 'Tasks', icon: <IoClipboardOutline /> },
     { href: '/recruiter', label: 'Recruiter', icon: <IoSchoolOutline /> },
   ];
+
+  const tasksQuery = useQuery({
+    queryKey: ['nav-tasks', session?.email],
+    enabled: Boolean(session?.email),
+    queryFn: async () => {
+      if (!session?.email) return [] as Task[];
+      return listTasks({ agencyEmail: session.email });
+    },
+    staleTime: 30_000,
+  });
+
+  const allTasks = tasksQuery.data || [];
+  const openTasks = allTasks.filter((t) => t.status !== 'done');
+  const dueSoon = tasksDueSoon(allTasks);
+
+  const [bellAnchor, setBellAnchor] = React.useState<null | HTMLElement>(null);
+  const openBell = Boolean(bellAnchor);
+  const handleBellOpen = (e: React.MouseEvent<HTMLElement>) => setBellAnchor(e.currentTarget);
+  const handleBellClose = () => setBellAnchor(null);
 
   return (
     <Box
@@ -79,16 +103,58 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <img src="/marketing/an-logo.png" alt="Athlete Narrative" style={{ height: 32, objectFit: 'contain' }} />
             )}
           </Box>
-          {session?.impersonatedBy && (
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-              <Typography variant="body2" sx={{ color: '#212636' }}>
-                Impersonating drisanjames@gmail.com as admin
-              </Typography>
-              <Button color="inherit" variant="outlined" onClick={stopImpersonation}>Stop Impersonating</Button>
-            </Box>
-          )}
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            {session?.impersonatedBy && (
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                <Typography variant="body2" sx={{ color: '#212636' }}>
+                  Impersonating {session.impersonatedBy}
+                </Typography>
+                <Button color="inherit" variant="outlined" onClick={stopImpersonation}>Stop Impersonating</Button>
+              </Box>
+            )}
+            {session ? (
+              <Stack direction="row" spacing={2} alignItems="center">
+                <Badge color="primary" badgeContent={openTasks.length || null} anchorOrigin={{ vertical: 'top', horizontal: 'left' }}>
+                  <IconButton color="inherit" onClick={handleBellOpen} aria-label="Tasks alerts">
+                    <Badge variant="dot" color="error" invisible={dueSoon.length === 0}>
+                      <IoNotificationsOutline size={20} />
+                    </Badge>
+                  </IconButton>
+                </Badge>
+                <Avatar sx={{ bgcolor: '#5D4AFB', width: 32, height: 32 }}>
+                  {(session.name || session.email || '?').charAt(0).toUpperCase()}
+                </Avatar>
+              </Stack>
+            ) : null}
+          </Box>
         </Toolbar>
       </AppBar>
+      <Menu anchorEl={bellAnchor} open={openBell} onClose={handleBellClose}>
+        <Box sx={{ px: 2, py: 1 }}>
+          <Typography variant="subtitle2">Tasks</Typography>
+          <Typography variant="caption" color="text.secondary">
+            {openTasks.length} open · {dueSoon.length} due soon
+          </Typography>
+        </Box>
+        <Divider />
+        {dueSoon.length === 0 ? (
+          <MenuItem disabled>No tasks due soon</MenuItem>
+        ) : (
+          dueSoon.slice(0, 5).map((t) => (
+            <MenuItem key={t.id} sx={{ whiteSpace: 'normal', alignItems: 'flex-start' }}>
+              <Box>
+                <Typography variant="body2" sx={{ fontWeight: 600 }}>{t.title}</Typography>
+                {t.dueAt ? (
+                  <Typography variant="caption" color="text.secondary">
+                    Due {new Date(t.dueAt).toLocaleString()}
+                  </Typography>
+                ) : null}
+              </Box>
+            </MenuItem>
+          ))
+        )}
+        {dueSoon.length > 5 ? <MenuItem disabled>+{dueSoon.length - 5} more</MenuItem> : null}
+      </Menu>
       <Drawer
         variant="permanent"
         sx={{

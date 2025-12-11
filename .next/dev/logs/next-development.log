@@ -85,3 +85,299 @@ https://react.dev/link/hydration-mismatch
 [00:10:45.224] Server  LOG      ✓ Compiled in 6ms
 [00:11:09.201] Server  LOG      ✓ Compiled in 2ms
 [00:51:36.523] Server  LOG      ✓ Compiled in 379ms
+[01:41:56.752] Server  LOG      ✓ Compiled in 0ms
+[01:41:57.091] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[02:08:29.781] Server  ERROR    ⨯ ./features/tasks/TasksPanel.tsx:91:20
+Parsing ecmascript source code failed
+  89 |         status,
+  90 |         dueAt: dueMs,
+> 91 |         athleteId: athleteId ?? selectedAthleteId || null,
+     |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  92 |       });
+  93 |     }
+  94 |     setDialogOpen(false);
+
+Nullish coalescing operator(??) requires parens when mixing with logical operators
+
+Import traces:
+  Client Component Browser:
+    ./features/tasks/TasksPanel.tsx [Client Component Browser]
+    ./app/(app)/tasks/page.tsx [Client Component Browser]
+    ./app/(app)/tasks/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./features/tasks/TasksPanel.tsx [Client Component SSR]
+    ./app/(app)/tasks/page.tsx [Client Component SSR]
+    ./app/(app)/tasks/page.tsx [Server Component]
+
+
+[02:08:29.975] Browser ERROR   ./features/tasks/TasksPanel.tsx:91:20
+Parsing ecmascript source code failed
+  89 |         status,
+  90 |         dueAt: dueMs,
+> 91 |         athleteId: athleteId ?? selectedAthleteId || null,
+     |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  92 |       });
+  93 |     }
+  94 |     setDialogOpen(false);
+
+Nullish coalescing operator(??) requires parens when mixing with logical operators
+
+Import traces:
+  Client Component Browser:
+    ./features/tasks/TasksPanel.tsx [Client Component Browser]
+    ./app/(app)/tasks/page.tsx [Client Component Browser]
+    ./app/(app)/tasks/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./features/tasks/TasksPanel.tsx [Client Component SSR]
+    ./app/(app)/tasks/page.tsx [Client Component SSR]
+    ./app/(app)/tasks/page.tsx [Server Component]
+[02:08:29.975] Browser ERROR   ./features/tasks/TasksPanel.tsx:91:20
+Parsing ecmascript source code failed
+  89 |         status,
+  90 |         dueAt: dueMs,
+> 91 |         athleteId: athleteId ?? selectedAthleteId || null,
+     |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  92 |       });
+  93 |     }
+  94 |     setDialogOpen(false);
+
+Nullish coalescing operator(??) requires parens when mixing with logical operators
+
+Import traces:
+  Client Component Browser:
+    ./features/tasks/TasksPanel.tsx [Client Component Browser]
+    ./app/(app)/tasks/page.tsx [Client Component Browser]
+    ./app/(app)/tasks/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./features/tasks/TasksPanel.tsx [Client Component SSR]
+    ./app/(app)/tasks/page.tsx [Client Component SSR]
+    ./app/(app)/tasks/page.tsx [Server Component]
+[02:08:30.388] Browser ERROR   ./features/tasks/TasksPanel.tsx:91:20
+Parsing ecmascript source code failed
+  89 |         status,
+  90 |         dueAt: dueMs,
+> 91 |         athleteId: athleteId ?? selectedAthleteId || null,
+     |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  92 |       });
+  93 |     }
+  94 |     setDialogOpen(false);
+
+Nullish coalescing operator(??) requires parens when mixing with logical operators
+
+Import traces:
+  Client Component Browser:
+    ./features/tasks/TasksPanel.tsx [Client Component Browser]
+    ./app/(app)/tasks/page.tsx [Client Component Browser]
+    ./app/(app)/tasks/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./features/tasks/TasksPanel.tsx [Client Component SSR]
+    ./app/(app)/tasks/page.tsx [Client Component SSR]
+    ./app/(app)/tasks/page.tsx [Server Component]
+[02:08:30.532] Browser ERROR   ./features/tasks/TasksPanel.tsx:91:20
+Parsing ecmascript source code failed
+  89 |         status,
+  90 |         dueAt: dueMs,
+> 91 |         athleteId: athleteId ?? selectedAthleteId || null,
+     |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  92 |       });
+  93 |     }
+  94 |     setDialogOpen(false);
+
+Nullish coalescing operator(??) requires parens when mixing with logical operators
+
+Import traces:
+  Client Component Browser:
+    ./features/tasks/TasksPanel.tsx [Client Component Browser]
+    ./app/(app)/tasks/page.tsx [Client Component Browser]
+    ./app/(app)/tasks/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./features/tasks/TasksPanel.tsx [Client Component SSR]
+    ./app/(app)/tasks/page.tsx [Client Component SSR]
+    ./app/(app)/tasks/page.tsx [Server Component]
+[02:08:31.173] Browser ERROR   ./features/tasks/TasksPanel.tsx:91:20
+Parsing ecmascript source code failed
+  89 |         status,
+  90 |         dueAt: dueMs,
+> 91 |         athleteId: athleteId ?? selectedAthleteId || null,
+     |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  92 |       });
+  93 |     }
+  94 |     setDialogOpen(false);
+
+Nullish coalescing operator(??) requires parens when mixing with logical operators
+
+Import traces:
+  Client Component Browser:
+    ./features/tasks/TasksPanel.tsx [Client Component Browser]
+    ./app/(app)/tasks/page.tsx [Client Component Browser]
+    ./app/(app)/tasks/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./features/tasks/TasksPanel.tsx [Client Component SSR]
+    ./app/(app)/tasks/page.tsx [Client Component SSR]
+    ./app/(app)/tasks/page.tsx [Server Component]
+[02:08:31.218] Server  ERROR    ⨯ ./features/tasks/TasksPanel.tsx:91:20
+Parsing ecmascript source code failed
+  89 |         status,
+  90 |         dueAt: dueMs,
+> 91 |         athleteId: athleteId ?? selectedAthleteId || null,
+     |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  92 |       });
+  93 |     }
+  94 |     setDialogOpen(false);
+
+Nullish coalescing operator(??) requires parens when mixing with logical operators
+
+Import traces:
+  Client Component Browser:
+    ./features/tasks/TasksPanel.tsx [Client Component Browser]
+    ./app/(app)/tasks/page.tsx [Client Component Browser]
+    ./app/(app)/tasks/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./features/tasks/TasksPanel.tsx [Client Component SSR]
+    ./app/(app)/tasks/page.tsx [Client Component SSR]
+    ./app/(app)/tasks/page.tsx [Server Component]
+
+
+[02:08:31.569] Browser ERROR   uncaughtError: Error: ./features/tasks/TasksPanel.tsx:91:20
+Parsing ecmascript source code failed
+  89 |         status,
+  90 |         dueAt: dueMs,
+> 91 |         athleteId: athleteId ?? selectedAthleteId || null,
+     |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  92 |       });
+  93 |     }
+  94 |     setDialogOpen(false);
+
+Nullish coalescing operator(??) requires parens when mixing with logical operators
+
+Import traces:
+  Client Component Browser:
+    ./features/tasks/TasksPanel.tsx [Client Component Browser]
+    ./app/(app)/tasks/page.tsx [Client Component Browser]
+    ./app/(app)/tasks/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./features/tasks/TasksPanel.tsx [Client Component SSR]
+    ./app/(app)/tasks/page.tsx [Client Component SSR]
+    ./app/(app)/tasks/page.tsx [Server Component]
+
+
+[02:08:31.738] Browser ERROR   ./features/tasks/TasksPanel.tsx:91:20
+Parsing ecmascript source code failed
+  89 |         status,
+  90 |         dueAt: dueMs,
+> 91 |         athleteId: athleteId ?? selectedAthleteId || null,
+     |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  92 |       });
+  93 |     }
+  94 |     setDialogOpen(false);
+
+Nullish coalescing operator(??) requires parens when mixing with logical operators
+
+Import traces:
+  Client Component Browser:
+    ./features/tasks/TasksPanel.tsx [Client Component Browser]
+    ./app/(app)/tasks/page.tsx [Client Component Browser]
+    ./app/(app)/tasks/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./features/tasks/TasksPanel.tsx [Client Component SSR]
+    ./app/(app)/tasks/page.tsx [Client Component SSR]
+    ./app/(app)/tasks/page.tsx [Server Component]
+[02:08:31.738] Browser ERROR   ./features/tasks/TasksPanel.tsx:91:20
+Parsing ecmascript source code failed
+  89 |         status,
+  90 |         dueAt: dueMs,
+> 91 |         athleteId: athleteId ?? selectedAthleteId || null,
+     |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  92 |       });
+  93 |     }
+  94 |     setDialogOpen(false);
+
+Nullish coalescing operator(??) requires parens when mixing with logical operators
+
+Import traces:
+  Client Component Browser:
+    ./features/tasks/TasksPanel.tsx [Client Component Browser]
+    ./app/(app)/tasks/page.tsx [Client Component Browser]
+    ./app/(app)/tasks/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./features/tasks/TasksPanel.tsx [Client Component SSR]
+    ./app/(app)/tasks/page.tsx [Client Component SSR]
+    ./app/(app)/tasks/page.tsx [Server Component]
+[02:08:33.405] Browser ERROR   ./features/tasks/TasksPanel.tsx:91:20
+Parsing ecmascript source code failed
+  89 |         status,
+  90 |         dueAt: dueMs,
+> 91 |         athleteId: athleteId ?? selectedAthleteId || null,
+     |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  92 |       });
+  93 |     }
+  94 |     setDialogOpen(false);
+
+Nullish coalescing operator(??) requires parens when mixing with logical operators
+
+Import traces:
+  Client Component Browser:
+    ./features/tasks/TasksPanel.tsx [Client Component Browser]
+    ./app/(app)/tasks/page.tsx [Client Component Browser]
+    ./app/(app)/tasks/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./features/tasks/TasksPanel.tsx [Client Component SSR]
+    ./app/(app)/tasks/page.tsx [Client Component SSR]
+    ./app/(app)/tasks/page.tsx [Server Component]
+[02:08:41.815] Browser ERROR   ./features/tasks/TasksPanel.tsx:91:20
+Parsing ecmascript source code failed
+  89 |         status,
+  90 |         dueAt: dueMs,
+> 91 |         athleteId: athleteId ?? selectedAthleteId || null,
+     |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  92 |       });
+  93 |     }
+  94 |     setDialogOpen(false);
+
+Nullish coalescing operator(??) requires parens when mixing with logical operators
+
+Import traces:
+  Client Component Browser:
+    ./features/tasks/TasksPanel.tsx [Client Component Browser]
+    ./app/(app)/tasks/page.tsx [Client Component Browser]
+    ./app/(app)/tasks/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./features/tasks/TasksPanel.tsx [Client Component SSR]
+    ./app/(app)/tasks/page.tsx [Client Component SSR]
+    ./app/(app)/tasks/page.tsx [Server Component]
+[02:09:02.516] Browser ERROR   ./features/tasks/TasksPanel.tsx:91:20
+Parsing ecmascript source code failed
+  89 |         status,
+  90 |         dueAt: dueMs,
+> 91 |         athleteId: athleteId ?? selectedAthleteId || null,
+     |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  92 |       });
+  93 |     }
+  94 |     setDialogOpen(false);
+
+Nullish coalescing operator(??) requires parens when mixing with logical operators
+
+Import traces:
+  Client Component Browser:
+    ./features/tasks/TasksPanel.tsx [Client Component Browser]
+    ./app/(app)/tasks/page.tsx [Client Component Browser]
+    ./app/(app)/tasks/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./features/tasks/TasksPanel.tsx [Client Component SSR]
+    ./app/(app)/tasks/page.tsx [Client Component SSR]
+    ./app/(app)/tasks/page.tsx [Server Component]
+[02:09:39.095] Server  LOG      ✓ Compiled in 240ms
+[02:09:39.738] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
