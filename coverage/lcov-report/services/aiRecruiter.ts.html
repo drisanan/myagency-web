@@ -23,9 +23,9 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">30.76% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/13</span>
+                <span class='fraction'>4/13</span>
             </div>
         
             
@@ -37,16 +37,16 @@
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">33.33% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>0/3</span>
+                <span class='fraction'>1/3</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">33.33% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/12</span>
+                <span class='fraction'>4/12</span>
             </div>
         
             
@@ -104,7 +104,7 @@
 <a name='L39'></a><a href='#L39'>39</a>
 <a name='L40'></a><a href='#L40'>40</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -115,27 +115,27 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -143,7 +143,7 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">'use client';
 &nbsp;
-const INTRO_URL = <span class="cstat-no" title="statement not covered" >'/api/ai/intro';</span>
+const INTRO_URL = '/api/ai/intro';
 &nbsp;
 type IntroBody = {
   sport: string;
@@ -154,8 +154,8 @@ type IntroBody = {
   additionalInsights?: string;
 };
 &nbsp;
-<span class="cstat-no" title="statement not covered" >export a</span>sync function <span class="fstat-no" title="function not covered" >generateIntro(</span>body: IntroBody): Promise&lt;string&gt; {
-  const res = <span class="cstat-no" title="statement not covered" >await fetch(INTRO_URL, {</span>
+export async function generateIntro(body: IntroBody): Promise&lt;string&gt; {
+  const res = await fetch(INTRO_URL, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -174,7 +174,7 @@ type IntroBody = {
 <span class="cstat-no" title="statement not covered" >  return String(data.intro ?? '');</span>
 }
 &nbsp;
-<span class="cstat-no" title="statement not covered" >export a</span>sync function <span class="fstat-no" title="function not covered" >generateContentDraft(</span>_body: unknown): Promise&lt;string&gt; {
+export async function <span class="fstat-no" title="function not covered" >generateContentDraft(</span>_body: unknown): Promise&lt;string&gt; {
   // Placeholder: will implement once the content endpoint is provided
 <span class="cstat-no" title="statement not covered" >  return '';</span>
 }
@@ -187,7 +187,7 @@ type IntroBody = {
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2025-12-11T18:04:17.311Z
+                at 2025-12-11T20:45:36.720Z
             </div>
         <script src="../prettify.js"></script>
         <script>

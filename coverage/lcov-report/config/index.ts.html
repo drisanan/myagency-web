@@ -23,30 +23,30 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/13</span>
+                <span class='fraction'>13/13</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>0/4</span>
+                <span class='fraction'>4/4</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>0/2</span>
+                <span class='fraction'>2/2</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/11</span>
+                <span class='fraction'>11/11</span>
             </div>
         
             
@@ -61,7 +61,7 @@
             </div>
         </template>
     </div>
-    <div class='status-line low'></div>
+    <div class='status-line high'></div>
     <pre><table class="coverage">
 <tr><td class="line-count quiet"><a name='L1'></a><a href='#L1'>1</a>
 <a name='L2'></a><a href='#L2'>2</a>
@@ -156,22 +156,20 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">14x</span>
+<span class="cline-any cline-yes">14x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">14x</span>
+<span class="cline-any cline-yes">4x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">14x</span>
+<span class="cline-any cline-yes">22x</span>
+<span class="cline-any cline-yes">12x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -201,7 +199,9 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">12x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -227,20 +227,20 @@ export type TenantRegistryEntry = {
 &nbsp;
 export type TenantRegistry = Record&lt;string, TenantRegistryEntry&gt;;
 &nbsp;
-let cachedServiceConfig: ServiceConfig | null = <span class="cstat-no" title="statement not covered" >null;</span>
-let cachedTenantRegistry: TenantRegistry | null = <span class="cstat-no" title="statement not covered" >null;</span>
+let cachedServiceConfig: ServiceConfig | null = null;
+let cachedTenantRegistry: TenantRegistry | null = null;
 &nbsp;
-<span class="cstat-no" title="statement not covered" >export function <span class="fstat-no" title="function not covered" >g</span>etServiceConfig(</span>): ServiceConfig {
-<span class="cstat-no" title="statement not covered" >  <span class="missing-if-branch" title="if path not taken" >I</span>if (cachedServiceConfig) <span class="cstat-no" title="statement not covered" >return cachedServiceConfig;</span></span>
+export function getServiceConfig(): ServiceConfig {
+  if (cachedServiceConfig) return cachedServiceConfig;
   // Single source of truth; override via env if needed
-  const apiBaseUrl = <span class="cstat-no" title="statement not covered" >process.env.NEXT_PUBLIC_API_BASE_URL || 'https://api.example.com';</span>
-<span class="cstat-no" title="statement not covered" >  cachedServiceConfig = { apiBaseUrl };</span>
-<span class="cstat-no" title="statement not covered" >  return cachedServiceConfig;</span>
+  const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://api.example.com';
+  cachedServiceConfig = { apiBaseUrl };
+  return cachedServiceConfig;
 }
 &nbsp;
-<span class="cstat-no" title="statement not covered" >export function <span class="fstat-no" title="function not covered" >g</span>etTenantRegistry(</span>): TenantRegistry {
-<span class="cstat-no" title="statement not covered" >  <span class="missing-if-branch" title="if path not taken" >I</span>if (cachedTenantRegistry) <span class="cstat-no" title="statement not covered" >return cachedTenantRegistry;</span></span>
-<span class="cstat-no" title="statement not covered" >  cachedTenantRegistry = {</span>
+export function getTenantRegistry(): TenantRegistry {
+  if (cachedTenantRegistry) return cachedTenantRegistry;
+  cachedTenantRegistry = {
     default: {
       id: 'default',
       name: 'AthleteNarrative',
@@ -272,7 +272,7 @@ let cachedTenantRegistry: TenantRegistry | null = <span class="cstat-no" title="
       }
     }
   };
-<span class="cstat-no" title="statement not covered" >  return cachedTenantRegistry;</span>
+  return cachedTenantRegistry;
 }
 &nbsp;
 &nbsp;
@@ -283,7 +283,7 @@ let cachedTenantRegistry: TenantRegistry | null = <span class="cstat-no" title="
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2025-12-11T18:04:17.311Z
+                at 2025-12-11T20:45:36.720Z
             </div>
         <script src="../prettify.js"></script>
         <script>

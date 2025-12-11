@@ -166,7 +166,8 @@ export default function IntakeFormPageClient({ token }: { token: string }) {
               inputProps={{ accept: 'image/png,image/jpeg,image/jpg' }}
               label="Profile Image"
               onChange={(e) => {
-                const file = e.target.files?.[0];
+                const target = e.target as HTMLInputElement;
+                const file = target.files?.[0];
                 if (!file) return;
                 const reader = new FileReader();
                 reader.onload = () => setForm({ ...form, profileImageUrl: String(reader.result || '') });

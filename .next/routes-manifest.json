@@ -37,6 +37,14 @@
       "namedRegex": "^/clients/(?<nxtPid>[^/]+?)/edit(?:/)?$"
     },
     {
+      "page": "/forms/[token]",
+      "regex": "^/forms/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPtoken": "nxtPtoken"
+      },
+      "namedRegex": "^/forms/(?<nxtPtoken>[^/]+?)(?:/)?$"
+    },
+    {
       "page": "/recruiter/university/[id]",
       "regex": "^/recruiter/university/([^/]+?)(?:/)?$",
       "routeKeys": {
@@ -65,10 +73,154 @@
       "namedRegex": "^/_not\\-found(?:/)?$"
     },
     {
+      "page": "/agencies",
+      "regex": "^/agencies(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/agencies(?:/)?$"
+    },
+    {
+      "page": "/agencies/new",
+      "regex": "^/agencies/new(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/agencies/new(?:/)?$"
+    },
+    {
       "page": "/ai",
       "regex": "^/ai(?:/)?$",
       "routeKeys": {},
       "namedRegex": "^/ai(?:/)?$"
+    },
+    {
+      "page": "/ai/prompts",
+      "regex": "^/ai/prompts(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/ai/prompts(?:/)?$"
+    },
+    {
+      "page": "/api/ai/intro",
+      "regex": "^/api/ai/intro(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/ai/intro(?:/)?$"
+    },
+    {
+      "page": "/api/auth/ghl-login",
+      "regex": "^/api/auth/ghl\\-login(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/auth/ghl\\-login(?:/)?$"
+    },
+    {
+      "page": "/api/commits",
+      "regex": "^/api/commits(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/commits(?:/)?$"
+    },
+    {
+      "page": "/api/commits/status",
+      "regex": "^/api/commits/status(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/commits/status(?:/)?$"
+    },
+    {
+      "page": "/api/forms/agency",
+      "regex": "^/api/forms/agency(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/forms/agency(?:/)?$"
+    },
+    {
+      "page": "/api/forms/consume",
+      "regex": "^/api/forms/consume(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/forms/consume(?:/)?$"
+    },
+    {
+      "page": "/api/forms/issue",
+      "regex": "^/api/forms/issue(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/forms/issue(?:/)?$"
+    },
+    {
+      "page": "/api/forms/submissions",
+      "regex": "^/api/forms/submissions(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/forms/submissions(?:/)?$"
+    },
+    {
+      "page": "/api/forms/submit",
+      "regex": "^/api/forms/submit(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/forms/submit(?:/)?$"
+    },
+    {
+      "page": "/api/gmail/create-draft",
+      "regex": "^/api/gmail/create\\-draft(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/gmail/create\\-draft(?:/)?$"
+    },
+    {
+      "page": "/api/google/oauth/callback",
+      "regex": "^/api/google/oauth/callback(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/google/oauth/callback(?:/)?$"
+    },
+    {
+      "page": "/api/google/oauth/url",
+      "regex": "^/api/google/oauth/url(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/google/oauth/url(?:/)?$"
+    },
+    {
+      "page": "/api/google/status",
+      "regex": "^/api/google/status(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/google/status(?:/)?$"
+    },
+    {
+      "page": "/api/google/tokens",
+      "regex": "^/api/google/tokens(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/google/tokens(?:/)?$"
+    },
+    {
+      "page": "/api/metrics/click",
+      "regex": "^/api/metrics/click(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/metrics/click(?:/)?$"
+    },
+    {
+      "page": "/api/metrics/open",
+      "regex": "^/api/metrics/open(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/metrics/open(?:/)?$"
+    },
+    {
+      "page": "/api/metrics/seed",
+      "regex": "^/api/metrics/seed(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/metrics/seed(?:/)?$"
+    },
+    {
+      "page": "/api/metrics/stats",
+      "regex": "^/api/metrics/stats(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/metrics/stats(?:/)?$"
+    },
+    {
+      "page": "/api/notes",
+      "regex": "^/api/notes(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/notes(?:/)?$"
+    },
+    {
+      "page": "/api/recruiting-periods",
+      "regex": "^/api/recruiting\\-periods(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/recruiting\\-periods(?:/)?$"
+    },
+    {
+      "page": "/api/tasks",
+      "regex": "^/api/tasks(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/tasks(?:/)?$"
     },
     {
       "page": "/auth/login",
@@ -101,6 +253,12 @@
       "namedRegex": "^/dashboard(?:/)?$"
     },
     {
+      "page": "/lists",
+      "regex": "^/lists(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/lists(?:/)?$"
+    },
+    {
       "page": "/paywall",
       "regex": "^/paywall(?:/)?$",
       "routeKeys": {},
@@ -129,6 +287,12 @@
       "regex": "^/social(?:/)?$",
       "routeKeys": {},
       "namedRegex": "^/social(?:/)?$"
+    },
+    {
+      "page": "/tasks",
+      "regex": "^/tasks(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/tasks(?:/)?$"
     },
     {
       "page": "/weightroom",

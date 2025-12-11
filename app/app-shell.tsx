@@ -124,7 +124,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   </IconButton>
                 </Badge>
                 <Avatar sx={{ bgcolor: '#5D4AFB', width: 32, height: 32 }}>
-                  {(session.name || session.email || '?').charAt(0).toUpperCase()}
+                  {(session.email || '?').charAt(0).toUpperCase()}
                 </Avatar>
               </Stack>
             ) : null}

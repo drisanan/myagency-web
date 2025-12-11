@@ -23,30 +23,30 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/12</span>
+                <span class='fraction'>12/12</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>0/5</span>
+                <span class='fraction'>5/5</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>0/1</span>
+                <span class='fraction'>1/1</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/12</span>
+                <span class='fraction'>12/12</span>
             </div>
         
             
@@ -61,7 +61,7 @@
             </div>
         </template>
     </div>
-    <div class='status-line low'></div>
+    <div class='status-line high'></div>
     <pre><table class="coverage">
 <tr><td class="line-count quiet"><a name='L1'></a><a href='#L1'>1</a>
 <a name='L2'></a><a href='#L2'>2</a>
@@ -81,39 +81,39 @@
 <a name='L16'></a><a href='#L16'>16</a>
 <a name='L17'></a><a href='#L17'>17</a>
 <a name='L18'></a><a href='#L18'>18</a>
-<a name='L19'></a><a href='#L19'>19</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<a name='L19'></a><a href='#L19'>19</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js"><span class="cstat-no" title="statement not covered" >import { headers } from 'next/headers';</span>
-<span class="cstat-no" title="statement not covered" >import { getTenantRegistry } from '@/config';</span>
-<span class="cstat-no" title="statement not covered" >import { ensureKnownTenant, resolveTenantFromHost, resolveTenantFromPath } from '@/tenancy/tenantResolver';</span>
+<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import { headers } from 'next/headers';
+import { getTenantRegistry } from '@/config';
+import { ensureKnownTenant, resolveTenantFromHost, resolveTenantFromPath } from '@/tenancy/tenantResolver';
 &nbsp;
-<span class="cstat-no" title="statement not covered" >export a</span>sync function <span class="fstat-no" title="function not covered" >getServerTenant(</span>) {
-  const hdrs = <span class="cstat-no" title="statement not covered" >await headers();</span>
-  const host = <span class="cstat-no" title="statement not covered" >hdrs.get('host') || '';</span>
-  const path = <span class="cstat-no" title="statement not covered" >hdrs.get('x-invoke-path') || '';</span> // non-standard, may be empty; fallback to default
+export async function getServerTenant() {
+  const hdrs = await headers();
+  const host = hdrs.get('host') || '';
+  const path = hdrs.get('x-invoke-path') || ''; // non-standard, may be empty; fallback to default
 &nbsp;
-  const fromHost = <span class="cstat-no" title="statement not covered" >ensureKnownTenant(resolveTenantFromHost(host));</span>
-<span class="cstat-no" title="statement not covered" >  <span class="missing-if-branch" title="if path not taken" >I</span>if (fromHost !== 'default') {</span>
-<span class="cstat-no" title="statement not covered" >    return getTenantRegistry()[fromHost];</span>
+  const fromHost = ensureKnownTenant(resolveTenantFromHost(host));
+  if (fromHost !== 'default') {
+    return getTenantRegistry()[fromHost];
   }
-  const fromPath = <span class="cstat-no" title="statement not covered" >ensureKnownTenant(resolveTenantFromPath(path));</span>
-<span class="cstat-no" title="statement not covered" >  return getTenantRegistry()[fromPath];</span>
+  const fromPath = ensureKnownTenant(resolveTenantFromPath(path));
+  return getTenantRegistry()[fromPath];
 }
 &nbsp;
 &nbsp;
@@ -124,7 +124,7 @@
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2025-12-11T18:04:17.311Z
+                at 2025-12-11T20:45:36.720Z
             </div>
         <script src="../prettify.js"></script>
         <script>

@@ -488,7 +488,7 @@ function AppShell({ children }) {
                                                 width: 32,
                                                 height: 32
                                             },
-                                            children: (session.name || session.email || '?').charAt(0).toUpperCase()
+                                            children: (session.email || '?').charAt(0).toUpperCase()
                                         }, void 0, false, {
                                             fileName: "[project]/app/app-shell.tsx",
                                             lineNumber: 126,
