@@ -408,7 +408,7 @@ function AppShell({ children }) {
                                             },
                                             children: [
                                                 "Impersonating ",
-                                                typeof session.impersonatedBy === 'string' ? session.impersonatedBy : session.impersonatedBy?.email || session.impersonatedBy?.name || 'another user'
+                                                typeof session.impersonatedBy === 'string' ? session.impersonatedBy : session.impersonatedBy?.email || 'another user'
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/app/app-shell.tsx",

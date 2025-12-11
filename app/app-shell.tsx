@@ -109,7 +109,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 <Typography variant="body2" sx={{ color: '#212636' }}>
                   Impersonating {typeof session.impersonatedBy === 'string'
                     ? session.impersonatedBy
-                    : session.impersonatedBy?.email || session.impersonatedBy?.name || 'another user'}
+                    : (session.impersonatedBy as any)?.email || 'another user'}
                 </Typography>
                 <Button color="inherit" variant="outlined" onClick={stopImpersonation}>Stop Impersonating</Button>
               </Box>
