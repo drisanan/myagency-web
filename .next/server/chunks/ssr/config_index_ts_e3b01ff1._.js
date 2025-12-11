@@ -1,3 +1,0 @@
-module.exports=[21215,a=>{"use strict";let b=null,c=null;function d(){return b||(b={apiBaseUrl:process.env.NEXT_PUBLIC_API_BASE_URL||"https://api.example.com"})}function e(){return c||(c={default:{id:"default",name:"AthleteNarrative",brand:{primary:"#1976d2",secondary:"#9c27b0"},flags:{aiCounselor:!0,voiceInput:!0,voiceOutput:!0,recruiterEnabled:!0,clientsEnabled:!0}},acme:{id:"acme",name:"Acme Athletics",brand:{primary:"#1976d2",secondary:"#ff4081"},flags:{aiCounselor:!0,voiceInput:!0,voiceOutput:!0,recruiterEnabled:!0,clientsEnabled:!0}}})}a.s(["getServiceConfig",()=>d,"getTenantRegistry",()=>e])}];
-
-//# sourceMappingURL=config_index_ts_e3b01ff1._.js.map

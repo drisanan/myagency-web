@@ -1,6 +1,0 @@
-{
-  "version": 3,
-  "sources": [],
-  "sections": [
-    {"offset": {"line": 4, "column": 0}, "map": {"version":3,"sources":["file:///Users/mrjames/Desktop/athletenarrative/web/web-app/components/Button.tsx"],"sourcesContent":["'use client';\nimport React from 'react';\nimport MuiButton, { ButtonProps as MuiButtonProps } from '@mui/material/Button';\n\ntype Props = {\n  label: string;\n} & Omit<MuiButtonProps, 'children'>;\n\nexport function Button({ label, ...rest }: Props) {\n  return <MuiButton {...rest}>{label}</MuiButton>;\n}\n\n\n"],"names":[],"mappings":";;;;;AAEA;AAFA;;;AAQO,SAAS,OAAO,EAAE,KAAK,EAAE,GAAG,MAAa;IAC9C,qBAAO,6LAAC,0KAAS;QAAE,GAAG,IAAI;kBAAG;;;;;;AAC/B;KAFgB"}}]
-}

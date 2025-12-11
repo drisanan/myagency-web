@@ -1,7 +1,0 @@
-{
-  "version": 3,
-  "sources": [],
-  "sections": [
-    {"offset": {"line": 13, "column": 0}, "map": {"version":3,"sources":[],"names":[],"mappings":""}},
-    {"offset": {"line": 17, "column": 0}, "map": {"version":3,"sources":["file:///Users/mrjames/Desktop/athletenarrative/web/web-app/app/forms/%5Btoken%5D/page.tsx"],"sourcesContent":["import IntakeFormPageClient from './page.client';\n\nexport default async function IntakeFormPage({ params }: { params: Promise<{ token: string }> }) {\n  const { token } = await params;\n  return <IntakeFormPageClient token={token} />;\n}\n\n"],"names":[],"mappings":";;;;;AAAA;;;AAEe,eAAe,eAAe,EAAE,MAAM,EAA0C;IAC7F,MAAM,EAAE,KAAK,EAAE,GAAG,MAAM;IACxB,qBAAO,8OAAC,uJAAoB;QAAC,OAAO;;;;;;AACtC"}}]
-}

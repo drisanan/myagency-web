@@ -1,7 +1,0 @@
-{
-  "version": 3,
-  "sources": [],
-  "sections": [
-    {"offset": {"line": 4, "column": 0}, "map": {"version":3,"sources":["file:///Users/mrjames/Desktop/athletenarrative/web/web-app/components/Button.tsx"],"sourcesContent":["'use client';\nimport React from 'react';\nimport MuiButton, { ButtonProps as MuiButtonProps } from '@mui/material/Button';\n\ntype Props = {\n  label: string;\n} & Omit<MuiButtonProps, 'children'>;\n\nexport function Button({ label, ...rest }: Props) {\n  return <MuiButton {...rest}>{label}</MuiButton>;\n}\n\n\n"],"names":[],"mappings":";;;;;AAEA;AAFA;;;AAQO,SAAS,OAAO,EAAE,KAAK,EAAE,GAAG,MAAa;IAC9C,qBAAO,8OAAC,uKAAS;QAAE,GAAG,IAAI;kBAAG;;;;;;AAC/B"}},
-    {"offset": {"line": 27, "column": 0}, "map": {"version":3,"sources":["file:///Users/mrjames/Desktop/athletenarrative/web/web-app/app/page.tsx"],"sourcesContent":["'use client';\nimport React from 'react';\nimport { Button } from '@/components/Button';\n\nexport default function HomePage() {\n  return (\n    <main style={{ padding: 24 }}>\n      <h1>Welcome to AthleteNarrative Web</h1>\n      <Button label=\"Primary Action\" variant=\"contained\" onClick={() => {}} />\n    </main>\n  );\n}\n\n\n"],"names":[],"mappings":";;;;;AAEA;AAFA;;;AAIe,SAAS;IACtB,qBACE,8OAAC;QAAK,OAAO;YAAE,SAAS;QAAG;;0BACzB,8OAAC;0BAAG;;;;;;0BACJ,8OAAC,+HAAM;gBAAC,OAAM;gBAAiB,SAAQ;gBAAY,SAAS,KAAO;;;;;;;;;;;;AAGzE"}}]
-}
