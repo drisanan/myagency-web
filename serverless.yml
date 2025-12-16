@@ -111,6 +111,12 @@ functions:
       - httpApi:
           path: /google/oauth/callback
           method: get
+  ghlLogin:
+    handler: infra/src/handlers/ghl-login.handler
+    events:
+      - httpApi:
+          path: /auth/ghl-login
+          method: any
 
 resources:
   Resources:

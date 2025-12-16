@@ -254,15 +254,6 @@ type RouteHandlerConfig<Route extends AppRouteHandlerRoutes = AppRouteHandlerRou
   type __Unused = __Check
 }
 
-// Validate ../../../app/api/auth/ghl-login/route.ts
-{
-  type __IsExpected<Specific extends RouteHandlerConfig<"/api/auth/ghl-login">> = Specific
-  const handler = {} as typeof import("../../../app/api/auth/ghl-login/route.js")
-  type __Check = __IsExpected<typeof handler>
-  // @ts-ignore
-  type __Unused = __Check
-}
-
 // Validate ../../../app/api/commits/rehydrate/route.ts
 {
   type __IsExpected<Specific extends RouteHandlerConfig<"/api/commits/rehydrate">> = Specific
