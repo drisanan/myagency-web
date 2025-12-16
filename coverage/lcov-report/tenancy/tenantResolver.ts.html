@@ -23,30 +23,30 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">100% </span>
+                <span class="strong">0% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>14/14</span>
+                <span class='fraction'>0/14</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">83.33% </span>
+                <span class="strong">0% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>5/6</span>
+                <span class='fraction'>0/6</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">100% </span>
+                <span class="strong">0% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>3/3</span>
+                <span class='fraction'>0/3</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">100% </span>
+                <span class="strong">0% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>14/14</span>
+                <span class='fraction'>0/14</span>
             </div>
         
             
@@ -61,7 +61,7 @@
             </div>
         </template>
     </div>
-    <div class='status-line high'></div>
+    <div class='status-line low'></div>
     <pre><table class="coverage">
 <tr><td class="line-count quiet"><a name='L1'></a><a href='#L1'>1</a>
 <a name='L2'></a><a href='#L2'>2</a>
@@ -90,57 +90,57 @@
 <a name='L25'></a><a href='#L25'>25</a>
 <a name='L26'></a><a href='#L26'>26</a>
 <a name='L27'></a><a href='#L27'>27</a>
-<a name='L28'></a><a href='#L28'>28</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">2x</span>
+<a name='L28'></a><a href='#L28'>28</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">4x</span>
-<span class="cline-any cline-yes">4x</span>
-<span class="cline-any cline-yes">2x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">2x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">3x</span>
-<span class="cline-any cline-yes">3x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">2x</span>
-<span class="cline-any cline-yes">3x</span>
-<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import { getTenantRegistry } from '@/config';
+<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js"><span class="cstat-no" title="statement not covered" >import { getTenantRegistry } from '@/config';</span>
 &nbsp;
-export function resolveTenantFromHost(hostname: string): string {
+<span class="cstat-no" title="statement not covered" >export function <span class="fstat-no" title="function not covered" >r</span>esolveTenantFromHost(</span>hostname: string): string {
   // e.g., acme.example.com -&gt; acme
-  const parts = hostname.split('.').filter(Boolean);
-  if (parts.length &gt; 2) {
-    return parts[0];
+  const parts = <span class="cstat-no" title="statement not covered" >hostname.split('.').filter(Boolean);</span>
+<span class="cstat-no" title="statement not covered" >  <span class="missing-if-branch" title="if path not taken" >I</span>if (parts.length &gt; 2) {</span>
+<span class="cstat-no" title="statement not covered" >    return parts[0];</span>
   }
   // if hostname is localhost or root domain, use default
-  return 'default';
+<span class="cstat-no" title="statement not covered" >  return 'default';</span>
 }
 &nbsp;
-export function resolveTenantFromPath(pathname: string): string {
+<span class="cstat-no" title="statement not covered" >export function <span class="fstat-no" title="function not covered" >r</span>esolveTenantFromPath(</span>pathname: string): string {
   // /t/&lt;tenantId&gt;/... -&gt; &lt;tenantId&gt;
-  const parts = pathname.split('/').filter(Boolean);
-  if (parts[0] === 't' &amp;&amp; parts[1]) {
-    return parts[1];
+  const parts = <span class="cstat-no" title="statement not covered" >pathname.split('/').filter(Boolean);</span>
+<span class="cstat-no" title="statement not covered" >  <span class="missing-if-branch" title="if path not taken" >I</span>if (parts[0] === 't' &amp;&amp; parts[1]) {</span>
+<span class="cstat-no" title="statement not covered" >    return parts[1];</span>
   }
-  return 'default';
+<span class="cstat-no" title="statement not covered" >  return 'default';</span>
 }
 &nbsp;
-export function ensureKnownTenant(tenantId: string): string {
-  const reg = getTenantRegistry();
-  return reg[tenantId] ? tenantId : <span class="branch-1 cbranch-no" title="branch not covered" >'default';</span>
+<span class="cstat-no" title="statement not covered" >export function <span class="fstat-no" title="function not covered" >e</span>nsureKnownTenant(</span>tenantId: string): string {
+  const reg = <span class="cstat-no" title="statement not covered" >getTenantRegistry();</span>
+<span class="cstat-no" title="statement not covered" >  return reg[tenantId] ? tenantId : 'default';</span>
 }
 &nbsp;
 &nbsp;
@@ -151,7 +151,7 @@ export function ensureKnownTenant(tenantId: string): string {
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2025-12-11T20:45:36.720Z
+                at 2025-12-16T05:05:11.702Z
             </div>
         <script src="../prettify.js"></script>
         <script>

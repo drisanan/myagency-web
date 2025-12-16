@@ -23,9 +23,9 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">46.66% </span>
+                <span class="strong">0% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>7/15</span>
+                <span class='fraction'>0/15</span>
             </div>
         
             
@@ -37,16 +37,16 @@
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">33.33% </span>
+                <span class="strong">0% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>2/6</span>
+                <span class='fraction'>0/6</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">53.84% </span>
+                <span class="strong">0% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>7/13</span>
+                <span class='fraction'>0/13</span>
             </div>
         
             
@@ -117,7 +117,7 @@
 <a name='L52'></a><a href='#L52'>52</a>
 <a name='L53'></a><a href='#L53'>53</a>
 <a name='L54'></a><a href='#L54'>54</a>
-<a name='L55'></a><a href='#L55'>55</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">5x</span>
+<a name='L55'></a><a href='#L55'>55</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -148,30 +148,30 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">5x</span>
-<span class="cline-any cline-yes">127x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">5x</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">5x</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">5x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">3539x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">export const DIVISION_MAPPING: Record&lt;string, string[]&gt; = {
+<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">export const <span class="cstat-no" title="statement not covered" >DIVISION_MAPPING: Record&lt;string, string[]&gt; = {</span>
   Football: ['D1', 'D1AA', 'D2', 'D3', 'JUCO', 'NAIA'],
   Baseball: ['D1', 'D2', 'D3', 'JUCO', 'NAIA'],
   Softball: ['D1', 'D2', 'D3', 'JUCO', 'NAIA'],
@@ -202,11 +202,11 @@
   MensCrossCountry: ['D1', 'D2', 'D3', 'JUCO', 'NAIA'],
 };
 &nbsp;
-export function getSports(): string[] {
-  return Object.keys(DIVISION_MAPPING);
+<span class="cstat-no" title="statement not covered" >export function <span class="fstat-no" title="function not covered" >g</span>etSports(</span>): string[] {
+<span class="cstat-no" title="statement not covered" >  return Object.keys(DIVISION_MAPPING);</span>
 }
 &nbsp;
-export function <span class="fstat-no" title="function not covered" >getSportsForGender(</span>gender: 'Mens' | 'Womens'): string[] {
+<span class="cstat-no" title="statement not covered" >export function <span class="fstat-no" title="function not covered" >g</span>etSportsForGender(</span>gender: 'Mens' | 'Womens'): string[] {
   const all = <span class="cstat-no" title="statement not covered" >Object.keys(DIVISION_MAPPING);</span>
   const genderPrefix = <span class="cstat-no" title="statement not covered" >gender;</span>
   const gendered = <span class="cstat-no" title="statement not covered" >all.filter(<span class="fstat-no" title="function not covered" >s </span>=&gt; <span class="cstat-no" title="statement not covered" >s.startsWith(genderPrefix))</span>;</span>
@@ -214,14 +214,14 @@ export function <span class="fstat-no" title="function not covered" >getSportsFo
 <span class="cstat-no" title="statement not covered" >  return [...gendered, ...neutral];</span>
 }
 &nbsp;
-export function <span class="fstat-no" title="function not covered" >getDivisionsForSport(</span>sport: string): string[] {
+<span class="cstat-no" title="statement not covered" >export function <span class="fstat-no" title="function not covered" >g</span>etDivisionsForSport(</span>sport: string): string[] {
 <span class="cstat-no" title="statement not covered" >  return DIVISION_MAPPING[sport] ?? [];</span>
 }
 &nbsp;
-export function formatSportLabel(sport: string): string {
+<span class="cstat-no" title="statement not covered" >export function <span class="fstat-no" title="function not covered" >f</span>ormatSportLabel(</span>sport: string): string {
   // Insert a space before capitals when preceded by a lowercase letter
   // e.g., WomensSoccer -&gt; Womens Soccer, CrossCountry -&gt; Cross Country
-  return sport.replace(/([a-z])([A-Z])/g, '$1 $2');
+<span class="cstat-no" title="statement not covered" >  return sport.replace(/([a-z])([A-Z])/g, '$1 $2');</span>
 }
 &nbsp;
 &nbsp;
@@ -232,7 +232,7 @@ export function formatSportLabel(sport: string): string {
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2025-12-11T20:45:36.720Z
+                at 2025-12-16T05:05:11.702Z
             </div>
         <script src="../../prettify.js"></script>
         <script>

@@ -22,8 +22,8 @@ export function RecruiterSearchList({ onSelect }: Props) {
   const rows = data ?? [];
 
   return (
-    <TableContainer component={Paper}>
-      <Table aria-label="recruiter athletes">
+    <TableContainer component={Paper} sx={{ width: '100%', overflowX: 'auto' }}>
+      <Table aria-label="recruiter athletes" sx={{ minWidth: 720 }}>
         <TableHead>
           <TableRow>
             <TableCell>Name</TableCell>

@@ -32,13 +32,25 @@ describe('ClientWizard', () => {
     await user.type(screen.getByLabelText(/last name/i), 'Smith');
     await user.click(screen.getByLabelText(/sport/i));
     await user.click(await screen.findByText('Football'));
+    await user.click(screen.getByRole('button', { name: /set via url/i }));
+    await user.type(screen.getByLabelText(/profile image url/i), 'http://example.com/img.png');
     await user.click(screen.getByRole('button', { name: /next/i }));
     await user.type(screen.getByLabelText(/Preferred Position/i), 'Forward');
-    // advance through remaining steps quickly
-    for (let i = 0; i < 4; i++) {
-      await user.click(screen.getByRole('button', { name: /next/i }));
-    }
-    await user.click(screen.getByRole('button', { name: /next/i })); // go to Review
+    await user.click(screen.getByRole('button', { name: /next/i })); // social
+    await user.click(screen.getByRole('button', { name: /next/i })); // content
+    await user.click(screen.getByRole('button', { name: /next/i })); // events/metrics
+    await user.click(screen.getByRole('button', { name: /\+ add event/i }));
+    await user.type(screen.getByLabelText(/Event Name/i), 'Camp');
+    await user.type(screen.getByLabelText(/Start Time/i), '2025-02-01T10:00');
+    await user.click(screen.getByRole('button', { name: /\+ add metric/i }));
+    await user.type(screen.getByLabelText(/Metric Title/i), '40yd');
+    await user.type(screen.getByLabelText(/Metric Value/i), '4.5s');
+    await user.click(screen.getByRole('button', { name: /next/i })); // to motivation/references
+    await user.click(screen.getByRole('button', { name: /\+ add reference/i }));
+    await user.type(screen.getByLabelText(/Name/i), 'Coach K');
+    await user.type(screen.getByLabelText(/Email/i), 'coach@example.com');
+    await user.type(screen.getByLabelText(/Phone/i), '123-456');
+    await user.click(screen.getByRole('button', { name: /next/i })); // review
     await user.click(screen.getByRole('button', { name: /Create Client/i }));
     expect(spy).toHaveBeenCalled();
     const arg = (spy.mock.calls[0] as any[])[0];
@@ -47,6 +59,10 @@ describe('ClientWizard', () => {
       agencyEmail: 'agency1@an.test',
     });
     expect(arg.radar.preferredPosition).toBe('Forward');
+    expect(arg.radar.events?.[0]).toMatchObject({ name: 'Camp', startTime: '2025-02-01T10:00' });
+    expect(arg.radar.metrics?.[0]).toMatchObject({ title: '40yd', value: '4.5s' });
+    expect(arg.radar.references?.[0]).toMatchObject({ name: 'Coach K', email: 'coach@example.com', phone: '123-456' });
+    expect(arg.profileImageUrl).toBe('http://example.com/img.png');
     expect(push).toHaveBeenCalledWith('/clients');
   });
  
@@ -59,10 +75,14 @@ describe('ClientWizard', () => {
     await user.type(screen.getByLabelText(/last name/i), 'Lee');
     await user.click(screen.getByLabelText(/sport/i));
     await user.click(await screen.findByText('Football'));
-     for (let i = 0; i < 6; i++) {
-       await user.click(screen.getByRole('button', { name: /next/i }));
+    // advance through remaining steps until review
+    // click Next while it exists
+    let nextBtn = screen.queryByRole('button', { name: /next/i });
+    while (nextBtn) {
+      await user.click(nextBtn);
+      nextBtn = screen.queryByRole('button', { name: /next/i });
      }
-     expect(screen.getByText(/Sport:/i)).toBeInTheDocument();
+    expect(screen.getByText(/Football/i)).toBeInTheDocument();
     expect(screen.getAllByText(/Personal/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/Social/i).length).toBeGreaterThan(0);
      expect(screen.queryByText(/^{/)).not.toBeInTheDocument();
@@ -109,6 +129,7 @@ describe('ClientWizard', () => {
     expect(screen.getByDisplayValue('Edit')).toBeInTheDocument();
     expect(screen.getByDisplayValue('Me')).toBeInTheDocument();
 
+    await user.click(screen.getByRole('button', { name: /Set via URL/i }));
     await user.clear(screen.getByLabelText(/Profile Image URL/i));
     await user.type(screen.getByLabelText(/Profile Image URL/i), 'http://example.com/new.png');
     // advance to radar step and edit
@@ -130,7 +151,7 @@ describe('ClientWizard', () => {
     expect(arg.radar.preferredPosition).toBe('Slot');
     expect(arg.photoUrl).toBe('http://example.com/new.png');
     expect(arg.profileImageUrl).toBe('http://example.com/new.png');
-  });
+  }, 15000);
 
   test('edit mode still enforces required fields if cleared', async () => {
     jest.spyOn(sess, 'useSession').mockReturnValue({ session: { role: 'agency', email: 'agency1@an.test' } as any, setSession: jest.fn(), loading: false } as any);

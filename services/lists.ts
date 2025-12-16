@@ -1,4 +1,15 @@
-const STORAGE_KEY = 'coach_lists_v1';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.API_BASE_URL || '';
+
+async function apiFetch(path: string, init?: RequestInit) {
+  if (!API_BASE_URL || typeof fetch === 'undefined') return null;
+  const headers: Record<string, string> = { 'Content-Type': 'application/json', ...(init?.headers as any) };
+  const res = await fetch(`${API_BASE_URL}${path}`, { ...init, headers });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`API ${path} failed: ${res.status} ${text}`);
+  }
+  return res.json();
+}
 
 export type CoachEntry = {
   id?: string;
@@ -20,56 +31,28 @@ export type CoachList = {
   updatedAt: number;
 };
 
-function read(): CoachList[] {
-  if (typeof window === 'undefined') return [];
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    return raw ? (JSON.parse(raw) as CoachList[]) : [];
-  } catch {
-    return [];
-  }
+export async function listLists(_: string): Promise<CoachList[]> {
+  const data = await apiFetch('/lists');
+  return (data?.lists as CoachList[]) ?? [];
 }
 
-function write(items: CoachList[]) {
-  if (typeof window === 'undefined') return;
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+export async function getList(id: string): Promise<CoachList | null> {
+  const data = await apiFetch(`/lists/${id}`);
+  return (data?.list as CoachList) ?? null;
 }
 
-export function listLists(agencyEmail: string): CoachList[] {
-  const all = read();
-  return all
-    .filter(l => l.agencyEmail === agencyEmail)
-    .sort((a, b) => b.updatedAt - a.updatedAt);
+export async function saveList(input: { agencyEmail: string; name: string; items: CoachEntry[] }): Promise<CoachList> {
+  const data = await apiFetch('/lists', { method: 'POST', body: JSON.stringify(input) });
+  return data?.list as CoachList;
 }
 
-export function getList(id: string): CoachList | null {
-  const all = read();
-  return all.find(l => l.id === id) ?? null;
+export async function updateList(input: { id: string; name: string; items: CoachEntry[] }): Promise<CoachList | null> {
+  const data = await apiFetch(`/lists/${input.id}`, { method: 'PUT', body: JSON.stringify(input) });
+  return data?.list as CoachList;
 }
 
-export function saveList(input: { agencyEmail: string; name: string; items: CoachEntry[] }): CoachList {
-  const all = read();
-  const id = `list-${Math.random().toString(36).slice(2, 10)}`;
-  const now = Date.now();
-  const rec: CoachList = { id, agencyEmail: input.agencyEmail, name: input.name, items: input.items, createdAt: now, updatedAt: now };
-  write([rec, ...all]);
-  return rec;
-}
-
-export function updateList(input: { id: string; name: string; items: CoachEntry[] }): CoachList | null {
-  const all = read();
-  const idx = all.findIndex(l => l.id === input.id);
-  if (idx < 0) return null;
-  const now = Date.now();
-  const next = { ...all[idx], name: input.name, items: input.items, updatedAt: now };
-  all[idx] = next;
-  write(all);
-  return next;
-}
-
-export function deleteList(id: string) {
-  const all = read();
-  write(all.filter(l => l.id !== id));
+export async function deleteList(id: string) {
+  await apiFetch(`/lists/${id}`, { method: 'DELETE' });
 }
 
 

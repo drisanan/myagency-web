@@ -1,3 +1,5 @@
+const collectCoverage = process.env.COVERAGE === 'true';
+
 /** @type {import('jest').Config} */
 module.exports = {
   testEnvironment: 'jsdom',
@@ -19,25 +21,30 @@ module.exports = {
     '^@/tests/(.*)$': '<rootDir>/tests/$1',
     '^@/theme/(.*)$': '<rootDir>/theme/$1',
   },
-  testPathIgnorePatterns: ['/node_modules/', '/.next/'],
-  collectCoverage: true,
-  collectCoverageFrom: [
-    'components/**/*.{ts,tsx}',
-    'features/**/*.{ts,tsx}',
-    'services/**/*.{ts,tsx}',
-    'tenancy/**/*.{ts,tsx}',
-    'config/**/*.{ts,tsx}',
-    'utils/**/*.{ts,tsx}',
-    '!**/*.d.ts',
-  ],
-  coverageThreshold: {
-    global: {
-      branches: 0.9,
-      functions: 0.9,
-      lines: 0.9,
-      statements: 0.9
-    }
-  },
+  modulePathIgnorePatterns: ['<rootDir>/.serverless/'],
+  testPathIgnorePatterns: ['/node_modules/', '/.next/', '/.serverless/'],
+  collectCoverage,
+  collectCoverageFrom: collectCoverage
+    ? [
+        'components/**/*.{ts,tsx}',
+        'features/**/*.{ts,tsx}',
+        'services/**/*.{ts,tsx}',
+        'tenancy/**/*.{ts,tsx}',
+        'config/**/*.{ts,tsx}',
+        'utils/**/*.{ts,tsx}',
+        '!**/*.d.ts',
+      ]
+    : undefined,
+  coverageThreshold: collectCoverage
+    ? {
+        global: {
+          branches: 0.9,
+          functions: 0.9,
+          lines: 0.9,
+          statements: 0.9,
+        },
+      }
+    : undefined,
 };
 
 

@@ -1,19 +1,14 @@
-const STORAGE_KEY = 'agencies_data';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.API_BASE_URL || '';
 
-function readStore(): Agency[] {
-  if (typeof window === 'undefined') return [];
-  const raw = window.localStorage.getItem(STORAGE_KEY);
-  if (!raw) return [];
-  try {
-    return JSON.parse(raw) as Agency[];
-  } catch {
-    return [];
+async function apiFetch(path: string, init?: RequestInit) {
+  if (!API_BASE_URL || typeof fetch === 'undefined') return null;
+  const headers: Record<string, string> = { 'Content-Type': 'application/json', ...(init?.headers as any) };
+  const res = await fetch(`${API_BASE_URL}${path}`, { ...init, headers });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`API ${path} failed: ${res.status} ${text}`);
   }
-}
-
-function writeStore(items: Agency[]) {
-  if (typeof window === 'undefined') return;
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+  return res.json();
 }
 
 export type AgencySettings = {
@@ -40,77 +35,71 @@ const SEED_AGENCIES: Agency[] = [
   { id: 'agency-003', name: 'Elite Edge', email: 'agency3@an.test', settings: { primaryColor: '#2e7d32' } },
 ];
 
-let AGENCIES: Agency[] = (() => {
-  const fromStore = readStore();
-  if (fromStore.length > 0) return fromStore;
-  writeStore(SEED_AGENCIES);
-  return [...SEED_AGENCIES];
-})();
-
-export { AGENCIES };
-
 export async function listAgencies() {
-  return AGENCIES.map(a => ({ id: a.id, name: a.name }));
+  if (API_BASE_URL) {
+    const data = await apiFetch('/agencies');
+    return data?.agencies ?? [];
+  }
+  return [];
 }
 
 export async function getAgencies() {
-  return [...AGENCIES];
+  if (API_BASE_URL) {
+    const data = await apiFetch('/agencies');
+    return data?.agencies ?? [];
+  }
+  return [];
 }
 
 export async function getAgencyByEmail(email: string) {
-  return AGENCIES.find(a => a.email === email) ?? null;
+  if (API_BASE_URL) {
+    const data = await apiFetch('/agencies');
+    const list = data?.agencies ?? [];
+    return list.find((a: Agency) => a.email === email) ?? null;
+  }
+  return null;
 }
 
 export async function getAgencyById(id: string) {
-  return AGENCIES.find(a => a.id === id) ?? null;
+  if (API_BASE_URL) {
+    const data = await apiFetch('/agencies');
+    const list = data?.agencies ?? [];
+    return list.find((a: Agency) => a.id === id) ?? null;
+  }
+  return null;
 }
 
 export async function getAgencySettings(email: string) {
-  const a = AGENCIES.find(x => x.email === email);
-  return a?.settings ?? {};
+  if (API_BASE_URL) {
+    const data = await apiFetch(`/agencies?email=${encodeURIComponent(email)}`);
+    const list = data?.agencies ?? [];
+    const a = list.find((x: Agency) => x.email === email);
+    return a?.settings ?? {};
+  }
+  return {};
 }
 
 export async function updateAgencySettings(email: string, settings: AgencySettings) {
-  const a = AGENCIES.find(x => x.email === email);
-  if (!a) return { ok: false };
-  a.settings = { ...(a.settings ?? {}), ...settings };
-  writeStore(AGENCIES);
-  return { ok: true, settings: a.settings };
+  if (API_BASE_URL) {
+    const data = await apiFetch('/agencies/settings', { method: 'PUT', body: JSON.stringify({ email, settings }) });
+    return data;
+  }
+  return { ok: false };
 }
 
 type UpsertInput = Omit<Agency, 'id'> & { id?: string };
 export async function upsertAgency(input: UpsertInput) {
-  if (input.id) {
-    const idx = AGENCIES.findIndex(a => a.id === input.id);
-    if (idx >= 0) {
-      AGENCIES[idx] = { ...AGENCIES[idx], ...input, id: input.id };
-      writeStore(AGENCIES);
-      return { id: input.id };
-    }
+  if (API_BASE_URL) {
+    const data = await apiFetch('/agencies', { method: 'POST', body: JSON.stringify(input) });
+    return data;
   }
-  const id = `agency-${(Math.random() * 1e6).toFixed(0)}`;
-  AGENCIES.push({
-    id,
-    name: input.name,
-    email: input.email,
-    password: input.password,
-    ownerFirstName: input.ownerFirstName,
-    ownerLastName: input.ownerLastName,
-    ownerEmail: input.ownerEmail,
-    ownerPhone: input.ownerPhone,
-    active: input.active ?? true,
-    settings: input.settings ?? {},
-  });
-  writeStore(AGENCIES);
-  return { id };
+  return { id: undefined };
 }
 
 export async function deleteAgency(id: string) {
-  const idx = AGENCIES.findIndex(a => a.id === id);
-  if (idx >= 0) {
-    AGENCIES.splice(idx, 1);
-    writeStore(AGENCIES);
-    return { ok: true };
+  if (API_BASE_URL) {
+    const data = await apiFetch(`/agencies/${id}`, { method: 'DELETE' });
+    return data ?? { ok: true };
   }
   return { ok: false };
 }

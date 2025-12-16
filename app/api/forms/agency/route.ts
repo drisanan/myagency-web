@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verify } from '../../forms/token';
-import { getAgencyByEmail } from '@/services/agencies';
+import { queryGSI1 } from '@/infra-adapter/dynamo';
 
 export async function GET(req: NextRequest) {
   try {
@@ -10,7 +10,8 @@ export async function GET(req: NextRequest) {
     if (!payload?.agencyEmail) {
       return NextResponse.json({ ok: false, error: 'Invalid token' }, { status: 400 });
     }
-    const agency = await getAgencyByEmail(payload.agencyEmail);
+    const byEmail = await queryGSI1(`EMAIL#${payload.agencyEmail}`, 'AGENCY#');
+    const agency = (byEmail || [])[0];
     if (!agency) return NextResponse.json({ ok: false, error: 'Agency not found' }, { status: 404 });
     return NextResponse.json({
       ok: true,

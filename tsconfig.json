@@ -47,6 +47,9 @@
       ],
       "@/tests/*": [
         "tests/*"
+      ],
+      "@/infra-adapter/*": [
+        "infra-adapter/*"
       ]
     },
     "incremental": true,

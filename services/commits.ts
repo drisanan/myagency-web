@@ -15,8 +15,6 @@ export type Commit = {
   highSchool?: string;
 };
 
-const STORAGE_KEY = 'commits_data';
-
 const footballPositions = ['QB', 'RB', 'WR', 'DL', 'LB', 'CB', 'S', 'TE', 'OL'];
 const basketballPositions = ['PG', 'SG', 'SF', 'PF', 'C'];
 const sources = ['ESPN', 'Rivals', '247Sports'];
@@ -62,29 +60,11 @@ const SEED: Commit[] = [
   ...makeTop('Basketball', 'bb-top', basketballPositions),
 ];
 
-function readStore(): Commit[] {
-  if (typeof window === 'undefined') return [...SEED];
-  const raw = window.localStorage.getItem(STORAGE_KEY);
-  if (!raw) return [...SEED];
-  try {
-    const parsed = JSON.parse(raw) as Commit[];
-    return parsed.length ? parsed : [...SEED];
-  } catch {
-    return [...SEED];
-  }
-}
-
-function writeStore(items: Commit[]) {
-  if (typeof window === 'undefined') return;
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
-}
-
-let COMMITS: Commit[] = readStore();
+let COMMITS: Commit[] = [...SEED];
 let SCRAPED_FOOTBALL = false;
 let SCRAPED_BASKETBALL = false;
 
 export function listCommits(sport: Commit['sport'], list: Commit['list']) {
-  if (typeof window !== 'undefined') COMMITS = readStore();
   const filtered = COMMITS.filter((c) => c.sport === sport && c.list === list);
   if (list === 'recent') {
     return filtered
@@ -106,7 +86,6 @@ export function filterCommits(commits: Commit[], filters: { position?: string; u
 
 export function upsertCommits(commits: Commit[]) {
   COMMITS = commits;
-  writeStore(COMMITS);
   return COMMITS;
 }
 
@@ -164,13 +143,11 @@ async function loadFootballFromScrape() {
       // Merge: keep basketball from current store (may be scraped), replace football
       const existing = COMMITS.filter((c) => c.sport === 'Basketball');
       COMMITS = [...existing, ...topMapped, ...recent];
-      writeStore(COMMITS);
     } else {
       // mark placeholders so tests can detect non-live data
       COMMITS = COMMITS.map((c) =>
         c.sport === 'Football' ? { ...c, name: `${c.name} (placeholder)` } : c
       );
-      writeStore(COMMITS);
     }
   } catch (e) {
     // ignore and keep seed
@@ -209,12 +186,10 @@ async function loadBasketballFromScrape() {
       // Merge: keep football from current store (may be scraped), replace basketball
       const existing = COMMITS.filter((c) => c.sport === 'Football');
       COMMITS = [...existing, ...topMapped, ...recent];
-      writeStore(COMMITS);
     } else {
       COMMITS = COMMITS.map((c) =>
         c.sport === 'Basketball' ? { ...c, name: `${c.name} (placeholder)` } : c
       );
-      writeStore(COMMITS);
     }
   } catch (e) {
     // ignore and keep seed

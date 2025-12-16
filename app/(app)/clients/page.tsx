@@ -7,6 +7,9 @@ import { useSession } from '@/features/auth/session';
 import { upsertClient } from '@/services/clients';
 import { useQueryClient } from '@tanstack/react-query';
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.API_BASE_URL || '';
+const resolvedApiBase = API_BASE_URL || (typeof window !== 'undefined' ? `${window.location.origin}/api` : '');
+
 export default function ClientsPage() {
   const { session } = useSession();
   const queryClient = useQueryClient();
@@ -16,8 +19,14 @@ export default function ClientsPage() {
   React.useEffect(() => {
     (async () => {
       if (!session?.email) return;
+      if (!resolvedApiBase) {
+        console.error('[clients:forms:error]', { error: 'API_BASE_URL missing' });
+        return;
+      }
       try {
-        const res = await fetch(`/api/forms/submissions?agencyEmail=${encodeURIComponent(session.email)}`);
+        const res = await fetch(`${resolvedApiBase}/forms/submissions?agencyEmail=${encodeURIComponent(session.email)}`, {
+          credentials: 'include',
+        });
         const data = await res.json();
         if (!data?.ok) return;
         const items = Array.isArray(data.items) ? data.items : [];
@@ -41,9 +50,10 @@ export default function ClientsPage() {
           idsToConsume.push(s.id);
         }
         if (idsToConsume.length) {
-          await fetch('/api/forms/consume', {
+          await fetch(`${resolvedApiBase}/forms/consume`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
             body: JSON.stringify({ agencyEmail: session.email, ids: idsToConsume }),
           });
           queryClient.invalidateQueries({ queryKey: ['clients', session.email] });
@@ -54,10 +64,12 @@ export default function ClientsPage() {
   async function handleGenerateLink() {
     try {
       if (!session?.email) return;
+      if (!resolvedApiBase) throw new Error('API_BASE_URL is not configured');
       setIssuing(true);
-      const res = await fetch('/api/forms/issue', {
+      const res = await fetch(`${resolvedApiBase}/forms/issue`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ agencyEmail: session.email }),
       });
       const data = await res.json();

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { consumeSubmissions } from '../store';
+import { getItem, putItem } from '@/infra-adapter/dynamo';
 
 export async function POST(req: NextRequest) {
   try {
@@ -7,7 +7,12 @@ export async function POST(req: NextRequest) {
     if (!agencyEmail || !Array.isArray(ids)) {
       return NextResponse.json({ ok: false, error: 'Missing parameters' }, { status: 400 });
     }
-    consumeSubmissions(agencyEmail, ids);
+    for (const id of ids) {
+      const item = await getItem({ PK: `AGENCY#${agencyEmail}`, SK: `FORM#${id}` });
+      if (item) {
+        await putItem({ ...item, consumed: true });
+      }
+    }
     return NextResponse.json({ ok: true });
   } catch (e: any) {
     return NextResponse.json({ ok: false, error: e?.message || 'Consume failed' }, { status: 500 });

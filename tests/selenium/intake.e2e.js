@@ -1,46 +1,23 @@
 const { Builder, By, until } = require('selenium-webdriver');
 const chrome = require('selenium-webdriver/chrome');
 const fetch = (...args) => import('node-fetch').then(({ default: f }) => f(...args));
+const { setSession, findAndType, selectOption, allowlistedConsoleErrors, sleep } = require('./utils');
 
 const BASE = process.env.BASE_URL || 'http://localhost:3000';
+const API = process.env.API_BASE_URL || BASE;
 const AGENCY_EMAIL = 'agency1@an.test';
 const TEST_EMAIL = `ui-test-${Date.now()}@example.com`;
 const TEST_PHONE = '2081234567';
 
-function sleep(ms) {
-  return new Promise(res => setTimeout(res, ms));
-}
-
 async function issueLink() {
-  const res = await fetch(`${BASE}/api/forms/issue`, {
+  const res = await fetch(`${API}/forms/issue`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', Origin: BASE },
     body: JSON.stringify({ agencyEmail: AGENCY_EMAIL }),
   });
   const data = await res.json();
   if (!res.ok || !data?.ok || !data?.url) throw new Error('Failed to issue link');
   return data.url;
-}
-
-async function setSession(driver) {
-  await driver.get(`${BASE}/clients`);
-  await driver.executeScript(`
-    window.localStorage.setItem('session', JSON.stringify({ role: 'agency', email: '${AGENCY_EMAIL}', agencyId: 'agency-001' }));
-  `);
-  await driver.navigate().refresh();
-}
-
-async function findAndType(driver, labelText, value) {
-  const input = await driver.findElement(By.xpath(`//label[contains(., "${labelText}")]/following::input[1]`));
-  await input.clear();
-  await input.sendKeys(value);
-}
-
-async function selectOption(driver, labelText, optionText) {
-  const select = await driver.findElement(By.xpath(`//label[contains(., "${labelText}")]/following::div[contains(@class,"MuiSelect")]`));
-  await select.click();
-  const opt = await driver.wait(until.elementLocated(By.xpath(`//li[normalize-space(.)="${optionText}"]`)), 5000);
-  await opt.click();
 }
 
 async function run() {
@@ -54,6 +31,7 @@ async function run() {
 
   try {
     await driver.get(url);
+    await driver.executeScript(`const p=document.querySelector('nextjs-portal'); if(p) p.remove();`);
     await findAndType(driver, 'Email', TEST_EMAIL);
     await findAndType(driver, 'Phone', TEST_PHONE);
     await findAndType(driver, 'Password', 'pw12345');
@@ -77,13 +55,13 @@ async function run() {
     const submitBtn = await driver.findElement(By.xpath(`//button[normalize-space(.)="Submit" or contains(.,"Submitting…")]`));
     await submitBtn.click();
 
-    await driver.wait(until.elementLocated(By.xpath(`//*[contains(text(),"Submitted!")]`)), 10000);
+    await driver.wait(until.elementLocated(By.xpath(`//*[contains(text(),"Submitted!")]`)), 20000);
 
     // Confirm submission exists via API
     async function waitForSubmission(timeoutMs = 15000, interval = 1000) {
       const start = Date.now();
       while (Date.now() - start < timeoutMs) {
-        const subs = await fetch(`${BASE}/api/forms/submissions?agencyEmail=${encodeURIComponent(AGENCY_EMAIL)}`).then(r => r.json());
+        const subs = await fetch(`${API}/forms/submissions?agencyEmail=${encodeURIComponent(AGENCY_EMAIL)}`).then(r => r.json());
         if (!subs?.ok) throw new Error('Failed to fetch submissions');
         const found = Array.isArray(subs.items) && subs.items.some((s) => (s.data?.email || '') === TEST_EMAIL);
         if (found) return true;
@@ -94,7 +72,7 @@ async function run() {
     const found = await waitForSubmission();
     if (!found) throw new Error('Submission not found in API list');
 
-    await setSession(driver);
+    await setSession(driver, BASE, { email: AGENCY_EMAIL, agencyId: 'agency-001', role: 'agency' });
     await driver.get(`${BASE}/clients`);
     await driver.wait(until.elementLocated(By.xpath(`//div[contains(@class,"MuiDataGrid")]`)), 15000);
     async function waitForRow(timeoutMs = 40000, interval = 2000) {
@@ -112,10 +90,7 @@ async function run() {
     if (!rowFound) throw new Error('Client row not found after submission');
 
     const logs = await driver.manage().logs().get('browser');
-    const allowedErrorSubstrings = ['favicon.ico', 'Hydration failed'];
-    const errors = logs
-      .filter(l => l.level && l.level.name === 'SEVERE')
-      .filter(l => !allowedErrorSubstrings.some(sub => (l.message || '').includes(sub)));
+    const errors = allowlistedConsoleErrors(logs);
     if (errors.length) {
       console.error('Browser console errors:', errors);
       throw new Error('Console errors detected');

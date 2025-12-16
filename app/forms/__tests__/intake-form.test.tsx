@@ -1,3 +1,5 @@
+process.env.NEXT_PUBLIC_API_BASE_URL = 'https://api.test';
+
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import IntakeFormPageClient from '../[token]/page.client';
 
@@ -30,6 +32,7 @@ describe('Intake form', () => {
     fireEvent.change(screen.getByLabelText(/Preferred Position/i), { target: { value: 'Freestyle' } }); // freeform fallback
 
     fireEvent.change(screen.getByLabelText(/Email/i), { target: { value: 'a@b.com' } });
+    fireEvent.change(screen.getByLabelText(/Phone/i), { target: { value: '1234567890' } });
     fireEvent.change(screen.getByLabelText(/Password/i), { target: { value: 'pw' } });
     fireEvent.change(screen.getByLabelText(/First name/i), { target: { value: 'John' } });
     fireEvent.change(screen.getByLabelText(/Last name/i), { target: { value: 'Doe' } });
@@ -42,7 +45,7 @@ describe('Intake form', () => {
     await waitFor(() => expect((fetch as jest.Mock).mock.calls.length).toBe(2));
 
     const submitCall = (fetch as jest.Mock).mock.calls[1];
-    expect(submitCall[0]).toBe('/api/forms/submit');
+    expect(submitCall[0]).toBe('https://api.test/forms/submit');
     expect(submitCall[1]?.body).toContain('token 123'); // decoded
     expect(await screen.findByText(/Submitted!/i)).toBeInTheDocument();
   });

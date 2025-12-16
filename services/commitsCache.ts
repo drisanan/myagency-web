@@ -31,4 +31,13 @@ export function clearCommitsCache() {
   cache.clear();
 }
 
+export async function rehydrateCommitsCache() {
+  cache.clear();
+  const sports: Commit['sport'][] = ['Football', 'Basketball'];
+  const lists: Commit['list'][] = ['recent', 'top'];
+  await Promise.all(
+    sports.flatMap((sport) => lists.map((list) => getCachedCommits(sport, list, 0))),
+  );
+}
+
 

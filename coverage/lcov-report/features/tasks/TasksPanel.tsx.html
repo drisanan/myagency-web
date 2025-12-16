@@ -23,9 +23,9 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">12.16% </span>
+                <span class="strong">0% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>9/74</span>
+                <span class='fraction'>0/74</span>
             </div>
         
             
@@ -44,9 +44,9 @@
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">12.5% </span>
+                <span class="strong">0% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>9/72</span>
+                <span class='fraction'>0/72</span>
             </div>
         
             
@@ -296,8 +296,8 @@
 <a name='L231'></a><a href='#L231'>231</a>
 <a name='L232'></a><a href='#L232'>232</a>
 <a name='L233'></a><a href='#L233'>233</a>
-<a name='L234'></a><a href='#L234'>234</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
+<a name='L234'></a><a href='#L234'>234</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -312,24 +312,24 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -529,8 +529,8 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import React from 'react';
-import {
+<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js"><span class="cstat-no" title="statement not covered" >import React from 'react';</span>
+<span class="cstat-no" title="statement not covered" >import {</span>
   Box,
   Button,
   Chip,
@@ -545,24 +545,24 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
-import { useTasks } from './useTasks';
+<span class="cstat-no" title="statement not covered" >import { useTasks } from './useTasks';</span>
 import { TaskStatus } from '@/services/tasks';
-import { FaBell, FaEdit, FaTrash } from 'react-icons/fa';
-import { useSession } from '@/features/auth/session';
-import { useQuery } from '@tanstack/react-query';
-import { listClientsByAgencyEmail } from '@/services/clients';
+<span class="cstat-no" title="statement not covered" >import { FaBell, FaEdit, FaTrash } from 'react-icons/fa';</span>
+<span class="cstat-no" title="statement not covered" >import { useSession } from '@/features/auth/session';</span>
+<span class="cstat-no" title="statement not covered" >import { useQuery } from '@tanstack/react-query';</span>
+<span class="cstat-no" title="statement not covered" >import { listClientsByAgencyEmail } from '@/services/clients';</span>
 &nbsp;
 type Props = {
   athleteId?: string | null;
 };
 &nbsp;
-const statusOptions: { value: TaskStatus; label: string }[] = [
+const statusOptions: { value: TaskStatus; label: string }[] = <span class="cstat-no" title="statement not covered" >[</span>
   { value: 'todo', label: 'To do' },
   { value: 'in-progress', label: 'In progress' },
   { value: 'done', label: 'Done' },
 ];
 &nbsp;
-export function <span class="fstat-no" title="function not covered" >TasksPanel(</span>{ athleteId }: Props) {
+<span class="cstat-no" title="statement not covered" >export function <span class="fstat-no" title="function not covered" >T</span>asksPanel(</span>{ athleteId }: Props) {
   const { session } = <span class="cstat-no" title="statement not covered" >useSession();</span>
   const agencyEmail = <span class="cstat-no" title="statement not covered" >session?.email || '';</span>
   const { tasks, query, createTask, updateTask, deleteTask } = <span class="cstat-no" title="statement not covered" >useTasks(agencyEmail, athleteId);</span>
@@ -769,7 +769,7 @@ export function <span class="fstat-no" title="function not covered" >TasksPanel(
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2025-12-11T20:45:36.720Z
+                at 2025-12-16T05:05:11.702Z
             </div>
         <script src="../../prettify.js"></script>
         <script>

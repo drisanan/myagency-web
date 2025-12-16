@@ -28,17 +28,47 @@ async function run() {
     await setSession(driver, BASE, { role: 'agency', email: AGENCY_EMAIL, agencyId: 'agency-001' });
 
     // Create a client to edit (happy path create)
+    await driver.get(`${BASE}/`);
+    await driver.executeScript(`window.localStorage.setItem('session', '${JSON.stringify({ role: 'agency', email: AGENCY_EMAIL, agencyId: 'agency-001' })}');`);
     await driver.get(`${BASE}/clients/new`);
-    await findAndType(driver, 'Email', TEST_EMAIL);
+    const emailInput = await driver.wait(until.elementLocated(By.css('[data-testid="athlete-email"]')), 15000);
+    await emailInput.sendKeys(TEST_EMAIL);
     await findAndType(driver, 'Password', 'pw12345');
     await findAndType(driver, 'First name', 'Edit');
     await findAndType(driver, 'Last name', 'Target');
+    await driver.findElement(By.xpath(`//button[normalize-space(.)="Set via URL"]`)).click();
     await findAndType(driver, 'Profile Image URL', 'http://example.com/original.png');
     const sportSelect = await driver.findElement(By.xpath(`//label[contains(., "Sport")]/following::div[contains(@class,"MuiSelect")]`));
     await sportSelect.click();
     const footballOpt = await driver.wait(until.elementLocated(By.xpath(`//li[@data-value="Football"]`)), 5000);
     await driver.executeScript('arguments[0].click();', footballOpt);
-    await advanceNext(driver, 6);
+    const tryNavigateToEvents = async () => {
+      for (let i = 0; i < 5; i++) {
+        const addBtn = await driver.findElements(By.css('[data-testid="add-event"]'));
+        if (addBtn.length) return addBtn[0];
+        const nextBtns = await driver.findElements(By.xpath(`//button[normalize-space(.)="Next"]`));
+        if (!nextBtns.length) break;
+        await nextBtns[0].click();
+        await sleep(200);
+      }
+      throw new Error('add-event button not found after navigation');
+    };
+
+    const addEventBtn = await tryNavigateToEvents();
+    await addEventBtn.click();
+    await findAndType(driver, 'Event Name', 'Camp');
+    await findAndType(driver, 'Start Time', '2025-02-01T10:00');
+    const addMetricBtn = await driver.wait(until.elementLocated(By.css('[data-testid="add-metric"]')), 5000);
+    await addMetricBtn.click();
+    await findAndType(driver, 'Metric Title', '40yd');
+    await findAndType(driver, 'Metric Value', '4.50');
+    await driver.findElement(By.xpath(`//button[normalize-space(.)="Next"]`)).click(); // to motivation/references
+    const addRefBtn = await driver.wait(until.elementLocated(By.css('[data-testid="add-reference"]')), 5000);
+    await addRefBtn.click();
+    await findAndType(driver, 'Name', 'Coach K');
+    await findAndType(driver, 'Email', 'coach@example.com');
+    await findAndType(driver, 'Phone', '123-456');
+    await driver.findElement(By.xpath(`//button[normalize-space(.)="Next"]`)).click(); // review
     await driver.findElement(By.xpath(`//button[normalize-space(.)="Create Client"]`)).click();
     await sleep(1000);
 
@@ -99,9 +129,13 @@ async function run() {
       firstNameInput
     );
     await firstNameInput.sendKeys('Updated');
-    await findAndType(driver, 'Email', TEST_EMAIL);
+    await findAndType(driver, 'Athlete Email', TEST_EMAIL);
     await findAndType(driver, 'Last name', 'Target');
-    await findAndType(driver, 'Profile Image URL', 'http://example.com/updated.png');
+    await driver.findElement(By.xpath(`//button[normalize-space(.)="Set via URL"]`)).click();
+    const urlInput = await driver.findElement(By.xpath(`//label[contains(.,"Profile Image URL")]/following::input[1]`));
+    await urlInput.sendKeys(Key.chord(Key.COMMAND, 'a'));
+    await urlInput.sendKeys(Key.BACK_SPACE);
+    await urlInput.sendKeys('http://example.com/updated.png');
     const sportSelectEdit = await driver.findElement(By.xpath(`//label[contains(., "Sport")]/following::div[contains(@class,"MuiSelect")]`));
     await sportSelectEdit.click();
     const sportOpt = await driver.wait(until.elementLocated(By.xpath(`//li[@data-value="Football"]`)), 5000);
@@ -111,9 +145,17 @@ async function run() {
       throw new Error(`First name input not updated, saw ${afterFirstName}`);
     }
     // Go to radar step and change Preferred Position
-    await advanceNext(driver, 1);
+    await advanceNext(driver, 1); // personal
     await findAndType(driver, 'Preferred Position', 'Guard');
-    await advanceNext(driver, 5);
+    await advanceNext(driver, 1); // social
+    await advanceNext(driver, 1); // content
+    await advanceNext(driver, 1); // events & metrics
+    await driver.findElement(By.xpath(`//button[normalize-space(.)="Next"]`)).click(); // to motivation
+    await driver.wait(until.elementLocated(By.css('[data-testid="add-reference"]')), 5000).click();
+    await findAndType(driver, 'Name', 'Ref Two');
+    await findAndType(driver, 'Email', 'ref2@example.com');
+    await findAndType(driver, 'Phone', '999');
+    await advanceNext(driver, 1); // review
     await driver.findElement(By.xpath(`//button[normalize-space(.)="Save Changes"]`)).click();
     await sleep(1000);
 

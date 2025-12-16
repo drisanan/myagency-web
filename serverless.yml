@@ -1,0 +1,145 @@
+service: athlete-narrative-api
+frameworkVersion: '4'
+
+useDotenv: true
+
+provider:
+  name: aws
+  runtime: nodejs20.x
+  stage: ${env:STAGE, 'prod'}
+  region: ${env:AWS_REGION, 'us-east-1'}
+  environment:
+    TABLE_NAME: ${env:TABLE_NAME, 'agency-narrative-crm'}
+    AWS_NODEJS_CONNECTION_REUSE_ENABLED: 1
+    NODE_OPTIONS: --enable-source-maps
+    FORMS_SECRET: ${env:FORMS_SECRET, 'dev-forms-secret-change-me'}
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - dynamodb:DescribeTable
+            - dynamodb:PutItem
+            - dynamodb:GetItem
+            - dynamodb:UpdateItem
+            - dynamodb:DeleteItem
+            - dynamodb:Query
+            - dynamodb:Scan
+          Resource:
+            - arn:aws:dynamodb:${self:provider.region}:*:table/${env:TABLE_NAME, 'agency-narrative-crm'}
+            - arn:aws:dynamodb:${self:provider.region}:*:table/${env:TABLE_NAME, 'agency-narrative-crm'}/index/*
+
+plugins:
+  # serverless-esbuild removed because Serverless v4 bundles esbuild/TS by default
+
+custom:
+  resourcePrefix: ${env:RESOURCE_PREFIX, 'agn'}
+  namingConvention: ${env:NAMING_CONVENTION, 'agn-resource-prd-region'}
+  build:
+    esbuild: true
+
+functions:
+  health:
+    handler: infra/src/handlers/health.handler
+    events:
+      - httpApi:
+          path: /health
+          method: get
+  authSession:
+    handler: infra/src/handlers/auth.handler
+    events:
+      - httpApi:
+          path: /auth/session
+          method: any
+  agencies:
+    handler: infra/src/handlers/agencies.handler
+    events:
+      - httpApi:
+          path: /agencies
+          method: any
+      - httpApi:
+          path: /agencies/settings
+          method: any
+  clients:
+    handler: infra/src/handlers/clients.handler
+    events:
+      - httpApi:
+          path: /clients
+          method: any
+      - httpApi:
+          path: /clients/{id}
+          method: any
+  lists:
+    handler: infra/src/handlers/lists.handler
+    events:
+      - httpApi:
+          path: /lists
+          method: any
+      - httpApi:
+          path: /lists/{id}
+          method: any
+  formsPublic:
+    handler: infra/src/handlers/forms-public.handler
+    events:
+      - httpApi:
+          path: /forms/issue
+          method: any
+      - httpApi:
+          path: /forms/agency
+          method: any
+      - httpApi:
+          path: /forms/submit
+          method: any
+      - httpApi:
+          path: /forms/submissions
+          method: any
+      - httpApi:
+          path: /forms/consume
+          method: any
+  gmail:
+    handler: infra/src/handlers/gmail.handler
+    events:
+      - httpApi:
+          path: /gmail/{action}
+          method: any
+  googleOauth:
+    handler: infra/src/handlers/google-oauth.handler
+    events:
+      - httpApi:
+          path: /google/oauth/url
+          method: get
+      - httpApi:
+          path: /google/oauth/callback
+          method: get
+
+resources:
+  Resources:
+    DataTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${env:TABLE_NAME, 'agency-narrative-crm'}
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: PK
+            AttributeType: S
+          - AttributeName: SK
+            AttributeType: S
+          - AttributeName: GSI1PK
+            AttributeType: S
+          - AttributeName: GSI1SK
+            AttributeType: S
+        KeySchema:
+          - AttributeName: PK
+            KeyType: HASH
+          - AttributeName: SK
+            KeyType: RANGE
+        GlobalSecondaryIndexes:
+          - IndexName: GSI1
+            KeySchema:
+              - AttributeName: GSI1PK
+                KeyType: HASH
+              - AttributeName: GSI1SK
+                KeyType: RANGE
+            Projection:
+              ProjectionType: ALL
+

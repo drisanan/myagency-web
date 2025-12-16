@@ -1,13 +1,20 @@
 'use client';
 import React from 'react';
-import { Box, Button, Step, StepLabel, Stepper, Typography, CircularProgress } from '@mui/material';
+import { Box, Button, Step, StepLabel, Stepper, Typography, CircularProgress, Stack, StepButton } from '@mui/material';
 import { useSession } from '@/features/auth/session';
 import { upsertClient } from '@/services/clients';
 import { MenuItem, TextField } from '@mui/material';
 import { getSports, formatSportLabel } from '@/features/recruiter/divisionMapping';
 import { useRouter } from 'next/navigation';
 
-type RadarDraft = Record<string, any>;
+type EventItem = { name: string; startTime?: string };
+type MetricItem = { title: string; value: string };
+type ReferenceItem = { name: string; email?: string; phone?: string };
+type RadarDraft = {
+  events?: EventItem[];
+  metrics?: MetricItem[];
+  references?: ReferenceItem[];
+} & Record<string, any>;
 
 const steps = [
   'Basic Info',
@@ -59,25 +66,85 @@ function ContentLinksStep({ value, onChange }: { value: RadarDraft; onChange: (k
 }
 
 function EventsMetricsStep({ value, onChange }: { value: RadarDraft; onChange: (k: string, v: any) => void }) {
+  const events = value.events ?? [];
+  const metrics = value.metrics ?? [];
+
+  const updateEvents = (items: EventItem[]) => onChange('events', items);
+  const updateMetrics = (items: MetricItem[]) => onChange('metrics', items);
+
   return (
-    <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 2 }}>
-      <TextField label="Event Name" value={value.eventName ?? ''} onChange={(e)=>onChange('eventName', e.target.value)} />
-      <TextField label="Metric 1 (Title)" value={value.athleteMetricsTitleOne ?? ''} onChange={(e)=>onChange('athleteMetricsTitleOne', e.target.value)} />
-      <TextField label="Metric 1 (Value)" value={value.athleteMetricsValueOne ?? ''} onChange={(e)=>onChange('athleteMetricsValueOne', e.target.value)} />
-      <TextField label="Metric 2 (Title)" value={value.athleteMetricsTitleTwo ?? ''} onChange={(e)=>onChange('athleteMetricsTitleTwo', e.target.value)} />
-      <TextField label="Metric 2 (Value)" value={value.athleteMetricsValueTwo ?? ''} onChange={(e)=>onChange('athleteMetricsValueTwo', e.target.value)} />
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+      <Box>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+          <Typography variant="subtitle1">Events</Typography>
+          <Button size="small" data-testid="add-event" onClick={() => updateEvents([...events, { name: '', startTime: '' }])}>+ Add Event</Button>
+        </Box>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+          {events.length === 0 && <Typography variant="body2" color="text.secondary">No events added</Typography>}
+          {events.map((ev, idx) => (
+            <Box key={idx} sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr auto' }, gap: 1 }}>
+              <TextField label="Event Name" value={ev.name} onChange={(e)=>updateEvents(events.map((v,i)=>i===idx?{...v,name:e.target.value}:v))} />
+              <TextField
+                label="Start Time"
+                type="datetime-local"
+                InputLabelProps={{ shrink: true }}
+                value={ev.startTime ?? ''}
+                onChange={(e)=>updateEvents(events.map((v,i)=>i===idx?{...v,startTime:e.target.value}:v))}
+              />
+              <Button color="error" onClick={()=>updateEvents(events.filter((_,i)=>i!==idx))}>Remove</Button>
+            </Box>
+          ))}
+        </Box>
+      </Box>
+
+      <Box>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+          <Typography variant="subtitle1">Metrics</Typography>
+          <Button size="small" data-testid="add-metric" onClick={() => updateMetrics([...metrics, { title: '', value: '' }])}>+ Add Metric</Button>
+        </Box>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+          {metrics.length === 0 && <Typography variant="body2" color="text.secondary">No metrics added</Typography>}
+          {metrics.map((m, idx) => (
+            <Box key={idx} sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr auto' }, gap: 1 }}>
+              <TextField label="Metric Title" value={m.title} onChange={(e)=>updateMetrics(metrics.map((v,i)=>i===idx?{...v,title:e.target.value}:v))} />
+              <TextField label="Metric Value" value={m.value} onChange={(e)=>updateMetrics(metrics.map((v,i)=>i===idx?{...v,value:e.target.value}:v))} />
+              <Button color="error" onClick={()=>updateMetrics(metrics.filter((_,i)=>i!==idx))}>Remove</Button>
+            </Box>
+          ))}
+        </Box>
+      </Box>
     </Box>
   );
 }
 
 function MotivationStep({ value, onChange }: { value: RadarDraft; onChange: (k: string, v: any) => void }) {
+  const references = value.references ?? [];
+  const updateReferences = (items: ReferenceItem[]) => onChange('references', items);
+
   return (
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
     <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 2 }}>
       <TextField label="Favorite Motivational Quote" value={value.myMotivator ?? ''} onChange={(e)=>onChange('myMotivator', e.target.value)} />
       <TextField label="Advice" value={value.athleteAdvice ?? ''} onChange={(e)=>onChange('athleteAdvice', e.target.value)} />
-      <TextField label="Reference 1 Name" value={value.referenceOneName ?? ''} onChange={(e)=>onChange('referenceOneName', e.target.value)} />
-      <TextField label="Reference 1 Email" value={value.referenceOneEmail ?? ''} onChange={(e)=>onChange('referenceOneEmail', e.target.value)} />
-      <TextField label="Reference 1 Phone" value={value.referenceOnePhone ?? ''} onChange={(e)=>onChange('referenceOnePhone', e.target.value)} />
+      </Box>
+
+      <Box>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+          <Typography variant="subtitle1">References</Typography>
+          <Button size="small" data-testid="add-reference" onClick={() => updateReferences([...references, { name: '', email: '', phone: '' }])}>+ Add Reference</Button>
+        </Box>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+          {references.length === 0 && <Typography variant="body2" color="text.secondary">No references added</Typography>}
+          {references.map((ref, idx) => (
+            <Box key={idx} sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(3, 1fr) auto' }, gap: 1 }}>
+              <TextField label="Name" value={ref.name} onChange={(e)=>updateReferences(references.map((v,i)=>i===idx?{...v,name:e.target.value}:v))} />
+              <TextField label="Email" value={ref.email} onChange={(e)=>updateReferences(references.map((v,i)=>i===idx?{...v,email:e.target.value}:v))} />
+              <TextField label="Phone" value={ref.phone} onChange={(e)=>updateReferences(references.map((v,i)=>i===idx?{...v,phone:e.target.value}:v))} />
+              <Button color="error" onClick={()=>updateReferences(references.filter((_,i)=>i!==idx))}>Remove</Button>
+            </Box>
+          ))}
+        </Box>
+      </Box>
     </Box>
   );
 }
@@ -92,6 +159,8 @@ function BasicInfoStep({
   errors?: { email?: string; firstName?: string; lastName?: string; sport?: string };
 }) {
   const sports = getSports();
+  const [showUrlInput, setShowUrlInput] = React.useState(false);
+  const fileInputRef = React.useRef<HTMLInputElement | null>(null);
   const handlePhotoFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -106,6 +175,7 @@ function BasicInfoStep({
     };
     reader.readAsDataURL(file);
   };
+  const triggerFile = () => fileInputRef.current?.click();
   const handleSportChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const sport = e.target.value;
     onChange({
@@ -115,15 +185,60 @@ function BasicInfoStep({
   };
   return (
     <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 2, maxWidth: 700 }}>
-      <TextField label="Athlete Email" value={value.email ?? ''} onChange={(e)=>onChange({ ...value, email: e.target.value })} error={Boolean(errors?.email)} helperText={errors?.email || ''} />
+      <TextField
+        label="Athlete Email"
+        value={value.email ?? ''}
+        onChange={(e)=>onChange({ ...value, email: e.target.value })}
+        error={Boolean(errors?.email)}
+        helperText={errors?.email || ''}
+        inputProps={{ 'data-testid': 'athlete-email' }}
+      />
       <TextField label="Athlete Password" type="password" value={value.password ?? ''} onChange={(e)=>onChange({ ...value, password: e.target.value })} />
       <TextField label="First name" value={value.firstName ?? ''} onChange={(e)=>onChange({ ...value, firstName: e.target.value })} error={Boolean(errors?.firstName)} helperText={errors?.firstName || ''} />
       <TextField label="Last name" value={value.lastName ?? ''} onChange={(e)=>onChange({ ...value, lastName: e.target.value })} error={Boolean(errors?.lastName)} helperText={errors?.lastName || ''} />
-      <TextField label="Profile Image URL" value={value.photoUrl ?? value.profileImageUrl ?? ''} onChange={(e)=>onChange({ ...value, photoUrl: e.target.value, profileImageUrl: e.target.value })} />
-      <Button variant="outlined" component="label" sx={{ height: 56, textTransform: 'none' }}>
-        {value.photoFileName ? `Uploaded: ${value.photoFileName}` : 'Upload Profile Image'}
-        <input type="file" accept="image/*" hidden onChange={handlePhotoFile} data-testid="photo-upload" />
+
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+        <Box
+          onClick={triggerFile}
+          sx={{
+            width: 96,
+            height: 96,
+            aspectRatio: '1 / 1',
+            borderRadius: '50%',
+            overflow: 'hidden',
+            border: '1px solid #e5e7eb',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            bgcolor: '#fafafa',
+            flexShrink: 0,
+          }}
+          data-testid="photo-preview"
+        >
+          {value.photoUrl || value.profileImageUrl ? (
+            <Box component="img" src={value.photoUrl || value.profileImageUrl} alt="Profile" sx={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          ) : (
+            <Typography variant="caption" color="text.secondary">Add Photo</Typography>
+          )}
+        </Box>
+        <Stack spacing={0.5}>
+          <Button variant="outlined" onClick={triggerFile} sx={{ textTransform: 'none' }}>
+            {value.photoFileName ? `Uploaded: ${value.photoFileName}` : 'Upload / Replace'}
+          </Button>
+          <Button variant="text" size="small" onClick={()=>setShowUrlInput((s)=>!s)} sx={{ textTransform: 'none', alignSelf: 'flex-start' }}>
+            {showUrlInput ? 'Hide URL input' : 'Set via URL'}
       </Button>
+        </Stack>
+        <input ref={fileInputRef} type="file" accept="image/*" hidden onChange={handlePhotoFile} data-testid="photo-upload" />
+      </Box>
+      {showUrlInput && (
+        <TextField
+          label="Profile Image URL"
+          value={value.photoUrl ?? value.profileImageUrl ?? ''}
+          onChange={(e)=>onChange({ ...value, photoUrl: e.target.value, profileImageUrl: e.target.value })}
+        />
+      )}
       <TextField
         select
         label="Sport"
@@ -154,7 +269,12 @@ export function ClientWizard({ initialClient, mode = 'create', onSaved }: Client
   const router = useRouter();
   const [activeStep, setActiveStep] = React.useState(0);
   const [basic, setBasic] = React.useState<Record<string, any>>(initialClient ? { ...initialClient, password: '' } : {});
-  const [radar, setRadar] = React.useState<RadarDraft>(initialClient?.radar ?? {});
+  const [radar, setRadar] = React.useState<RadarDraft>({
+    events: initialClient?.radar?.events ?? [],
+    metrics: initialClient?.radar?.metrics ?? [],
+    references: initialClient?.radar?.references ?? [],
+    ...(initialClient?.radar ?? {}),
+  });
   const isLast = activeStep === steps.length - 1;
   const [errors, setErrors] = React.useState<{ email?: string; firstName?: string; lastName?: string; sport?: string }>({});
   const [submitting, setSubmitting] = React.useState(false);
@@ -168,7 +288,15 @@ export function ClientWizard({ initialClient, mode = 'create', onSaved }: Client
       }
       return prev;
     });
-    setRadar((prev) => (!prev || Object.keys(prev || {}).length === 0 ? initialClient.radar ?? {} : prev));
+    setRadar((prev) => {
+      const base = !prev || Object.keys(prev || {}).length === 0 ? initialClient.radar ?? {} : prev;
+      return {
+        events: base.events ?? [],
+        metrics: base.metrics ?? [],
+        references: base.references ?? [],
+        ...base,
+      };
+    });
   }, [initialClient?.id]);
 
   const validateBasic = React.useCallback((value: Record<string, any>) => {
@@ -234,9 +362,13 @@ export function ClientWizard({ initialClient, mode = 'create', onSaved }: Client
   return (
     <Box>
       <Stepper activeStep={activeStep} alternativeLabel sx={{ mb: 3 }}>
-        {steps.map((label) => (
+        {steps.map((label, idx) => (
           <Step key={label}>
+            {mode === 'edit' ? (
+              <StepButton onClick={() => setActiveStep(idx)}>{label}</StepButton>
+            ) : (
             <StepLabel>{label}</StepLabel>
+            )}
           </Step>
         ))}
       </Stepper>
@@ -281,13 +413,31 @@ export function ClientWizard({ initialClient, mode = 'create', onSaved }: Client
         {activeStep === 6 && (
           <Box>
             <Typography variant="h6" gutterBottom>Review</Typography>
-            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 2, maxWidth: 900 }}>
-              <Box>
-                <Typography variant="subtitle2" color="text.secondary">Athlete</Typography>
-                <Typography>Email: {basic.email || '-'}</Typography>
-                <Typography>Name: {[basic.firstName, basic.lastName].filter(Boolean).join(' ') || '-'}</Typography>
-                <Typography>Sport: {basic.sport ? formatSportLabel(basic.sport) : '-'}</Typography>
+            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '320px 1fr' }, gap: 3, alignItems: 'start' }}>
+              <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1, p: 2, bgcolor: '#f9fafb', borderRadius: 2 }}>
+                <Box
+                  sx={{
+                    width: 160,
+                    height: 160,
+                    aspectRatio: '1 / 1',
+                    borderRadius: '50%',
+                    overflow: 'hidden',
+                    border: '1px solid #e5e7eb',
+                    flexShrink: 0,
+                  }}
+                >
+                  {basic.photoUrl || basic.profileImageUrl ? (
+                    <Box component="img" src={basic.photoUrl || basic.profileImageUrl} alt="Profile" sx={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  ) : (
+                    <Box sx={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9ca3af' }}>No Photo</Box>
+                  )}
+                </Box>
+                <Typography variant="h6">{[basic.firstName, basic.lastName].filter(Boolean).join(' ') || 'Athlete'}</Typography>
+                <Typography variant="body2" color="text.secondary">{basic.email || 'No email'}</Typography>
+                <Typography variant="body2" color="text.secondary">{basic.sport ? formatSportLabel(basic.sport) : 'No sport'}</Typography>
               </Box>
+
+              <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 2 }}>
               <Box>
                 <Typography variant="subtitle2" color="text.secondary">Personal</Typography>
                 <Typography>Preferred Position: {radar.preferredPosition || '-'}</Typography>
@@ -299,10 +449,6 @@ export function ClientWizard({ initialClient, mode = 'create', onSaved }: Client
                 <Typography>SAT: {radar.sat || '-'}</Typography>
                 <Typography>Graduation Year: {radar.graduationYear || '-'}</Typography>
               </Box>
-              <Box sx={{ gridColumn: '1 / -1' }}>
-                <Typography variant="subtitle2" color="text.secondary">About</Typography>
-                <Typography>{radar.description || '-'}</Typography>
-              </Box>
               <Box>
                 <Typography variant="subtitle2" color="text.secondary">Social</Typography>
                 <Typography>Instagram: {radar.instagramProfileUrl || '-'}</Typography>
@@ -310,6 +456,10 @@ export function ClientWizard({ initialClient, mode = 'create', onSaved }: Client
                 <Typography>Twitter: {radar.twitterUrl || '-'}</Typography>
                 <Typography>Facebook: {radar.facebookUrl || '-'}</Typography>
               </Box>
+                <Box sx={{ gridColumn: '1 / -1' }}>
+                  <Typography variant="subtitle2" color="text.secondary">About</Typography>
+                  <Typography>{radar.description || '-'}</Typography>
+                </Box>
               <Box>
                 <Typography variant="subtitle2" color="text.secondary">Content</Typography>
                 <Typography>YouTube Highlight: {radar.youtubeHighlightUrl || '-'}</Typography>
@@ -319,18 +469,35 @@ export function ClientWizard({ initialClient, mode = 'create', onSaved }: Client
                 <Typography>Additional Stats: {radar.additionalStatsLink || '-'}</Typography>
               </Box>
               <Box>
-                <Typography variant="subtitle2" color="text.secondary">Events & Metrics</Typography>
-                <Typography>Event: {radar.eventName || '-'}</Typography>
-                <Typography>Metric 1: {radar.athleteMetricsTitleOne || '-'} {radar.athleteMetricsValueOne ? `- ${radar.athleteMetricsValueOne}` : ''}</Typography>
-                <Typography>Metric 2: {radar.athleteMetricsTitleTwo || '-'} {radar.athleteMetricsValueTwo ? `- ${radar.athleteMetricsValueTwo}` : ''}</Typography>
+                  <Typography variant="subtitle2" color="text.secondary">Events</Typography>
+                  {(radar.events ?? []).length
+                    ? (radar.events ?? []).map((ev: EventItem, i: number) => (
+                        <Typography key={i}>{ev.name || 'Untitled'}{ev.startTime ? ` — ${ev.startTime}` : ''}</Typography>
+                      ))
+                    : <Typography color="text.secondary">No events</Typography>}
               </Box>
               <Box>
+                  <Typography variant="subtitle2" color="text.secondary">Metrics</Typography>
+                  {(radar.metrics ?? []).length
+                    ? (radar.metrics ?? []).map((m: MetricItem, i: number) => (
+                        <Typography key={i}>{m.title || 'Metric'}{m.value ? ` — ${m.value}` : ''}</Typography>
+                      ))
+                    : <Typography color="text.secondary">No metrics</Typography>}
+                </Box>
+                <Box sx={{ gridColumn: '1 / -1' }}>
                 <Typography variant="subtitle2" color="text.secondary">Motivation & References</Typography>
                 <Typography>Favorite Motivational Quote: {radar.myMotivator || '-'}</Typography>
                 <Typography>Advice: {radar.athleteAdvice || '-'}</Typography>
-                <Typography>Reference 1: {radar.referenceOneName || '-'}</Typography>
-                <Typography>Ref 1 Email: {radar.referenceOneEmail || '-'}</Typography>
-                <Typography>Ref 1 Phone: {radar.referenceOnePhone || '-'}</Typography>
+                  {(radar.references ?? []).length
+                    ? (radar.references ?? []).map((r: ReferenceItem, i: number) => (
+                        <Typography key={i}>
+                          {r.name || 'Reference'}
+                          {r.email ? ` • ${r.email}` : ''}
+                          {r.phone ? ` • ${r.phone}` : ''}
+                        </Typography>
+                      ))
+                    : <Typography color="text.secondary">No references</Typography>}
+                </Box>
               </Box>
             </Box>
           </Box>

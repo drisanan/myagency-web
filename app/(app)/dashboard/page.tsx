@@ -4,7 +4,7 @@ import { useSession } from '@/features/auth/session';
 import { useQuery } from '@tanstack/react-query';
 import { listAgencies } from '@/services/agencies';
 import { listClientsByAgencyEmail } from '@/services/clients';
-import { Typography, Box } from '@mui/material';
+import { Typography, Box, Skeleton, Stack } from '@mui/material';
 import { DataGrid, GridColDef } from '@mui/x-data-grid';
 import { getMailEntries } from '@/services/mailStatus';
 import { getScholarships, setScholarships } from '@/services/scholarships';
@@ -20,9 +20,11 @@ export default function DashboardPage() {
   const q = useQuery<any[]>({
     queryKey: ['dashboard', session?.role, session?.agencyId],
     queryFn: () => isParent ? listAgencies() : listClientsByAgencyEmail(session!.email),
+    enabled: !!session && (isParent || !!session?.email),
   });
   const [schInput, setSchInput] = React.useState<string>('');
   const [metrics, setMetrics] = React.useState<MetricsResponse | null>(null);
+  const isLoading = q.isInitialLoading;
 
   React.useEffect(() => {
     if (!session?.email || isParent) return;
@@ -39,23 +41,27 @@ export default function DashboardPage() {
     setSchInput(String(getScholarships(session.email)));
   }, [session?.email, isParent]);
   if (!session) return null;
-  if (!q.data) return null;
 
   if (isParent) {
-    const rows = q.data;
+    const rows = q.data ?? [];
     const columns: GridColDef[] = [{ field: 'name', headerName: 'Agency', flex: 1 }];
     return (
       <>
         <Typography variant="h4" gutterBottom>Dashboard</Typography>
         <div style={{ height: 520 }}>
-          <DataGrid rows={rows as any[]} columns={columns} getRowId={(r)=>r.id} />
+          <DataGrid
+            rows={rows as any[]}
+            columns={columns}
+            getRowId={(r)=>r.id}
+            loading={isLoading}
+          />
         </div>
       </>
     );
   }
 
   // Agency dashboard
-  const clients = q.data as any[];
+  const clients = (q.data ?? []) as any[];
   const clientIds = new Set<string>(clients.map(c => c.id));
   const totalClients = clients.length;
 
@@ -90,8 +96,19 @@ export default function DashboardPage() {
     <>
       <Typography variant="h4" gutterBottom>Dashboard</Typography>
 
+      {isLoading ? (
+        <Skeleton variant="rectangular" height={260} sx={{ mb: 3, borderRadius: 2 }} />
+      ) : (
       <RecruitingCalendarCard />
+      )}
 
+      {isLoading ? (
+        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(3, 1fr)' }, gap: 2, mb: 3 }}>
+          {[1, 2, 3].map((k) => (
+            <Skeleton key={k} variant="rectangular" height={140} sx={{ borderRadius: 2 }} />
+          ))}
+        </Box>
+      ) : (
       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(3, 1fr)' }, gap: 2, mb: 3 }}>
         <MetricCard
           title="Emails Sent"
@@ -133,7 +150,15 @@ export default function DashboardPage() {
           }
         />
       </Box>
+      )}
 
+      {isLoading ? (
+        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(4, 1fr)' }, gap: 2, mb: 3 }}>
+          {[1, 2, 3, 4].map((k) => (
+            <Skeleton key={k} variant="rectangular" height={120} sx={{ borderRadius: 2 }} />
+          ))}
+        </Box>
+      ) : (
       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(4, 1fr)' }, gap: 2, mb: 3 }}>
         {years.map((y, idx) => (
           <MetricCard
@@ -147,6 +172,7 @@ export default function DashboardPage() {
           />
         ))}
       </Box>
+      )}
 
       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 3, mb: 4 }}>
         <CommitsSection sport="Football" />

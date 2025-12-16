@@ -4,6 +4,9 @@ import { Box, TextField, Button, Typography, Paper, MenuItem } from '@mui/materi
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CircularProgress from '@mui/material/CircularProgress';
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.API_BASE_URL || '';
+const resolvedApiBase = API_BASE_URL || (typeof window !== 'undefined' ? `${window.location.origin}/api` : '');
+
 const sportsOptions = ['Football', 'Basketball', 'Baseball', 'Soccer', 'Track', 'Volleyball', 'Swimming'];
 const divisionOptions = ['D1', 'D2', 'D3', 'NAIA', 'JUCO'];
 const gradYearOptions = ['2025', '2026', '2027', '2028'];
@@ -56,8 +59,14 @@ export default function IntakeFormPageClient({ token }: { token: string }) {
 
   React.useEffect(() => {
     (async () => {
+      if (!resolvedApiBase) {
+        console.error('[intake:agency:error]', { error: 'API_BASE_URL missing' });
+        return;
+      }
       try {
-        const res = await fetch(`/api/forms/agency?token=${encodeURIComponent(decodedToken)}`);
+        const res = await fetch(`${resolvedApiBase}/forms/agency?token=${encodeURIComponent(decodedToken)}`, {
+          credentials: 'include',
+        });
         const data = await res.json();
         if (data?.ok) setAgency(data.agency || {});
       } catch {}
@@ -87,9 +96,12 @@ export default function IntakeFormPageClient({ token }: { token: string }) {
         return;
       }
 
-      const res = await fetch('/api/forms/submit', {
+      if (!resolvedApiBase) throw new Error('API_BASE_URL is not configured');
+
+      const res = await fetch(`${resolvedApiBase}/forms/submit`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ token: decodedToken, form }),
       });
       const data = await res.json();

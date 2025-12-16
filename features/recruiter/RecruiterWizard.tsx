@@ -1,6 +1,6 @@
 'use client';
 import React from 'react';
-import { Box, Button, Step, StepLabel, Stepper, TextField, Typography, Card, CardContent, Checkbox, FormControlLabel, MenuItem, Stack, Accordion, AccordionSummary, AccordionDetails, Switch } from '@mui/material';
+import { Box, Button, Step, StepLabel, Stepper, TextField, Typography, Card, CardContent, Checkbox, FormControlLabel, MenuItem, Stack, Accordion, AccordionSummary, AccordionDetails, Switch, CircularProgress } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { generateIntro } from '@/services/aiRecruiter';
 import { useSession } from '@/features/auth/session';
@@ -12,6 +12,7 @@ import { listLists, CoachList } from '@/services/lists';
 import { hasMailed, markMailed } from '@/services/mailStatus';
 
 type ClientRow = { id: string; email: string; firstName?: string; lastName?: string; sport?: string };
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.API_BASE_URL || '';
 
 export function RecruiterWizard() {
   const { session } = useSession();
@@ -40,6 +41,7 @@ export function RecruiterWizard() {
   // Draft
   const [draft, setDraft] = React.useState<string>('');
   const [error, setError] = React.useState<string | null>(null);
+  const [sendMessage, setSendMessage] = React.useState<string | null>(null);
 
   // Step 4 - sections and granular selections for email building
   const [enabledSections, setEnabledSections] = React.useState<Record<string, boolean>>({
@@ -118,6 +120,26 @@ export function RecruiterWizard() {
     return all.filter((c) => map[c.id]);
   }, [selectedCoachIds, schoolDetails, listMode, selectedList]);
   const universityName = schoolDetails?.schoolInfo?.School || schoolDetails?.name || '';
+  const selectedRecipients = React.useMemo(
+    () => (selectedCoaches || []).map((c: any) => c.email || c.Email || '').filter(Boolean),
+    [selectedCoaches],
+  );
+  const resolvedCollegeName =
+    universityName ||
+    selectedCoaches[0]?.school ||
+    selectedList?.name ||
+    schoolDetails?.schoolInfo?.School ||
+    schoolDetails?.name ||
+    'Selected University';
+
+  function personalizedHtmlForCoach(html: string, coach: any) {
+    const coachLast = coach?.lastName || coach?.LastName || 'Coach';
+    const re = /Hello Coach [^,<]*,/i;
+    if (re.test(html)) {
+      return html.replace(re, `Hello Coach ${coachLast},`);
+    }
+    return `<p>Hello Coach ${coachLast},</p>${html}`;
+  }
 
   function toggleSection(k: string, v: boolean) {
     setEnabledSections((p) => ({ ...p, [k]: v }));
@@ -288,6 +310,8 @@ export function RecruiterWizard() {
 
   async function handleCreateGmailDraft() {
     try {
+      setSendMessage(null);
+      setIsCreatingDraft(true);
       const id = currentClient?.id || lastConnectedClientIdRef.current || clientId || '';
       if (!id) {
         setError('Select a client first');
@@ -296,7 +320,10 @@ export function RecruiterWizard() {
       console.info('[gmail-ui:draft:start]', { clientId: id });
       // Ensure server has tokens for this client; rehydrate from client record if not
       try {
-        const statusRes = await fetch(`/api/google/status?clientId=${encodeURIComponent(id)}`);
+        const statusUrl = API_BASE_URL
+          ? `${API_BASE_URL}/google/status?clientId=${encodeURIComponent(id)}`
+          : `/api/google/status?clientId=${encodeURIComponent(id)}`;
+        const statusRes = await fetch(statusUrl);
         const status = await statusRes.json();
         console.info('[gmail-ui:status]', { clientId: id, connected: Boolean(status?.connected) });
         if (!status?.connected) {
@@ -308,7 +335,8 @@ export function RecruiterWizard() {
              hasRefresh: Boolean(saved?.refresh_token),
            });
           if (saved) {
-            await fetch('/api/google/tokens', {
+            const tokensUrl = API_BASE_URL ? `${API_BASE_URL}/google/tokens` : '/api/google/tokens';
+            await fetch(tokensUrl, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ clientId: id, tokens: saved }),
@@ -318,7 +346,7 @@ export function RecruiterWizard() {
           }
         }
       } catch { /* ignore */ }
-      const to = selectedCoaches.map((c: any) => c.email || c.Email).filter(Boolean);
+      const to = selectedRecipients;
       if (!to.length) {
         setError('Select at least one coach with an email');
         return;
@@ -326,27 +354,36 @@ export function RecruiterWizard() {
       const subject = `Intro: ${contact.firstName || ''} ${contact.lastName || ''} → ${universityName || ''}`.trim();
       const html = aiHtml || buildEmailPreview();
       const savedTokens = getClientGmailTokens(id);
-      const res = await fetch('/api/gmail/create-draft', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ clientId: id, to, subject, html, tokens: savedTokens || undefined, agencyEmail: session?.email || '' }),
-      });
-      const data = await res.json();
-      if (!res.ok || !data?.ok) {
-        throw new Error(data?.error || 'Draft creation failed');
-      }
-      if (data.openUrl) {
-        window.open(data.openUrl, '_blank');
-      }
-      try {
-        if (currentClient?.id) {
-          const emailsToMark = selectedCoaches.map((c: any) => c.email).filter(Boolean);
-          markMailed(currentClient.id, emailsToMark);
+
+      // Send one draft per recipient to avoid a single email with multiple TOs
+      for (const recipient of to) {
+        const coach = selectedCoaches.find((c: any) => (c.email || c.Email) === recipient) || {};
+        const personalizedHtml = personalizedHtmlForCoach(html, coach);
+        const draftUrl = API_BASE_URL ? `${API_BASE_URL}/gmail/create-draft` : '/api/gmail/create-draft';
+        const res = await fetch(draftUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ clientId: id, to: [recipient], subject, html: personalizedHtml, tokens: savedTokens || undefined, agencyEmail: session?.email || '' }),
+        });
+        const data = await res.json();
+        if (!res.ok || !data?.ok) {
+          throw new Error(data?.error || 'Draft creation failed');
         }
-      } catch {}
+        if (data.openUrl) {
+          window.open(data.openUrl, '_blank');
+        }
+        try {
+          if (currentClient?.id && recipient) {
+            markMailed(currentClient.id, [recipient]);
+          }
+        } catch {}
+      }
+      setSendMessage(`Sent to ${to.length} recipient${to.length === 1 ? '' : 's'}`);
     } catch (e: any) {
       console.error(e);
       setError(e?.message || 'Failed to create Gmail draft');
+    } finally {
+      setIsCreatingDraft(false);
     }
   }
 
@@ -354,13 +391,41 @@ export function RecruiterWizard() {
   const [aiLoading, setAiLoading] = React.useState(false);
   const [aiHtml, setAiHtml] = React.useState<string>('');
   const [isGenerating, setIsGenerating] = React.useState(false);
+  const [isCreatingDraft, setIsCreatingDraft] = React.useState(false);
+
+  // Delayed busy indicator to avoid flicker on sub-1s actions
+  const useDelayedBusy = (flag: boolean, delayMs = 1000) => {
+    const [busy, setBusy] = React.useState(false);
+    React.useEffect(() => {
+      let t: ReturnType<typeof setTimeout> | undefined;
+      if (flag) {
+        t = setTimeout(() => setBusy(true), delayMs);
+      } else {
+        setBusy(false);
+      }
+      return () => {
+        if (t) clearTimeout(t);
+      };
+    }, [flag, delayMs]);
+    return busy;
+  };
+
+  const improvingBusy = useDelayedBusy(aiLoading);
+  const generatingBusy = useDelayedBusy(isGenerating);
+  const gmailConnectingBusy = useDelayedBusy(gmailConnecting);
+  const draftBusy = useDelayedBusy(isCreatingDraft);
 
   async function handleImproveWithAI() {
     try {
       setAiLoading(true);
       setError(null);
       const sport = currentClient?.sport || '';
-      const collegeName = universityName || '';
+      const collegeName = resolvedCollegeName;
+      if (!collegeName) {
+        setError('Select a university or list before improving the intro.');
+        setAiLoading(false);
+        return;
+      }
       const coachLast = selectedCoaches[0]?.lastName || selectedCoaches[0]?.LastName || 'Coach';
       const fullName = `${contact.firstName || ''} ${contact.lastName || ''}`.trim();
       const parts: string[] = [];
@@ -397,7 +462,10 @@ export function RecruiterWizard() {
     const coachLast = selectedCoaches[0]?.lastName || selectedCoaches[0]?.LastName || 'Coach';
     const fullName = `${contact.firstName || ''} ${contact.lastName || ''}`.trim();
     const sport = (currentClient as any)?.sport || '';
-    const collegeName = universityName || '';
+    const collegeName = resolvedCollegeName;
+    if (!collegeName) {
+      throw new Error('Select a university or list before generating the email.');
+    }
 
     const parts: string[] = [];
     if (enabledSections.accomplishments && (contact as any).accomplishments?.length) parts.push('notable accomplishments');
@@ -430,7 +498,7 @@ export function RecruiterWizard() {
     listClientsByAgencyEmail(session.email).then(setClients);
     getDivisions().then(setDivisions);
     // load saved lists for this agency
-    setLists(listLists(session.email));
+    listLists(session.email).then(setLists).catch(() => setLists([]));
   }, [session]);
 
   React.useEffect(() => {
@@ -583,11 +651,15 @@ export function RecruiterWizard() {
         )}
         {activeStep === 1 && (
           <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 2, maxWidth: 800 }}>
+            <Typography variant="body2" color="text.secondary" sx={{ gridColumn: '1 / -1' }}>
+              Choose either Division + State or a saved List (not both). Selecting a list will skip Division/State.
+            </Typography>
             <TextField
               select
               label="Division"
               value={division}
-              onChange={(e) => setDivision(e.target.value)}
+              onChange={(e) => { setDivision(e.target.value); setSelectedListId(''); setListMode(false); setSelectedCoachIds({}); }}
+              disabled={Boolean(selectedListId)}
               SelectProps={{ MenuProps: { disablePortal: true } }}
               inputProps={{ 'data-testid': 'recruiter-division' }}
             >
@@ -602,7 +674,7 @@ export function RecruiterWizard() {
               label="State"
               value={state}
               onChange={(e) => setState(e.target.value)}
-              disabled={!division}
+              disabled={!division || Boolean(selectedListId)}
               SelectProps={{ MenuProps: { disablePortal: true } }}
               inputProps={{ 'data-testid': 'recruiter-state' }}
             >
@@ -616,6 +688,7 @@ export function RecruiterWizard() {
               select
               label="List"
               value={selectedListId}
+              helperText="Picking a list skips Division/State and uses that list’s coaches."
               onChange={(e) => {
                 const id = String(e.target.value);
                 setSelectedListId(id);
@@ -623,6 +696,9 @@ export function RecruiterWizard() {
                 setSelectedList(l);
                 if (l) {
                   setListMode(true);
+                  setDivision('');
+                  setState('');
+                  setSchools([]);
                   const mapping: Record<string, boolean> = {};
                   (l.items || []).forEach((it, idx) => {
                     const rowId = String(
@@ -648,6 +724,7 @@ export function RecruiterWizard() {
                 </MenuItem>
               ))}
             </TextField>
+            {schools.length > 0 && (
             <Box sx={{ gridColumn: '1 / -1' }}>
               <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
                 Universities
@@ -670,6 +747,7 @@ export function RecruiterWizard() {
                 ))}
               </Stack>
             </Box>
+            )}
           </Box>
         )}
         {activeStep === 2 && listMode && selectedList && (
@@ -690,6 +768,11 @@ export function RecruiterWizard() {
               }}>Select All</Button>
               <Button size="small" onClick={() => setSelectedCoachIds({})}>Deselect All</Button>
             </Stack>
+            <Accordion defaultExpanded>
+              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                <Typography variant="subtitle1">List Coaches</Typography>
+              </AccordionSummary>
+              <AccordionDetails>
             <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 1 }}>
               {(selectedList.items || []).map((it, idx) => {
                 const rowId = String(
@@ -706,6 +789,8 @@ export function RecruiterWizard() {
                 );
               })}
             </Box>
+              </AccordionDetails>
+            </Accordion>
           </Box>
         )}
         {activeStep === 2 && !listMode && schoolDetails && (
@@ -713,6 +798,11 @@ export function RecruiterWizard() {
             <Typography variant="h6" gutterBottom>
               {schoolDetails?.schoolInfo?.School || schoolDetails?.name || '—'}
             </Typography>
+            <Accordion defaultExpanded sx={{ mb: 2 }}>
+              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                <Typography>School Overview</Typography>
+              </AccordionSummary>
+              <AccordionDetails>
             <Box sx={{ mb: 2 }}>
               <Typography variant="body2" color="text.secondary">
                 Location: {schoolDetails?.schoolInfo?.City || '—'}, {schoolDetails?.schoolInfo?.State || '—'}
@@ -789,10 +879,14 @@ export function RecruiterWizard() {
                 </Button>
               )}
             </Box>
+              </AccordionDetails>
+            </Accordion>
 
-            <Typography variant="subtitle1" sx={{ mb: 1 }}>
-              Coaches
-            </Typography>
+            <Accordion defaultExpanded>
+              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                <Typography variant="subtitle1">Coaches</Typography>
+              </AccordionSummary>
+              <AccordionDetails>
             <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 1 }}>
               {(schoolDetails.coaches ?? []).map((c: any) => {
                 const id = c.id;
@@ -809,53 +903,158 @@ export function RecruiterWizard() {
                 );
               })}
             </Box>
+              </AccordionDetails>
+            </Accordion>
           </Box>
         )}
         {activeStep === 3 && (
-          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1.2fr 1fr' }, gap: 3 }}>
+          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '2fr 1fr' }, gap: 2 }}>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              {listMode && (
             <Box>
-              <Typography variant="h6" gutterBottom>Selected Targets</Typography>
-              <Typography variant="body2">
-                {listMode && selectedList ? (
-                  <>List: {selectedList.name}</>
-                ) : (
-                  <>University: {universityName || '—'}</>
-                )}
-              </Typography>
-              <Typography variant="body2" sx={{ mt: 1, mb: 2 }}>
-                {`Coaches: ${selectedCoaches.length ? selectedCoaches.map((c: any) => {
-                  const nm = `${c.firstName || c.FirstName || ''} ${c.lastName || c.LastName || ''}`.trim();
-                  return nm || (c.email || '');
-                }).join(', ') : '—'}`}
-              </Typography>
-              <Box sx={{ mb: 2, display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 1 }}>
+                  <Typography variant="h6" gutterBottom>Recipients</Typography>
                 <TextField
-                  label="Template name"
-                  value={templateName}
-                  onChange={(e) => setTemplateName(e.target.value)}
                   size="small"
-                />
+                    placeholder="Search recipients"
+                    fullWidth
+                    onChange={(e) => {
+                      const term = e.target.value.toLowerCase();
+                      setSelectedCoachIds((prev) => {
+                        const next: Record<string, boolean> = {};
+                        selectedCoaches.forEach((c: any) => {
+                          const match =
+                            (c.firstName || '').toLowerCase().includes(term) ||
+                            (c.lastName || '').toLowerCase().includes(term) ||
+                            (c.email || '').toLowerCase().includes(term) ||
+                            (c.title || '').toLowerCase().includes(term);
+                          next[c.id] = match && prev[c.id];
+                        });
+                        return { ...prev, ...next };
+                      });
+                    }}
+                    sx={{ mb: 1 }}
+                  />
+                  <Box
+                    sx={{
+                      display: 'flex',
+                      gap: 1,
+                      overflowX: 'auto',
+                      pb: 1,
+                    }}
+                  >
+                    {selectedCoaches.map((c: any, i: number) => (
+                      <Card key={`${c.id || i}`} sx={{ minWidth: 220, flexShrink: 0 }}>
+                        <CardContent sx={{ p: 1.5 }}>
+                          <Typography variant="subtitle2">
+                            {`${c.firstName || c.FirstName || ''} ${c.lastName || c.LastName || ''}`.trim() || (c.email || '')}
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            {c.title || ''}
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            {c.email || ''}
+                          </Typography>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </Box>
+                </Box>
+              )}
+
+              <Box sx={{ border: '1px solid #ddd', borderRadius: 1, p: 2, bgcolor: '#fafafa' }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                  <Typography variant="h6">Preview</Typography>
+                  <Button
+                    onClick={() => navigator.clipboard.writeText(aiHtml || buildEmailPreview())}
+                    sx={{ bgcolor: '#000', color: '#b7ff00', '&:hover': { bgcolor: '#111' } }}
+                  >
+                    Copy Rich Text
+                  </Button>
+                </Box>
+                <div dangerouslySetInnerHTML={{ __html: aiHtml || buildEmailPreview() }} />
+                <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
+                  <Button
+                    onClick={handleImproveWithAI}
+                    sx={{
+                      bgcolor: '#000',
+                      color: '#b7ff00',
+                      '&:hover': { bgcolor: '#111' },
+                      '&.Mui-disabled': { bgcolor: '#000', color: '#b7ff00', opacity: 1 },
+                    }}
+                    disabled={aiLoading || !selectedCoaches.length || (!universityName && !listMode)}
+                    startIcon={improvingBusy ? <CircularProgress size={16} color="inherit" /> : null}
+                  >
+                    {improvingBusy ? 'Improving…' : 'Improve Introduction'}
+                  </Button>
+                </Box>
+              </Box>
+
+              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} alignItems="flex-start">
+                {!gmailConnected && (
+                  <Button
+                    variant="contained"
+                    onClick={handleConnectGmail}
+                    sx={{ bgcolor: '#b7ff00', color: '#000', '&:hover': { bgcolor: '#a0e600' } }}
+                    disabled={gmailConnecting}
+                    startIcon={gmailConnectingBusy ? <CircularProgress size={16} color="inherit" /> : null}
+                  >
+                    {gmailConnectingBusy ? 'Connecting…' : 'Connect Gmail'}
+                  </Button>
+                )}
+                {gmailConnected && (
+                  <Typography variant="body2" sx={{ bgcolor: '#e8fbe0', px: 1.5, py: 0.75, borderRadius: 1 }}>
+                    Mailing from: {session?.email || 'Connected Gmail'}
+                  </Typography>
+                )}
+
+                {gmailConnected && (
                 <Button
                   variant="outlined"
-                  onClick={handleSaveTemplate}
-                  disabled={!(aiHtml || buildEmailPreview()) || !session?.email}
-                >
-                  Save as Template
+                    onClick={handleCreateGmailDraft}
+                    disabled={!selectedCoaches.length || isCreatingDraft}
+                    startIcon={draftBusy ? <CircularProgress size={16} /> : null}
+                    sx={{ ml: { sm: 'auto' } }}
+                  >
+                    {draftBusy ? 'Creating…' : 'Create Gmail Draft'}
                 </Button>
-                <TextField
-                  select
-                  label="Templates"
-                  value={selectedTemplateId}
-                  onChange={(e) => handleApplyTemplate(String(e.target.value))}
-                  size="small"
+                )}
+
+                <Button
+                  variant={gmailConnected ? 'contained' : 'outlined'}
+                  onClick={() => setDraft(aiHtml || buildEmailPreview())}
+                  disabled={!selectedRecipients.length || isGenerating}
+                  startIcon={generatingBusy ? <CircularProgress size={16} color="inherit" /> : null}
+                  sx={
+                    gmailConnected
+                      ? {
+                          bgcolor: '#b7ff00',
+                          color: '#000',
+                          '&:hover': { bgcolor: '#a0e600' },
+                          '&.Mui-disabled': { bgcolor: '#b7ff00', color: '#000', opacity: 0.6 },
+                        }
+                      : {
+                          borderColor: '#b7ff00',
+                          color: '#000',
+                          '&:hover': { borderColor: '#a0e600', bgcolor: 'rgba(183,255,0,0.1)' },
+                          '&.Mui-disabled': { borderColor: '#b7ff00', color: '#000', opacity: 0.6 },
+                        }
+                  }
                 >
-                  <MenuItem value="">(Select a template)</MenuItem>
-                  {templates.map(t => (
-                    <MenuItem key={t.id} value={t.id}>{t.name}</MenuItem>
-                  ))}
-                </TextField>
+                  {generatingBusy ? 'Sending…' : 'Send Emails'}
+                </Button>
+                {sendMessage && (
+                  <Typography variant="body2" color="success.main" sx={{ ml: 1 }} data-testid="send-confirmation">
+                    {sendMessage}
+                  </Typography>
+                )}
+              </Stack>
               </Box>
-              <Typography variant="h6" gutterBottom>Email Sections</Typography>
+
+            <Accordion defaultExpanded sx={{ height: 'fit-content' }}>
+              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                <Typography variant="subtitle1">Email Sections</Typography>
+              </AccordionSummary>
+              <AccordionDetails>
               {Object.entries(enabledSections).map(([sectionKey, enabled]) => (
                 <Accordion
                   key={sectionKey}
@@ -900,59 +1099,8 @@ export function RecruiterWizard() {
                   </AccordionDetails>
                 </Accordion>
               ))}
-            </Box>
-            <Box>
-              <Typography variant="h6" gutterBottom>Preview</Typography>
-              <Box sx={{ border: '1px solid #ddd', borderRadius: 1, p: 2, minHeight: 200, bgcolor: '#fafafa' }}>
-                <div dangerouslySetInnerHTML={{ __html: aiHtml || buildEmailPreview() }} />
-              </Box>
-              <Box sx={{ display: 'flex', gap: 1, mt: 2 }}>
-                <Button onClick={() => navigator.clipboard.writeText(aiHtml || buildEmailPreview())}>Copy HTML</Button>
-                <Button
-                  onClick={async () => {
-                    const html = (aiHtml || buildEmailPreview());
-                    try {
-                      // Prefer rich-text copy when supported
-                      // @ts-ignore ClipboardItem may not be present in TS lib depending on environment
-                      if (navigator.clipboard && typeof navigator.clipboard.write === 'function' && typeof window !== 'undefined' && (window as any).ClipboardItem) {
-                        const htmlBlob = new Blob([html], { type: 'text/html' });
-                        const tmp = document.createElement('div');
-                        tmp.innerHTML = html;
-                        const text = (tmp.textContent || '').toString();
-                        const textBlob = new Blob([text], { type: 'text/plain' });
-                        // @ts-ignore
-                        await navigator.clipboard.write([
-                          new (window as any).ClipboardItem({ 'text/html': htmlBlob, 'text/plain': textBlob })
-                        ]);
-                      } else {
-                        // Fallback to plain text if rich copy is unavailable
-                        const tmp = document.createElement('div');
-                        tmp.innerHTML = html;
-                        await navigator.clipboard.writeText(tmp.textContent || '');
-                      }
-                    } catch (e) {
-                      console.error('Clipboard copy failed', e);
-                    }
-                  }}
-                >
-                  Copy Rich Text
-                </Button>
-                <Button variant="outlined" onClick={handleConnectGmail}>
-                  {gmailConnected ? 'Gmail Connected' : (gmailConnecting ? 'Connecting…' : 'Connect Gmail')}
-                </Button>
-                <Button variant="outlined" onClick={handleCreateGmailDraft} disabled={!selectedCoaches.length || !gmailConnected}>
-                  Create Gmail Draft
-                </Button>
-                <Button variant="contained" onClick={() => setDraft(aiHtml || buildEmailPreview())}>Lock In</Button>
-                <Button
-                  variant="outlined"
-                  onClick={handleImproveWithAI}
-                  disabled={aiHtml ? false : (aiHtml ? false : (aiLoading || !selectedCoaches.length || !universityName))}
-                >
-                  {aiHtml ? 'Improve…' : 'Improve with AI'}
-                </Button>
-              </Box>
-            </Box>
+              </AccordionDetails>
+            </Accordion>
           </Box>
         )}
       </Box>

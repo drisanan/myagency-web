@@ -2,7 +2,7 @@
 import React from 'react';
 import { Stack, Typography } from '@mui/material';
 import { CommitsTable } from './CommitsTable';
-import { Commit } from '@/services/commits';
+import { Commit, listCommits } from '@/services/commits';
 import { useQuery } from '@tanstack/react-query';
 
 async function fetchCommits(sport: 'Football' | 'Basketball', list: 'recent' | 'top') {
@@ -13,21 +13,28 @@ async function fetchCommits(sport: 'Football' | 'Basketball', list: 'recent' | '
 }
 
 export function CommitsSection({ sport }: { sport: 'Football' | 'Basketball' }) {
+  const initialRecent = React.useMemo(() => listCommits(sport, 'recent'), [sport]);
+  const initialTop = React.useMemo(() => listCommits(sport, 'top'), [sport]);
+
   const baseQueryOpts = {
     staleTime: 24 * 60 * 60 * 1000, // 24h
     gcTime: 25 * 60 * 60 * 1000,
     refetchOnWindowFocus: false,
-    refetchOnMount: false,
+    refetchOnMount: 'always' as const,
   };
 
   const recentQ = useQuery<Commit[]>({
     queryKey: ['commits', sport, 'recent'],
     queryFn: () => fetchCommits(sport, 'recent'),
+    initialData: initialRecent,
+    placeholderData: initialRecent,
     ...baseQueryOpts,
   });
   const topQ = useQuery<Commit[]>({
     queryKey: ['commits', sport, 'top'],
     queryFn: () => fetchCommits(sport, 'top'),
+    initialData: initialTop,
+    placeholderData: initialTop,
     ...baseQueryOpts,
   });
 

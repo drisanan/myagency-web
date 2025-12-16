@@ -18,7 +18,7 @@ export function ClientsList() {
     {
       field: 'athlete',
       headerName: 'Athlete',
-      flex: 1.4,
+      flex: 1.0,
       sortable: false,
       renderCell: (params) => {
         const row = params.row as any;
@@ -44,7 +44,7 @@ export function ClientsList() {
         );
       },
     },
-    { field: 'email', headerName: 'Email', flex: 1 },
+    { field: 'email', headerName: 'Email', flex: 0.5 },
     { field: 'sport', headerName: 'Sport', width: 120 },
     {
       field: 'actions',
@@ -61,13 +61,14 @@ export function ClientsList() {
     }
   ];
   return (
-    <Paper sx={{ height: 520, width: '100%', borderRadius: 2.5, overflow: 'hidden' }}>
+    <Paper sx={{ height: 520, width: '100%', borderRadius: 2.5, overflow: 'auto' }}>
       <DataGrid
         rows={data as any[]}
         columns={cols}
         getRowId={(r)=>r.id}
         disableRowSelectionOnClick
         sx={{
+          minWidth: 900,
           '& .MuiDataGrid-columnHeaders': {
             backgroundColor: '#f9fafb',
             borderBottom: 'none',

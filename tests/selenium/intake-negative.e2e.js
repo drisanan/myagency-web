@@ -3,12 +3,13 @@ const chrome = require('selenium-webdriver/chrome');
 const fetch = (...args) => import('node-fetch').then(({ default: f }) => f(...args));
 
 const BASE = process.env.BASE_URL || 'http://localhost:3000';
+const API = process.env.API_BASE_URL || BASE;
 const AGENCY_EMAIL = 'agency1@an.test';
 
 async function issueLink() {
-  const res = await fetch(`${BASE}/api/forms/issue`, {
+  const res = await fetch(`${API}/forms/issue`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', Origin: BASE },
     body: JSON.stringify({ agencyEmail: AGENCY_EMAIL }),
   });
   const data = await res.json();
