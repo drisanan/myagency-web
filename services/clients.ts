@@ -1,13 +1,19 @@
 import { getAgencyById } from '@/services/agencies';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.API_BASE_URL || '';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.API_BASE_URL;
+
+function requireApiBase() {
+  if (!API_BASE_URL) throw new Error('API_BASE_URL is not configured');
+  return API_BASE_URL;
+}
 
 async function apiFetch(path: string, init?: RequestInit) {
-  if (!API_BASE_URL || typeof fetch === 'undefined') {
-    throw new Error('API_BASE_URL is not configured');
+  const base = requireApiBase();
+  if (typeof fetch === 'undefined') {
+    throw new Error('fetch is not available');
   }
   const headers: Record<string, string> = { 'Content-Type': 'application/json', ...(init?.headers as any) };
-  const res = await fetch(`${API_BASE_URL}${path}`, { ...init, headers });
+  const res = await fetch(`${base}${path}`, { ...init, headers });
   if (!res.ok) {
     const text = await res.text();
     throw new Error(`API ${path} failed: ${res.status} ${text}`);

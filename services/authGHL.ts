@@ -4,14 +4,14 @@ export type GHLLoginResult =
   | { ok: true; contact: { id: string; email: string; firstName?: string; lastName?: string; phone?: string; accessCode: string } }
   | { ok: false; error: string };
 
-export async function loginWithGHL(email: string, phone: string, accessCodeInput: string): Promise<GHLLoginResult> {
-  const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.API_BASE_URL;
+export async function loginWithGHL(apiBase: string, email: string, phone: string, accessCodeInput: string): Promise<GHLLoginResult> {
+  if (!apiBase) throw new Error('API_BASE_URL is not configured');
   try {
-    const endpoint = API_BASE_URL ? `${API_BASE_URL}/auth/ghl-login` : '/api/auth/ghl-login';
+    const endpoint = `${apiBase}/auth/ghl-login`;
     const res = await fetch(endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      credentials: API_BASE_URL ? 'include' : 'same-origin',
+      credentials: 'include',
       body: JSON.stringify({ email, phone, accessCode: accessCodeInput }),
     });
     const data = await res.json();
