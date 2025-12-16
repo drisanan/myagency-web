@@ -1,14 +1,14 @@
 import { NextResponse } from 'next/server';
 
-const bearerToken =
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJsb2NhdGlvbl9pZCI6InNreFdlMVVIV29URXJURHBienFVIiwiY29tcGFueV9pZCI6IlFEQUxhVGNVQWNpNTdVT2hwaUVxIiwidmVyc2lvbiI6MSwiaWF0IjoxNjk0NzEyNDAzMDYzLCJzdWIiOiJ1c2VyX2lkIn0.N_UmYQr-Ls_THm8iYDBBEZI1_RKqZGlOUPI2t0ncfRE';
-  
 const bearerToken_new = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJjb21wYW55X2lkIjoiMVVsY3o1akRSNjU3SHBQQUhTRXIiLCJ2ZXJzaW9uIjoxLCJpYXQiOjE3NjU1NjAxNDk2MzAsInN1YiI6ImJmaXRFa2pvM2tBenFlaXlkMmhmIn0.d4IzBIrDouTnSq4EraYL0YmfZP54lpDW4rMP3MkCXKY';
 const accessCodeFieldId = 't6VuS58tw4n5DEfHTAmp';
 
+const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN || 'https://master.d2yp6hyv6u0efd.amplifyapp.com';
+
 function cors(origin: string) {
+  const allowOrigin = origin || ALLOWED_ORIGIN;
   return {
-    'Access-Control-Allow-Origin': origin || '*',
+    'Access-Control-Allow-Origin': allowOrigin,
     'Access-Control-Allow-Credentials': 'true',
     'Access-Control-Allow-Headers': 'Content-Type,Authorization',
     'Access-Control-Allow-Methods': 'POST,OPTIONS',
@@ -16,7 +16,7 @@ function cors(origin: string) {
 }
 
 export async function OPTIONS(req: Request) {
-  const origin = req.headers.get('origin') || req.headers.get('Origin') || '*';
+  const origin = req.headers.get('origin') || req.headers.get('Origin') || ALLOWED_ORIGIN;
   return new NextResponse(JSON.stringify({ ok: true }), {
     status: 200,
     headers: { ...cors(origin), 'Content-Type': 'application/json' },
@@ -24,7 +24,7 @@ export async function OPTIONS(req: Request) {
 }
 
 export async function POST(req: Request) {
-  const origin = req.headers.get('origin') || req.headers.get('Origin') || '*';
+  const origin = req.headers.get('origin') || req.headers.get('Origin') || ALLOWED_ORIGIN;
   const headers = { ...cors(origin), 'Content-Type': 'application/json' };
   try {
     const { email, phone, accessCode } = await req.json();

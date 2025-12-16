@@ -134,14 +134,14 @@ var handler = async (event) => {
   const host = event.headers["x-forwarded-host"] || event.headers["Host"] || "";
   const proto = event.headers["x-forwarded-proto"] || "https";
   const resolvedOrigin = originHdr || `${proto}://${host}`;
-  if (!method) return badRequest("Missing method");
+  if (!method) return corsResponse(400, { ok: false, message: "Missing method" }, resolvedOrigin);
   if (method === "OPTIONS") {
     return corsResponse(200, { ok: true }, resolvedOrigin);
   }
   if (method === "POST" && path.endsWith("/forms/issue")) {
-    if (!event.body) return badRequest("Missing body");
+    if (!event.body) return corsResponse(400, { ok: false, error: "Missing body" }, resolvedOrigin);
     const { agencyEmail } = JSON.parse(event.body);
-    if (!agencyEmail) return badRequest("Missing agencyEmail");
+    if (!agencyEmail) return corsResponse(400, { ok: false, error: "Missing agencyEmail" }, resolvedOrigin);
     const payload = {
       agencyEmail,
       iat: Date.now(),
