@@ -4,6 +4,7 @@ import { Box, Button, Typography } from '@mui/material';
 import { DataGrid, GridColDef } from '@mui/x-data-grid';
 import Link from 'next/link';
 import { getAgencies } from '@/services/agencies';
+type AgencyRow = { id: string; name: string; email: string; active?: boolean };
 import { useSession } from '@/features/auth/session';
 import { useRouter } from 'next/navigation';
 import { logImpersonationStart } from '@/services/audit';
@@ -19,7 +20,7 @@ export default function AgenciesPage() {
       return;
     }
     getAgencies().then(list => {
-      setRows(list.map(a => ({ id: a.id, name: a.name, email: a.email, active: a.active ?? true })));
+      setRows(list.map((a: AgencyRow) => ({ id: a.id, name: a.name, email: a.email, active: a.active ?? true })));
     });
   }, [session, router]);
 

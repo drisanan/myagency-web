@@ -14,6 +14,8 @@ import { RecruitingCalendarCard } from '@/features/recruiter/RecruitingCalendarC
 import { CommitsSection } from '@/features/commits/CommitsSection';
 import { computeEmailMetrics, computeOpenRateMetrics, countAddedThisMonth, formatDelta, type MetricsResponse } from './metrics';
 
+type MailEntry = { clientId?: string };
+
 export default function DashboardPage() {
   const { session } = useSession();
   const isParent = session?.role === 'parent';
@@ -66,7 +68,7 @@ export default function DashboardPage() {
   const totalClients = clients.length;
 
   // Emails sent (count mail logs whose clientId belongs to this agency)
-  const mail = getMailEntries().filter(m => clientIds.has(m.clientId));
+  const mail = (getMailEntries() as MailEntry[]).filter((m) => m.clientId && clientIds.has(m.clientId));
   const emailsFallback = mail.length;
 
   const placeholderRate = Number(process.env.NEXT_PUBLIC_OPEN_RATE_PLACEHOLDER ?? '');

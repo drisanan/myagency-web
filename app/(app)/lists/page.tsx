@@ -70,7 +70,11 @@ export default function ListsPage() {
 
   React.useEffect(() => {
     if (!session?.email) return;
-    setSaved(listLists(session.email));
+    let cancelled = false;
+    listLists(session.email)
+      .then((l) => { if (!cancelled) setSaved(l || []); })
+      .catch(() => {});
+    return () => { cancelled = true; };
   }, [session?.email]);
 
   function addCoach(c: any, coachId: string) {
@@ -117,11 +121,11 @@ export default function ListsPage() {
     setCurrentItems([]);
   }
 
-  function saveCurrent() {
+  async function saveCurrent() {
     if (!session?.email) return;
     if (!currentName.trim() || currentItems.length === 0) return;
     if (editingId) {
-      const updated = updateList({ id: editingId, name: currentName.trim(), items: currentItems });
+      const updated = await updateList({ id: editingId, name: currentName.trim(), items: currentItems });
       if (updated) {
         setSaved((p) => {
           const idx = p.findIndex(x => x.id === updated.id);
@@ -132,9 +136,11 @@ export default function ListsPage() {
         });
       }
     } else {
-      const rec = saveList({ agencyEmail: session.email, name: currentName.trim(), items: currentItems });
-      setSaved((p) => [rec, ...p]);
-      setEditingId(rec.id);
+      const rec = await saveList({ agencyEmail: session.email, name: currentName.trim(), items: currentItems });
+      if (rec) {
+        setSaved((p) => [rec, ...p]);
+        setEditingId(rec.id);
+      }
     }
   }
 

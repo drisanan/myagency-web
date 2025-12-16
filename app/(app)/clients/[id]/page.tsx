@@ -28,8 +28,10 @@ import { NotesPanel } from '@/features/notes/NotesPanel';
 import { TasksPanel } from '@/features/tasks/TasksPanel';
 import { useSearchParams } from 'next/navigation';
 
-type MailEntry = ReturnType<typeof getMailEntries>[number] & {
+type MailEntry = {
   id?: string;
+  clientId?: string;
+  email?: string;
   to?: string;
   recipientFirstName?: string;
   recipientLastName?: string;
@@ -40,6 +42,7 @@ type MailEntry = ReturnType<typeof getMailEntries>[number] & {
   html?: string;
   sentAt?: number;
   date?: number;
+  mailedAt?: number;
 };
 
 export default function ClientProfilePage() {
