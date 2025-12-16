@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 
-const bearerToken_new = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJjb21wYW55X2lkIjoiMVVsY3o1akRSNjU3SHBQQUhTRXIiLCJ2ZXJzaW9uIjoxLCJpYXQiOjE3NjU1NjAxNDk2MzAsInN1YiI6ImJmaXRFa2pvM2tBenFlaXlkMmhmIn0.d4IzBIrDouTnSq4EraYL0YmfZP54lpDW4rMP3MkCXKY';
+const bearerToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJjb21wYW55X2lkIjoiMVVsY3o1akRSNjU3SHBQQUhTRXIiLCJ2ZXJzaW9uIjoxLCJpYXQiOjE3NjU1NjAxNDk2MzAsInN1YiI6ImJmaXRFa2pvM2tBenFlaXlkMmhmIn0.d4IzBIrDouTnSq4EraYL0YmfZP54lpDW4rMP3MkCXKY';
 const accessCodeFieldId = 't6VuS58tw4n5DEfHTAmp';
 
 const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN || 'https://master.d2yp6hyv6u0efd.amplifyapp.com';
