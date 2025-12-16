@@ -1,7 +1,8 @@
 import { getAgencyByEmail } from '@/services/agencies';
 import { loginWithGHL } from '@/services/authGHL';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.API_BASE_URL;
+const NEXT_PUBLIC_API_BASE_URL='https://t4334hpi3h.execute-api.us-east-1.amazonaws.com'
+const API_BASE_URL = NEXT_PUBLIC_API_BASE_URL;
 
 function requireApiBase() {
   if (!API_BASE_URL) throw new Error('API_BASE_URL is not configured');
