@@ -24,30 +24,38 @@ __export(health_exports, {
 });
 module.exports = __toCommonJS(health_exports);
 
-// infra/src/handlers/common.ts
-var import_client_dynamodb = require("@aws-sdk/client-dynamodb");
-var import_lib_dynamodb = require("@aws-sdk/lib-dynamodb");
-
-// infra/src/lib/session.ts
-var SECRET = process.env.SESSION_SECRET || "dev-secret-change-me";
-
-// infra/src/handlers/common.ts
-var client = new import_client_dynamodb.DynamoDBClient({});
-var docClient = import_lib_dynamodb.DynamoDBDocumentClient.from(client);
-function jsonResponse(statusCode, body) {
+// infra/src/handlers/cors.ts
+var ALLOWED_ORIGINS = [
+  "https://master.d2yp6hyv6u0efd.amplifyapp.com",
+  "http://localhost:3000",
+  "http://localhost:3001"
+];
+function buildCors(origin) {
+  const allow = origin && ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+  return {
+    "Content-Type": "application/json",
+    "Access-Control-Allow-Origin": allow,
+    "Access-Control-Allow-Credentials": "true",
+    "Access-Control-Allow-Headers": "Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token",
+    "Access-Control-Allow-Methods": "GET,POST,PUT,PATCH,DELETE,OPTIONS"
+  };
+}
+function response(statusCode, body, origin, extraHeaders) {
+  const cors = buildCors(origin);
   return {
     statusCode,
-    headers: { "content-type": "application/json" },
+    headers: { ...cors, ...extraHeaders || {} },
     body: JSON.stringify(body)
   };
 }
-function ok(body) {
-  return jsonResponse(200, body);
-}
 
 // infra/src/handlers/health.ts
-var handler = async () => {
-  return ok({ ok: true, service: "athlete-narrative-api", status: "healthy" });
+var handler = async (event) => {
+  const origin = event.headers?.origin || event.headers?.Origin || event.headers?.["origin"] || "";
+  const method = (event.requestContext.http?.method || "").toUpperCase();
+  if (method === "OPTIONS") return response(200, { ok: true }, origin);
+  if (method && method !== "GET") return response(405, { ok: false, error: "Method not allowed" }, origin);
+  return response(200, { ok: true, service: "athlete-narrative-api", status: "healthy" }, origin);
 };
 // Annotate the CommonJS export names for ESM import in node:
 0 && (module.exports = {

@@ -102,6 +102,21 @@ export async function upsertAgency(input: UpsertInput) {
   return { id: undefined };
 }
 
+export async function createAgencyFromGHL(input: { name?: string; email: string; color?: string; logoUrl?: string }) {
+  if (!API_BASE_URL) throw new Error('API_BASE_URL is not configured');
+  const payload: UpsertInput = {
+    name: input.name || 'New Agency',
+    email: input.email,
+    settings: {
+      primaryColor: input.color,
+      logoDataUrl: input.logoUrl,
+    },
+  };
+  const res = await apiFetch('/agencies', { method: 'POST', body: JSON.stringify(payload) });
+  const id = res?.id || res?.agency?.id;
+  return { id, ...payload };
+}
+
 export async function deleteAgency(id: string) {
   if (API_BASE_URL) {
     const data = await apiFetch(`/agencies/${id}`, { method: 'DELETE' });

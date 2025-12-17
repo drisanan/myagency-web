@@ -1,42 +1,100 @@
 import { APIGatewayProxyEventV2 } from 'aws-lambda';
-import { Handler, badRequest, ok } from './common';
+import { response } from './cors';
+import { getItem, putItem, queryGSI1 } from '../lib/dynamo';
+import { newId } from '../lib/ids';
 
-const SEED_AGENCIES = [
-  { id: 'agency-001', name: 'Prime Sports', email: 'agency1@an.test', settings: { primaryColor: '#1976d2' } },
-  { id: 'agency-002', name: 'NextGen', email: 'agency2@an.test', settings: { primaryColor: '#9c27b0' } },
-  { id: 'agency-003', name: 'Elite Edge', email: 'agency3@an.test', settings: { primaryColor: '#2e7d32' } },
-];
+type AgencyRecord = {
+  PK: string;
+  SK: string;
+  GSI1PK: string;
+  GSI1SK: string;
+  id: string;
+  name: string;
+  email: string;
+  settings?: { primaryColor?: string; secondaryColor?: string; logoDataUrl?: string };
+  deletedAt?: string;
+};
 
-export const handler: Handler = async (event: APIGatewayProxyEventV2) => {
-  const method = event.requestContext.http?.method?.toUpperCase();
-  if (!method) return badRequest('Missing method');
+function toRecord(input: { id?: string; name?: string; email?: string; settings?: any }): AgencyRecord {
+  const id = input.id || newId('agency');
+  return {
+    PK: `AGENCY#${id}`,
+    SK: 'PROFILE',
+    GSI1PK: `EMAIL#${input.email}`,
+    GSI1SK: `AGENCY#${id}`,
+    id,
+    name: input.name || 'New Agency',
+    email: input.email || '',
+    settings: input.settings,
+  };
+}
 
-  if (method === 'GET') {
-    // Optional filter by email
-    const email = event.queryStringParameters?.email;
-    if (email) {
-      const found = SEED_AGENCIES.find((a) => a.email === email);
-      return ok({ ok: true, agencies: found ? [found] : [] });
+export const handler = async (event: APIGatewayProxyEventV2) => {
+  const origin = event.headers?.origin || event.headers?.Origin || event.headers?.['origin'] || '';
+  const method = (event.requestContext.http?.method || '').toUpperCase();
+  if (!method) return response(400, { ok: false, error: 'Missing method' }, origin);
+
+  console.log('agencies handler start', { method, path: event.rawPath, qs: event.queryStringParameters });
+
+  try {
+    if (method === 'OPTIONS') return response(200, { ok: true }, origin);
+
+    if (method === 'GET') {
+      const email = event.queryStringParameters?.email;
+      if (email) {
+        const found = await queryGSI1(`EMAIL#${email}`, 'AGENCY#');
+        return response(200, { ok: true, agencies: found || [] }, origin);
+      }
+      // No email filter: avoid table scan; return empty list
+      return response(200, { ok: true, agencies: [] }, origin);
     }
-    return ok({ ok: true, agencies: SEED_AGENCIES });
-  }
 
-  if (method === 'PUT' && event.rawPath?.endsWith('/agencies/settings')) {
-    // Stub settings update (no persistence yet)
-    return ok({ ok: true, settings: (JSON.parse(event.body || '{}')?.settings) ?? {} });
-  }
+    if (method === 'PUT' && event.rawPath?.endsWith('/agencies/settings')) {
+      if (!event.body) return response(400, { ok: false, error: 'Missing body' }, origin);
+      const parsed = JSON.parse(event.body || '{}');
+      const email = parsed.email;
+      if (!email) return response(400, { ok: false, error: 'Missing email' }, origin);
+      const existing = await queryGSI1(`EMAIL#${email}`, 'AGENCY#');
+      const agency = existing?.[0];
+      if (!agency) return response(404, { ok: false, error: 'Agency not found' }, origin);
+      const updated = { ...agency, settings: parsed.settings || {} };
+      await putItem(updated);
+      console.log('agencies update settings', { email, settings: updated.settings });
+      return response(200, { ok: true, settings: updated.settings }, origin);
+    }
 
-  if (method === 'POST') {
-    // Stub upsert
-    const body = event.body ? JSON.parse(event.body) : {};
-    const id = body.id || `agency-${Math.random().toString(36).slice(2, 8)}`;
-    return ok({ ok: true, id });
-  }
+    if (method === 'POST') {
+      console.log('agencies POST start', { rawBody: event.body });
+      const body = event.body ? JSON.parse(event.body) : {};
+      if (!body.email || !body.name) {
+        console.warn('agencies POST missing fields', { body });
+        return response(400, { ok: false, error: 'name and email are required' }, origin);
+      }
+      const rec = toRecord(body);
+      try {
+        await putItem(rec);
+        console.log('agencies upsert success', { id: rec.id, email: rec.email, settings: rec.settings });
+        return response(200, { ok: true, id: rec.id }, origin);
+      } catch (err: any) {
+        console.error('agencies upsert error', { error: err?.message, stack: err?.stack, id: rec.id, email: rec.email });
+        return response(500, { ok: false, error: err?.message || 'Failed to upsert agency' }, origin);
+      }
+    }
 
-  if (method === 'DELETE') {
-    return ok({ ok: true });
-  }
+    if (method === 'DELETE') {
+      const id = event.queryStringParameters?.id;
+      if (!id) return response(400, { ok: false, error: 'Missing id' }, origin);
+      const existing = await getItem({ PK: `AGENCY#${id}`, SK: 'PROFILE' });
+      if (!existing) return response(404, { ok: false, error: 'Not found' }, origin);
+      await putItem({ ...existing, deletedAt: new Date().toISOString() });
+      console.log('agencies soft-deleted', { id });
+      return response(200, { ok: true }, origin);
+    }
 
-  return badRequest(`Unsupported method ${method}`);
+    return response(405, { ok: false, error: `Method not allowed` }, origin);
+  } catch (e: any) {
+    console.error('agencies handler error', { error: e?.message, stack: e?.stack });
+    return response(500, { ok: false, error: e?.message || 'Server error' }, origin);
+  }
 };
 

@@ -3,11 +3,13 @@
  */
 import { handler } from '../auth';
 
+const ORIGIN = 'http://localhost:3000';
+
 function makeEvent(method: string, body?: any, cookies?: string) {
   return {
     requestContext: { http: { method } },
     body: body ? JSON.stringify(body) : undefined,
-    headers: cookies ? { cookie: cookies } : {},
+    headers: { ...(cookies ? { cookie: cookies } : {}), origin: ORIGIN },
   } as any;
 }
 
@@ -18,6 +20,7 @@ describe('auth handler', () => {
     )) as any;
     expect(res.statusCode).toBe(200);
     expect(res.headers['set-cookie']).toContain('an_session=');
+    expect(res.headers['Access-Control-Allow-Origin']).toBe(ORIGIN);
   });
 
   it('returns session on GET', async () => {
@@ -28,11 +31,19 @@ describe('auth handler', () => {
     const res = (await handler(makeEvent('GET', undefined, cookie))) as any;
     const body = JSON.parse(res.body || '{}');
     expect(body.session?.agencyId).toBe('agency-001');
+    expect(res.headers['Access-Control-Allow-Origin']).toBe(ORIGIN);
   });
 
   it('clears cookie on DELETE', async () => {
     const res = (await handler(makeEvent('DELETE'))) as any;
     expect(res.headers['set-cookie']).toContain('Max-Age=0');
+    expect(res.headers['Access-Control-Allow-Origin']).toBe(ORIGIN);
+  });
+
+  it('handles OPTIONS', async () => {
+    const res = (await handler(makeEvent('OPTIONS'))) as any;
+    expect(res.statusCode).toBe(200);
+    expect(res.headers['Access-Control-Allow-Origin']).toBe(ORIGIN);
   });
 });
 

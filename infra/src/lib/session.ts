@@ -57,7 +57,7 @@ export function buildSessionCookie(token: string, secure = true) {
     `${COOKIE_NAME}=${token}`,
     'HttpOnly',
     'Path=/',
-    'SameSite=Lax',
+    'SameSite=None',
     ...(secure ? ['Secure'] : []),
     'Max-Age=604800', // 7d
   ];
@@ -65,7 +65,7 @@ export function buildSessionCookie(token: string, secure = true) {
 }
 
 export function buildClearCookie(secure = true) {
-  const attrs = [`${COOKIE_NAME}=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax${secure ? '; Secure' : ''}`];
+  const attrs = [`${COOKIE_NAME}=; Path=/; Max-Age=0; HttpOnly; SameSite=None${secure ? '; Secure' : ''}`];
   return attrs.join('; ');
 }
 

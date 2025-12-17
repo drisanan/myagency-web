@@ -25,8 +25,8 @@ let cachedTenantRegistry: TenantRegistry | null = null;
 
 export function getServiceConfig(): ServiceConfig {
   if (cachedServiceConfig) return cachedServiceConfig;
-  // Single source of truth; override via env if needed
-  const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://api.example.com';
+  // Single source of truth; hardwired to prod API base
+  const apiBaseUrl = 'https://iakaowunc5.execute-api.us-west-1.amazonaws.com';
   cachedServiceConfig = { apiBaseUrl };
   return cachedServiceConfig;
 }

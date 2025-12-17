@@ -23,11 +23,19 @@ __export(ghl_login_exports, {
   handler: () => handler
 });
 module.exports = __toCommonJS(ghl_login_exports);
-var bearerToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJjb21wYW55X2lkIjoiMVVsY3o1akRSNjU3SHBQQUhTRXIiLCJ2ZXJzaW9uIjoxLCJpYXQiOjE3NjU1NjAxNDk2MzAsInN1YiI6ImJmaXRFa2pvM2tBenFlaXlkMmhmIn0.d4IzBIrDouTnSq4EraYL0YmfZP54lpDW4rMP3MkCXKY";
-var accessCodeFieldId = "t6VuS58tw4n5DEfHTAmp";
-var ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN || "https://master.d2yp6hyv6u0efd.amplifyapp.com";
+var bearerToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJsb2NhdGlvbl9pZCI6IjZCSXRESEVyQTRTVllyUDgxVk1DIiwiY29tcGFueV9pZCI6IjFVbGN6NWpEUjY1N0hwUEFIU0VyIiwidmVyc2lvbiI6MSwiaWF0IjoxNzAyNTAwMjk3Njg4LCJzdWIiOiJ1c2VyX2lkIn0.fqrY7YeSxhmjWhgXySUrWTYvlZwfjjXCP9o8mTZ8exU";
+var accessCodeFieldId = "D3ogBTF9YTkxJybeMVvF";
+var agencyIdFieldId = "2nUnTxRCuWPiGQ4j23we";
+var agencyNameFieldId = "mSth0jJ8VQk1k9caFxCC";
+var agencyColorFieldId = "0STRDPbWyZ6ChSApAtjz";
+var agencyLogoFieldId = "Bvng0E2Yf5TkmEI8KyD6";
+var ALLOWED_ORIGINS = [
+  "https://master.d2yp6hyv6u0efd.amplifyapp.com",
+  "http://localhost:3001",
+  "http://localhost:3000"
+];
 function getHeaders(origin) {
-  const allowOrigin = origin && origin === ALLOWED_ORIGIN ? origin : ALLOWED_ORIGIN;
+  const allowOrigin = origin && ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
   return {
     "Content-Type": "application/json",
     "Access-Control-Allow-Origin": allowOrigin,
@@ -39,7 +47,7 @@ function getHeaders(origin) {
 var handler = async (event) => {
   const origin = event.headers?.origin || event.headers?.Origin || event.headers?.["origin"] || "";
   const headers = getHeaders(origin);
-  const method = event.requestContext.http?.method || event.httpMethod;
+  const method = (event.requestContext.http?.method || "").toUpperCase();
   if (method === "OPTIONS") {
     return { statusCode: 200, headers, body: JSON.stringify({ ok: true }) };
   }
@@ -82,12 +90,18 @@ var handler = async (event) => {
     if (!contact) {
       return { statusCode: 404, headers, body: JSON.stringify({ ok: false, error: "Contact not found" }) };
     }
-    const accessField = (contact.customField || []).find((f) => f.id === accessCodeFieldId);
+    const customFields = contact.customField || [];
+    const accessField = customFields.find((f) => f.id === accessCodeFieldId);
     const storedAccessCode = accessField?.value;
     const storedAccessCodeStr = storedAccessCode == null ? "" : String(storedAccessCode).trim();
     if (!storedAccessCodeStr || storedAccessCodeStr !== accessCodeInput) {
       return { statusCode: 401, headers, body: JSON.stringify({ ok: false, error: "Invalid access code" }) };
     }
+    const agencyId = (customFields.find((f) => f.id === agencyIdFieldId)?.value || "").toString().trim();
+    const agencyName = (customFields.find((f) => f.id === agencyNameFieldId)?.value || "").toString().trim();
+    const agencyColor = (customFields.find((f) => f.id === agencyColorFieldId)?.value || "").toString().trim();
+    const agencyLogo = (customFields.find((f) => f.id === agencyLogoFieldId)?.value || "").toString().trim();
+    const isNew = agencyId === "READY";
     return {
       statusCode: 200,
       headers,
@@ -100,6 +114,13 @@ var handler = async (event) => {
           lastName: contact.lastName,
           phone: contact.phone,
           accessCode: storedAccessCode
+        },
+        agency: {
+          id: agencyId || void 0,
+          name: agencyName || void 0,
+          color: agencyColor || void 0,
+          logoUrl: agencyLogo || void 0,
+          isNew
         }
       })
     };

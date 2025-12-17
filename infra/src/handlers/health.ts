@@ -1,6 +1,11 @@
-import { Handler, ok } from './common';
+import { APIGatewayProxyEventV2 } from 'aws-lambda';
+import { response } from './cors';
 
-export const handler: Handler = async () => {
-  return ok({ ok: true, service: 'athlete-narrative-api', status: 'healthy' });
+export const handler = async (event: APIGatewayProxyEventV2) => {
+  const origin = event.headers?.origin || event.headers?.Origin || event.headers?.['origin'] || '';
+  const method = (event.requestContext.http?.method || '').toUpperCase();
+  if (method === 'OPTIONS') return response(200, { ok: true }, origin);
+  if (method && method !== 'GET') return response(405, { ok: false, error: 'Method not allowed' }, origin);
+  return response(200, { ok: true, service: 'athlete-narrative-api', status: 'healthy' }, origin);
 };
 

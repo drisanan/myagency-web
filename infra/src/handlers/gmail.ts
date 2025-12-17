@@ -1,34 +1,37 @@
 import { APIGatewayProxyEventV2 } from 'aws-lambda';
-import { Handler, badRequest, ok } from './common';
+import { Handler, getSession } from './common';
 import { buildOAuthUrl, exchangeCode } from '../lib/google';
-import { getSession } from './common';
 import { putItem, getItem } from '../lib/dynamo';
 import { GmailTokenRecord } from '../lib/models';
 import { google } from 'googleapis';
+import { response } from './cors';
 
 export const handler: Handler = async (event: APIGatewayProxyEventV2) => {
-  const method = event.requestContext.http?.method?.toUpperCase();
-  if (!method) return badRequest('Missing method');
+  const origin = event.headers?.origin || event.headers?.Origin || event.headers?.['origin'] || '';
+  const method = (event.requestContext.http?.method || '').toUpperCase();
+  if (!method) return response(400, { ok: false, error: 'Missing method' }, origin);
+
+  if (method === 'OPTIONS') return response(200, { ok: true }, origin);
 
   const action = event.pathParameters?.action;
-  if (!action) return badRequest('Missing action');
+  if (!action) return response(400, { ok: false, error: 'Missing action' }, origin);
 
   if (method === 'POST') {
     if (action === 'oauth-url') {
       try {
         const url = buildOAuthUrl(['https://www.googleapis.com/auth/gmail.compose']);
-        return ok({ ok: true, url });
+        return response(200, { ok: true, url }, origin);
       } catch (e: any) {
-        return badRequest(e?.message || 'Failed to build OAuth URL');
+        return response(400, { ok: false, error: e?.message || 'Failed to build OAuth URL' }, origin);
       }
     }
     if (action === 'oauth-callback') {
       const code = event.queryStringParameters?.code;
-      if (!code) return badRequest('Missing code');
+      if (!code) return response(400, { ok: false, error: 'Missing code' }, origin);
       try {
         const tokens = await exchangeCode(code);
         const session = getSession(event);
-        if (!session?.agencyId) return badRequest('Missing session');
+        if (!session?.agencyId) return response(401, { ok: false, error: 'Missing session' }, origin);
         const clientId = event.queryStringParameters?.clientId || 'client';
         const rec: GmailTokenRecord = {
           PK: `CLIENT#${clientId}`,
@@ -39,22 +42,22 @@ export const handler: Handler = async (event: APIGatewayProxyEventV2) => {
           createdAt: Date.now(),
         };
         await putItem(rec);
-        return ok({ ok: true });
+        return response(200, { ok: true }, origin);
       } catch (e: any) {
-        return badRequest(e?.message || 'OAuth exchange failed');
+        return response(400, { ok: false, error: e?.message || 'OAuth exchange failed' }, origin);
       }
     }
     if (action === 'create-draft') {
       const session = getSession(event);
-      if (!session?.agencyId) return badRequest('Missing session');
-      if (!event.body) return badRequest('Missing body');
+      if (!session?.agencyId) return response(401, { ok: false, error: 'Missing session' }, origin);
+      if (!event.body) return response(400, { ok: false, error: 'Missing body' }, origin);
       const payload = JSON.parse(event.body);
       const { clientId, recipients, subject, html } = payload || {};
       if (!clientId || !Array.isArray(recipients) || !recipients.length || !subject || !html) {
-        return badRequest('clientId, recipients[], subject, html required');
+        return response(400, { ok: false, error: 'clientId, recipients[], subject, html required' }, origin);
       }
       const tokenRec = await getItem({ PK: `CLIENT#${clientId}`, SK: `TOKEN#${session.agencyId}` });
-      if (!tokenRec?.tokens) return badRequest('No Gmail tokens stored for client');
+      if (!tokenRec?.tokens) return response(400, { ok: false, error: 'No Gmail tokens stored for client' }, origin);
       const tokens = tokenRec.tokens;
       const oauth2Client = new google.auth.OAuth2(
         process.env.GOOGLE_CLIENT_ID,
@@ -82,11 +85,11 @@ export const handler: Handler = async (event: APIGatewayProxyEventV2) => {
         }
       }
       const created = results.filter((r) => r.ok).length;
-      return ok({ ok: true, created, results });
+      return response(200, { ok: true, created, results }, origin);
     }
   }
 
-  return badRequest(`Unsupported method/action ${method} ${action}`);
+  return response(405, { ok: false, error: `Unsupported method/action ${method} ${action}` }, origin);
 };
 
 function buildMime(subject: string, html: string, to: string) {

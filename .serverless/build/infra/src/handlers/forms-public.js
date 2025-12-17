@@ -113,35 +113,47 @@ async function queryGSI1(GSI1PK, beginsWith) {
   return res.Items ?? [];
 }
 
-// infra/src/handlers/forms-public.ts
-function corsResponse(statusCode, body, origin) {
+// infra/src/handlers/cors.ts
+var ALLOWED_ORIGINS = [
+  "https://master.d2yp6hyv6u0efd.amplifyapp.com",
+  "http://localhost:3000",
+  "http://localhost:3001"
+];
+function buildCors(origin) {
+  const allow = origin && ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+  return {
+    "Content-Type": "application/json",
+    "Access-Control-Allow-Origin": allow,
+    "Access-Control-Allow-Credentials": "true",
+    "Access-Control-Allow-Headers": "Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token",
+    "Access-Control-Allow-Methods": "GET,POST,PUT,PATCH,DELETE,OPTIONS"
+  };
+}
+function response(statusCode, body, origin, extraHeaders) {
+  const cors = buildCors(origin);
   return {
     statusCode,
-    headers: {
-      "content-type": "application/json",
-      "access-control-allow-origin": origin || "*",
-      "access-control-allow-credentials": "true",
-      "access-control-allow-headers": "Content-Type,Authorization",
-      "access-control-allow-methods": "GET,POST,OPTIONS"
-    },
+    headers: { ...cors, ...extraHeaders || {} },
     body: JSON.stringify(body)
   };
 }
+
+// infra/src/handlers/forms-public.ts
 var handler = async (event) => {
-  const method = event.requestContext.http?.method?.toUpperCase();
+  const method = (event.requestContext.http?.method || "").toUpperCase();
   const path = event.requestContext.http?.path || "";
-  const originHdr = event.headers["origin"] || event.headers["Origin"] || "";
+  const originHdr = event.headers["origin"] || event.headers["Origin"] || event.headers["origin"] || "";
   const host = event.headers["x-forwarded-host"] || event.headers["Host"] || "";
   const proto = event.headers["x-forwarded-proto"] || "https";
   const resolvedOrigin = originHdr || `${proto}://${host}`;
-  if (!method) return corsResponse(400, { ok: false, message: "Missing method" }, resolvedOrigin);
+  if (!method) return response(400, { ok: false, message: "Missing method" }, resolvedOrigin);
   if (method === "OPTIONS") {
-    return corsResponse(200, { ok: true }, resolvedOrigin);
+    return response(200, { ok: true }, resolvedOrigin);
   }
   if (method === "POST" && path.endsWith("/forms/issue")) {
-    if (!event.body) return corsResponse(400, { ok: false, error: "Missing body" }, resolvedOrigin);
+    if (!event.body) return response(400, { ok: false, error: "Missing body" }, resolvedOrigin);
     const { agencyEmail } = JSON.parse(event.body);
-    if (!agencyEmail) return corsResponse(400, { ok: false, error: "Missing agencyEmail" }, resolvedOrigin);
+    if (!agencyEmail) return response(400, { ok: false, error: "Missing agencyEmail" }, resolvedOrigin);
     const payload = {
       agencyEmail,
       iat: Date.now(),
@@ -149,16 +161,16 @@ var handler = async (event) => {
     };
     const token = sign(payload);
     const url = `${resolvedOrigin}/forms/${token}`;
-    return corsResponse(200, { ok: true, token, url }, resolvedOrigin);
+    return response(200, { ok: true, token, url }, resolvedOrigin);
   }
   if (method === "GET" && path.endsWith("/forms/agency")) {
     const token = (event.queryStringParameters?.token || "").trim();
     const payload = verify(token);
-    if (!payload?.agencyEmail) return corsResponse(400, { ok: false, error: "Invalid token" }, resolvedOrigin);
+    if (!payload?.agencyEmail) return response(400, { ok: false, error: "Invalid token" }, resolvedOrigin);
     const byEmail = await queryGSI1(`EMAIL#${payload.agencyEmail}`, "AGENCY#");
     const agency = (byEmail || [])[0];
-    if (!agency) return corsResponse(404, { ok: false, error: "Agency not found" }, resolvedOrigin);
-    return corsResponse(200, {
+    if (!agency) return response(404, { ok: false, error: "Agency not found" }, resolvedOrigin);
+    return response(200, {
       ok: true,
       agency: {
         name: agency.name,
@@ -168,12 +180,12 @@ var handler = async (event) => {
     }, resolvedOrigin);
   }
   if (method === "POST" && path.endsWith("/forms/submit")) {
-    if (!event.body) return corsResponse(400, { ok: false, error: "Missing body" }, resolvedOrigin);
+    if (!event.body) return response(400, { ok: false, error: "Missing body" }, resolvedOrigin);
     const body = JSON.parse(event.body || "{}");
     const token = (body.token || "").trim();
     const form = body.form || {};
     const payload = verify(token);
-    if (!payload?.agencyEmail) return corsResponse(400, { ok: false, error: "Invalid token" }, resolvedOrigin);
+    if (!payload?.agencyEmail) return response(400, { ok: false, error: "Invalid token" }, resolvedOrigin);
     const safeForm = form || {};
     const id = newId("form");
     const rec = {
@@ -197,26 +209,26 @@ var handler = async (event) => {
       }
     };
     await putItem(rec);
-    return corsResponse(200, { ok: true, id }, resolvedOrigin);
+    return response(200, { ok: true, id }, resolvedOrigin);
   }
   if (method === "GET" && path.endsWith("/forms/submissions")) {
     const agencyEmail = (event.queryStringParameters?.agencyEmail || "").trim();
-    if (!agencyEmail) return corsResponse(400, { ok: false, error: "Missing agencyEmail" }, resolvedOrigin);
+    if (!agencyEmail) return response(400, { ok: false, error: "Missing agencyEmail" }, resolvedOrigin);
     const items = await queryByPK(`AGENCY#${agencyEmail}`, "FORM#");
     const pending = (items || []).filter((i) => !i.consumed);
-    return corsResponse(200, { ok: true, items: pending }, resolvedOrigin);
+    return response(200, { ok: true, items: pending }, resolvedOrigin);
   }
   if (method === "POST" && path.endsWith("/forms/consume")) {
-    if (!event.body) return corsResponse(400, { ok: false, error: "Missing body" }, resolvedOrigin);
+    if (!event.body) return response(400, { ok: false, error: "Missing body" }, resolvedOrigin);
     const { agencyEmail, ids } = JSON.parse(event.body || "{}");
-    if (!agencyEmail || !Array.isArray(ids)) return corsResponse(400, { ok: false, error: "Missing parameters" }, resolvedOrigin);
+    if (!agencyEmail || !Array.isArray(ids)) return response(400, { ok: false, error: "Missing parameters" }, resolvedOrigin);
     for (const id of ids) {
       const item = await getItem({ PK: `AGENCY#${agencyEmail}`, SK: `FORM#${id}` });
       if (item) await putItem({ ...item, consumed: true });
     }
-    return corsResponse(200, { ok: true }, resolvedOrigin);
+    return response(200, { ok: true }, resolvedOrigin);
   }
-  return corsResponse(400, { ok: false, message: `Unsupported path ${path}` }, resolvedOrigin);
+  return response(400, { ok: false, message: `Unsupported path ${path}` }, resolvedOrigin);
 };
 // Annotate the CommonJS export names for ESM import in node:
 0 && (module.exports = {

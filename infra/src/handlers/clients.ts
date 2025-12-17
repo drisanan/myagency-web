@@ -1,33 +1,37 @@
 import { APIGatewayProxyEventV2 } from 'aws-lambda';
-import { Handler, badRequest, ok, requireSession } from './common';
+import { Handler, requireSession } from './common';
 import { newId } from '../lib/ids';
 import { ClientRecord } from '../lib/models';
 import { getItem, putItem, queryByPK } from '../lib/dynamo';
+import { response } from './cors';
 
 function getClientId(event: APIGatewayProxyEventV2) {
   return event.pathParameters?.id;
 }
 
 export const handler: Handler = async (event: APIGatewayProxyEventV2) => {
-  const method = event.requestContext.http?.method?.toUpperCase();
-  if (!method) return badRequest('Missing method');
+  const origin = event.headers?.origin || event.headers?.Origin || event.headers?.['origin'] || '';
+  const method = (event.requestContext.http?.method || '').toUpperCase();
+  if (!method) return response(400, { ok: false, error: 'Missing method' }, origin);
+
+  if (method === 'OPTIONS') return response(200, { ok: true }, origin);
 
   const session = requireSession(event);
-  if (!session) return badRequest('Missing session (x-agency-id header expected for now)');
+  if (!session) return response(401, { ok: false, error: 'Missing session (x-agency-id header expected for now)' }, origin);
 
   const clientId = getClientId(event);
 
   if (method === 'GET') {
     if (clientId) {
       const item = await getItem({ PK: `AGENCY#${session.agencyId}`, SK: `CLIENT#${clientId}` });
-      return ok({ ok: true, client: item ?? null });
+      return response(200, { ok: true, client: item ?? null }, origin);
     }
     const items = await queryByPK(`AGENCY#${session.agencyId}`, 'CLIENT#');
-    return ok({ ok: true, clients: items });
+    return response(200, { ok: true, clients: items }, origin);
   }
 
   if (method === 'POST') {
-    if (!event.body) return badRequest('Missing body');
+    if (!event.body) return response(400, { ok: false, error: 'Missing body' }, origin);
     const payload = JSON.parse(event.body);
     const id = payload.id || newId('client');
     const now = new Date().toISOString();
@@ -47,31 +51,31 @@ export const handler: Handler = async (event: APIGatewayProxyEventV2) => {
       updatedAt: now,
     };
     await putItem(rec);
-    return ok({ ok: true, client: rec });
+    return response(200, { ok: true, client: rec }, origin);
   }
 
   if (method === 'PUT' || method === 'PATCH') {
-    if (!clientId) return badRequest('Missing client id');
-    if (!event.body) return badRequest('Missing body');
+    if (!clientId) return response(400, { ok: false, error: 'Missing client id' }, origin);
+    if (!event.body) return response(400, { ok: false, error: 'Missing body' }, origin);
     const payload = JSON.parse(event.body);
     const existing = await getItem({ PK: `AGENCY#${session.agencyId}`, SK: `CLIENT#${clientId}` });
-    if (!existing) return ok({ ok: false, message: 'Not found' });
+    if (!existing) return response(404, { ok: false, message: 'Not found' }, origin);
     const now = new Date().toISOString();
     const merged = { ...existing, ...payload, updatedAt: now };
     await putItem(merged);
-    return ok({ ok: true, client: merged });
+    return response(200, { ok: true, client: merged }, origin);
   }
 
   if (method === 'DELETE') {
-    if (!clientId) return badRequest('Missing client id');
+    if (!clientId) return response(400, { ok: false, error: 'Missing client id' }, origin);
     await putItem({
       PK: `AGENCY#${session.agencyId}`,
       SK: `CLIENT#${clientId}`,
       deletedAt: new Date().toISOString(),
     });
-    return ok({ ok: true });
+    return response(200, { ok: true }, origin);
   }
 
-  return badRequest(`Unsupported method ${method}`);
+  return response(405, { ok: false, error: `Method not allowed` }, origin);
 };
 

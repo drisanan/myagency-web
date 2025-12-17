@@ -24,10 +24,6 @@ __export(auth_exports, {
 });
 module.exports = __toCommonJS(auth_exports);
 
-// infra/src/handlers/common.ts
-var import_client_dynamodb = require("@aws-sdk/client-dynamodb");
-var import_lib_dynamodb = require("@aws-sdk/lib-dynamodb");
-
 // infra/src/lib/session.ts
 var import_crypto = require("crypto");
 var SECRET = process.env.SESSION_SECRET || "dev-secret-change-me";
@@ -78,7 +74,7 @@ function buildSessionCookie(token, secure = true) {
     `${COOKIE_NAME}=${token}`,
     "HttpOnly",
     "Path=/",
-    "SameSite=Lax",
+    "SameSite=None",
     ...secure ? ["Secure"] : [],
     "Max-Age=604800"
     // 7d
@@ -86,78 +82,69 @@ function buildSessionCookie(token, secure = true) {
   return attrs.join("; ");
 }
 function buildClearCookie(secure = true) {
-  const attrs = [`${COOKIE_NAME}=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax${secure ? "; Secure" : ""}`];
+  const attrs = [`${COOKIE_NAME}=; Path=/; Max-Age=0; HttpOnly; SameSite=None${secure ? "; Secure" : ""}`];
   return attrs.join("; ");
 }
 
-// infra/src/handlers/common.ts
-var client = new import_client_dynamodb.DynamoDBClient({});
-var docClient = import_lib_dynamodb.DynamoDBDocumentClient.from(client);
-function jsonResponse(statusCode, body) {
+// infra/src/handlers/cors.ts
+var ALLOWED_ORIGINS = [
+  "https://master.d2yp6hyv6u0efd.amplifyapp.com",
+  "http://localhost:3000",
+  "http://localhost:3001"
+];
+function buildCors(origin) {
+  const allow = origin && ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
   return {
-    statusCode,
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify(body)
+    "Content-Type": "application/json",
+    "Access-Control-Allow-Origin": allow,
+    "Access-Control-Allow-Credentials": "true",
+    "Access-Control-Allow-Headers": "Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token",
+    "Access-Control-Allow-Methods": "GET,POST,PUT,PATCH,DELETE,OPTIONS"
   };
 }
-function badRequest(message) {
-  return jsonResponse(400, { ok: false, message });
+function response(statusCode, body, origin, extraHeaders) {
+  const cors = buildCors(origin);
+  return {
+    statusCode,
+    headers: { ...cors, ...extraHeaders || {} },
+    body: JSON.stringify(body)
+  };
 }
 
 // infra/src/handlers/auth.ts
 var handler = async (event) => {
-  if (!event.requestContext.http?.method) {
-    return badRequest("Missing method");
-  }
-  const method = event.requestContext.http.method.toUpperCase();
-  const originHdr = event.headers["origin"] || event.headers["Origin"] || "";
+  const origin = event.headers?.origin || event.headers?.Origin || event.headers?.["origin"] || "";
+  const method = (event.requestContext.http?.method || "").toUpperCase();
+  if (!method) return response(400, { ok: false, error: "Missing method" }, origin);
   const host = event.headers["x-forwarded-host"] || event.headers["Host"] || "";
   const proto = event.headers["x-forwarded-proto"] || "https";
-  const resolvedOrigin = originHdr || `${proto}://${host}`;
+  const resolvedOrigin = origin || `${proto}://${host}`;
   const secureCookie = proto === "https" && !resolvedOrigin.includes("localhost");
-  const corsHeaders = {
-    "access-control-allow-origin": resolvedOrigin,
-    "access-control-allow-credentials": "true",
-    "access-control-allow-headers": "Content-Type,Authorization",
-    "access-control-allow-methods": "GET,POST,DELETE,OPTIONS"
-  };
   if (method === "OPTIONS") {
-    return { statusCode: 200, headers: corsHeaders, body: JSON.stringify({ ok: true }) };
+    return response(200, { ok: true }, origin);
   }
-  switch (method) {
-    case "GET":
-      return {
-        statusCode: 200,
-        headers: { ...corsHeaders, "content-type": "application/json" },
-        body: JSON.stringify({ ok: true, session: parseSessionFromRequest(event) })
-      };
-    case "POST":
-      if (!event.body) return badRequest("Missing body");
-      const payload = JSON.parse(event.body);
-      if (!payload.agencyId || !payload.email || !payload.role) {
-        return badRequest("agencyId, email, role required");
-      }
-      const token = encodeSession({
-        agencyId: payload.agencyId,
-        agencyEmail: payload.email,
-        role: payload.role,
-        userId: payload.userId
-      });
-      const cookie = buildSessionCookie(token, secureCookie);
-      return {
-        statusCode: 200,
-        headers: { ...corsHeaders, "content-type": "application/json", "set-cookie": cookie },
-        body: JSON.stringify({ ok: true, session: payload })
-      };
-    case "DELETE":
-      return {
-        statusCode: 200,
-        headers: { ...corsHeaders, "set-cookie": buildClearCookie(secureCookie) },
-        body: JSON.stringify({ ok: true })
-      };
-    default:
-      return badRequest(`Unsupported method ${method}`);
+  if (method === "GET") {
+    return response(200, { ok: true, session: parseSessionFromRequest(event) }, origin);
   }
+  if (method === "POST") {
+    if (!event.body) return response(400, { ok: false, error: "Missing body" }, origin);
+    const payload = JSON.parse(event.body);
+    if (!payload.agencyId || !payload.email || !payload.role) {
+      return response(400, { ok: false, error: "agencyId, email, role required" }, origin);
+    }
+    const token = encodeSession({
+      agencyId: payload.agencyId,
+      agencyEmail: payload.email,
+      role: payload.role,
+      userId: payload.userId
+    });
+    const cookie = buildSessionCookie(token, secureCookie);
+    return response(200, { ok: true, session: payload }, origin, { "set-cookie": cookie });
+  }
+  if (method === "DELETE") {
+    return response(200, { ok: true }, origin, { "set-cookie": buildClearCookie(secureCookie) });
+  }
+  return response(405, { ok: false, error: `Method not allowed` }, origin);
 };
 // Annotate the CommonJS export names for ESM import in node:
 0 && (module.exports = {

@@ -3,39 +3,26 @@ import { Handler } from './common';
 import { sign, verify } from '../lib/formsToken';
 import { newId } from '../lib/ids';
 import { getItem, putItem, queryByPK, queryGSI1 } from '../lib/dynamo';
-
-function corsResponse(statusCode: number, body: unknown, origin: string) {
-  return {
-    statusCode,
-    headers: {
-      'content-type': 'application/json',
-      'access-control-allow-origin': origin || '*',
-      'access-control-allow-credentials': 'true',
-      'access-control-allow-headers': 'Content-Type,Authorization',
-      'access-control-allow-methods': 'GET,POST,OPTIONS',
-    },
-    body: JSON.stringify(body),
-  };
-}
+import { response } from './cors';
 
 export const handler: Handler = async (event: APIGatewayProxyEventV2) => {
-  const method = event.requestContext.http?.method?.toUpperCase();
+  const method = (event.requestContext.http?.method || '').toUpperCase();
   const path = event.requestContext.http?.path || '';
-  const originHdr = event.headers['origin'] || event.headers['Origin'] || '';
+  const originHdr = event.headers['origin'] || event.headers['Origin'] || event.headers['origin'] || '';
   const host = event.headers['x-forwarded-host'] || event.headers['Host'] || '';
   const proto = event.headers['x-forwarded-proto'] || 'https';
   const resolvedOrigin = originHdr || `${proto}://${host}`;
-  if (!method) return corsResponse(400, { ok: false, message: 'Missing method' }, resolvedOrigin);
+  if (!method) return response(400, { ok: false, message: 'Missing method' }, resolvedOrigin);
 
   if (method === 'OPTIONS') {
-    return corsResponse(200, { ok: true }, resolvedOrigin);
+    return response(200, { ok: true }, resolvedOrigin);
   }
 
   // POST /forms/issue
   if (method === 'POST' && path.endsWith('/forms/issue')) {
-    if (!event.body) return corsResponse(400, { ok: false, error: 'Missing body' }, resolvedOrigin);
+    if (!event.body) return response(400, { ok: false, error: 'Missing body' }, resolvedOrigin);
     const { agencyEmail } = JSON.parse(event.body);
-    if (!agencyEmail) return corsResponse(400, { ok: false, error: 'Missing agencyEmail' }, resolvedOrigin);
+    if (!agencyEmail) return response(400, { ok: false, error: 'Missing agencyEmail' }, resolvedOrigin);
     const payload = {
       agencyEmail,
       iat: Date.now(),
@@ -43,18 +30,18 @@ export const handler: Handler = async (event: APIGatewayProxyEventV2) => {
     };
     const token = sign(payload);
     const url = `${resolvedOrigin}/forms/${token}`;
-    return corsResponse(200, { ok: true, token, url }, resolvedOrigin);
+    return response(200, { ok: true, token, url }, resolvedOrigin);
   }
 
   // GET /forms/agency
   if (method === 'GET' && path.endsWith('/forms/agency')) {
     const token = (event.queryStringParameters?.token || '').trim();
     const payload = verify<{ agencyEmail: string; exp?: number }>(token);
-    if (!payload?.agencyEmail) return corsResponse(400, { ok: false, error: 'Invalid token' }, resolvedOrigin);
+    if (!payload?.agencyEmail) return response(400, { ok: false, error: 'Invalid token' }, resolvedOrigin);
     const byEmail = await queryGSI1(`EMAIL#${payload.agencyEmail}`, 'AGENCY#');
     const agency = (byEmail || [])[0];
-    if (!agency) return corsResponse(404, { ok: false, error: 'Agency not found' }, resolvedOrigin);
-    return corsResponse(200, {
+    if (!agency) return response(404, { ok: false, error: 'Agency not found' }, resolvedOrigin);
+    return response(200, {
       ok: true,
       agency: {
         name: agency.name,
@@ -66,12 +53,12 @@ export const handler: Handler = async (event: APIGatewayProxyEventV2) => {
 
   // POST /forms/submit
   if (method === 'POST' && path.endsWith('/forms/submit')) {
-    if (!event.body) return corsResponse(400, { ok: false, error: 'Missing body' }, resolvedOrigin);
+    if (!event.body) return response(400, { ok: false, error: 'Missing body' }, resolvedOrigin);
     const body = JSON.parse(event.body || '{}');
     const token = (body.token || '').trim();
     const form = body.form || {};
     const payload = verify<{ agencyEmail: string; exp?: number }>(token);
-    if (!payload?.agencyEmail) return corsResponse(400, { ok: false, error: 'Invalid token' }, resolvedOrigin);
+    if (!payload?.agencyEmail) return response(400, { ok: false, error: 'Invalid token' }, resolvedOrigin);
     const safeForm = form || {};
     const id = newId('form');
     const rec = {
@@ -95,31 +82,31 @@ export const handler: Handler = async (event: APIGatewayProxyEventV2) => {
       },
     };
     await putItem(rec);
-    return corsResponse(200, { ok: true, id }, resolvedOrigin);
+    return response(200, { ok: true, id }, resolvedOrigin);
   }
 
   // GET /forms/submissions
   if (method === 'GET' && path.endsWith('/forms/submissions')) {
     const agencyEmail = (event.queryStringParameters?.agencyEmail || '').trim();
-    if (!agencyEmail) return corsResponse(400, { ok: false, error: 'Missing agencyEmail' }, resolvedOrigin);
+    if (!agencyEmail) return response(400, { ok: false, error: 'Missing agencyEmail' }, resolvedOrigin);
     const items = await queryByPK(`AGENCY#${agencyEmail}`, 'FORM#');
     const pending = (items || []).filter((i: any) => !i.consumed);
-    return corsResponse(200, { ok: true, items: pending }, resolvedOrigin);
+    return response(200, { ok: true, items: pending }, resolvedOrigin);
   }
 
   // POST /forms/consume
   if (method === 'POST' && path.endsWith('/forms/consume')) {
-    if (!event.body) return corsResponse(400, { ok: false, error: 'Missing body' }, resolvedOrigin);
+    if (!event.body) return response(400, { ok: false, error: 'Missing body' }, resolvedOrigin);
     const { agencyEmail, ids } = JSON.parse(event.body || '{}');
-    if (!agencyEmail || !Array.isArray(ids)) return corsResponse(400, { ok: false, error: 'Missing parameters' }, resolvedOrigin);
+    if (!agencyEmail || !Array.isArray(ids)) return response(400, { ok: false, error: 'Missing parameters' }, resolvedOrigin);
     for (const id of ids) {
       const item = await getItem({ PK: `AGENCY#${agencyEmail}`, SK: `FORM#${id}` });
       if (item) await putItem({ ...item, consumed: true });
     }
-    return corsResponse(200, { ok: true }, resolvedOrigin);
+    return response(200, { ok: true }, resolvedOrigin);
   }
 
-  return corsResponse(400, { ok: false, message: `Unsupported path ${path}` }, resolvedOrigin);
+  return response(400, { ok: false, message: `Unsupported path ${path}` }, resolvedOrigin);
 };
 
 

@@ -1,4 +1,13 @@
 {
+  "/(app)/agencies/new/page": "app/(app)/agencies/new/page.js",
+  "/(app)/agencies/page": "app/(app)/agencies/page.js",
+  "/(app)/clients/new/page": "app/(app)/clients/new/page.js",
+  "/(app)/clients/page": "app/(app)/clients/page.js",
+  "/(app)/dashboard/page": "app/(app)/dashboard/page.js",
   "/(public)/page": "app/(public)/page.js",
-  "/auth/login/page": "app/auth/login/page.js"
+  "/_not-found/page": "app/_not-found/page.js",
+  "/api/commits/route": "app/api/commits/route.js",
+  "/api/metrics/stats/route": "app/api/metrics/stats/route.js",
+  "/auth/login/page": "app/auth/login/page.js",
+  "/forms/[token]/page": "app/forms/[token]/page.js"
 }

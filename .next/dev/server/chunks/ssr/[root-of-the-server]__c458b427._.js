@@ -246,6 +246,8 @@ function TenantThemeProvider({ tenant, children }) {
 "use strict";
 
 __turbopack_context__.s([
+    "createAgencyFromGHL",
+    ()=>createAgencyFromGHL,
     "deleteAgency",
     ()=>deleteAgency,
     "getAgencies",
@@ -263,9 +265,10 @@ __turbopack_context__.s([
     "upsertAgency",
     ()=>upsertAgency
 ]);
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.API_BASE_URL;
+const API_BASE_URL = ("TURBOPACK compile-time value", "https://iakaowunc5.execute-api.us-west-1.amazonaws.com") || process.env.API_BASE_URL;
 function requireApiBase() {
-    if (!API_BASE_URL) throw new Error('API_BASE_URL is not configured');
+    if ("TURBOPACK compile-time falsy", 0) //TURBOPACK unreachable
+    ;
     return API_BASE_URL;
 }
 async function apiFetch(path, init) {
@@ -312,46 +315,51 @@ const SEED_AGENCIES = [
     }
 ];
 async function listAgencies() {
-    if (API_BASE_URL) {
+    if ("TURBOPACK compile-time truthy", 1) {
         const data = await apiFetch('/agencies');
         return data?.agencies ?? [];
     }
-    return [];
+    //TURBOPACK unreachable
+    ;
 }
 async function getAgencies() {
-    if (API_BASE_URL) {
+    if ("TURBOPACK compile-time truthy", 1) {
         const data = await apiFetch('/agencies');
         return data?.agencies ?? [];
     }
-    return [];
+    //TURBOPACK unreachable
+    ;
 }
 async function getAgencyByEmail(email) {
-    if (API_BASE_URL) {
+    if ("TURBOPACK compile-time truthy", 1) {
         const data = await apiFetch('/agencies');
         const list = data?.agencies ?? [];
         return list.find((a)=>a.email === email) ?? null;
     }
-    return null;
+    //TURBOPACK unreachable
+    ;
 }
 async function getAgencyById(id) {
-    if (API_BASE_URL) {
+    if ("TURBOPACK compile-time truthy", 1) {
         const data = await apiFetch('/agencies');
         const list = data?.agencies ?? [];
         return list.find((a)=>a.id === id) ?? null;
     }
-    return null;
+    //TURBOPACK unreachable
+    ;
 }
 async function getAgencySettings(email) {
-    if (API_BASE_URL) {
+    if ("TURBOPACK compile-time truthy", 1) {
         const data = await apiFetch(`/agencies?email=${encodeURIComponent(email)}`);
         const list = data?.agencies ?? [];
         const a = list.find((x)=>x.email === email);
         return a?.settings ?? {};
     }
-    return {};
+    //TURBOPACK unreachable
+    ;
 }
 async function updateAgencySettings(email, settings) {
-    if (API_BASE_URL) {
+    if ("TURBOPACK compile-time truthy", 1) {
         const data = await apiFetch('/agencies/settings', {
             method: 'PUT',
             body: JSON.stringify({
@@ -361,24 +369,43 @@ async function updateAgencySettings(email, settings) {
         });
         return data;
     }
-    return {
-        ok: false
-    };
+    //TURBOPACK unreachable
+    ;
 }
 async function upsertAgency(input) {
-    if (API_BASE_URL) {
+    if ("TURBOPACK compile-time truthy", 1) {
         const data = await apiFetch('/agencies', {
             method: 'POST',
             body: JSON.stringify(input)
         });
         return data;
     }
+    //TURBOPACK unreachable
+    ;
+}
+async function createAgencyFromGHL(input) {
+    if ("TURBOPACK compile-time falsy", 0) //TURBOPACK unreachable
+    ;
+    const payload = {
+        name: input.name || 'New Agency',
+        email: input.email,
+        settings: {
+            primaryColor: input.color,
+            logoDataUrl: input.logoUrl
+        }
+    };
+    const res = await apiFetch('/agencies', {
+        method: 'POST',
+        body: JSON.stringify(payload)
+    });
+    const id = res?.id || res?.agency?.id;
     return {
-        id: undefined
+        id,
+        ...payload
     };
 }
 async function deleteAgency(id) {
-    if (API_BASE_URL) {
+    if ("TURBOPACK compile-time truthy", 1) {
         const data = await apiFetch(`/agencies/${id}`, {
             method: 'DELETE'
         });
@@ -386,9 +413,8 @@ async function deleteAgency(id) {
             ok: true
         };
     }
-    return {
-        ok: false
-    };
+    //TURBOPACK unreachable
+    ;
 }
 }),
 "[project]/services/authGHL.ts [app-ssr] (ecmascript)", ((__turbopack_context__) => {
@@ -402,7 +428,7 @@ __turbopack_context__.s([
 async function loginWithGHL(apiBase, email, phone, accessCodeInput) {
     if (!apiBase) throw new Error('API_BASE_URL is not configured');
     try {
-        const endpoint = `${apiBase}/auth/ghl-login`;
+        const endpoint = `${apiBase}/auth/login`;
         const res = await fetch(endpoint, {
             method: 'POST',
             headers: {
@@ -424,7 +450,8 @@ async function loginWithGHL(apiBase, email, phone, accessCodeInput) {
         }
         return {
             ok: true,
-            contact: data.contact
+            contact: data.contact,
+            agency: data.agency
         };
     } catch (e) {
         return {
@@ -447,7 +474,8 @@ var __TURBOPACK__imported__module__$5b$project$5d2f$services$2f$agencies$2e$ts__
 var __TURBOPACK__imported__module__$5b$project$5d2f$services$2f$authGHL$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/services/authGHL.ts [app-ssr] (ecmascript)");
 ;
 ;
-const NEXT_PUBLIC_API_BASE_URL = 'https://t4334hpi3h.execute-api.us-east-1.amazonaws.com';
+;
+const NEXT_PUBLIC_API_BASE_URL = 'https://iakaowunc5.execute-api.us-west-1.amazonaws.com';
 const API_BASE_URL = NEXT_PUBLIC_API_BASE_URL;
 function requireApiBase() {
     if ("TURBOPACK compile-time falsy", 0) //TURBOPACK unreachable
@@ -497,11 +525,39 @@ async function login(input) {
     if (!result.ok) {
         throw new Error(result.error);
     }
-    const agency = await (0, __TURBOPACK__imported__module__$5b$project$5d2f$services$2f$agencies$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["getAgencyByEmail"])(result.contact.email);
+    console.log('result', JSON.stringify(result, null, 2));
+    let agencyId = result.agency?.id;
+    let agencyName = result.agency?.name;
+    let agencyColor = result.agency?.color;
+    let agencyLogo = result.agency?.logoUrl;
+    console.log('agencyId', agencyId);
+    console.log('agencyName', agencyName);
+    console.log('agencyColor', agencyColor);
+    console.log('agencyLogo', agencyLogo);
+    if (agencyId === 'READY') {
+        console.log('Creating new agency from GHL metadata');
+        // Create new agency instance using GHL metadata
+        const created = await (0, __TURBOPACK__imported__module__$5b$project$5d2f$services$2f$agencies$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["createAgencyFromGHL"])({
+            name: agencyName,
+            email: result.contact.email,
+            color: agencyColor,
+            logoUrl: agencyLogo
+        });
+        agencyId = created.id;
+    }
+    console.log('agencyId', agencyId);
+    if (!agencyId) {
+        const agency = await (0, __TURBOPACK__imported__module__$5b$project$5d2f$services$2f$agencies$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["getAgencyByEmail"])(result.contact.email);
+        agencyId = agency?.id;
+    }
+    // Final fallback: use contact email as agencyId to avoid missing field on session
+    agencyId = agencyId || result.contact.email;
+    console.log('agencyId', agencyId);
+    console.log('result.contact.email', result.contact.email);
     const session = {
         role: 'agency',
         email: result.contact.email,
-        agencyId: agency?.id,
+        agencyId,
         contactId: result.contact.id
     };
     // Issue session cookie via API if available

@@ -69,19 +69,6 @@ function parseSessionFromRequest(event) {
 // infra/src/handlers/common.ts
 var client = new import_client_dynamodb.DynamoDBClient({});
 var docClient = import_lib_dynamodb.DynamoDBDocumentClient.from(client);
-function jsonResponse(statusCode, body) {
-  return {
-    statusCode,
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify(body)
-  };
-}
-function badRequest(message) {
-  return jsonResponse(400, { ok: false, message });
-}
-function ok(body) {
-  return jsonResponse(200, body);
-}
 function getSession(event) {
   const parsed = parseSessionFromRequest(event);
   if (parsed) return parsed;
@@ -123,26 +110,53 @@ async function queryByPK(PK, beginsWith) {
   return res.Items ?? [];
 }
 
+// infra/src/handlers/cors.ts
+var ALLOWED_ORIGINS = [
+  "https://master.d2yp6hyv6u0efd.amplifyapp.com",
+  "http://localhost:3000",
+  "http://localhost:3001"
+];
+function buildCors(origin) {
+  const allow = origin && ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+  return {
+    "Content-Type": "application/json",
+    "Access-Control-Allow-Origin": allow,
+    "Access-Control-Allow-Credentials": "true",
+    "Access-Control-Allow-Headers": "Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token",
+    "Access-Control-Allow-Methods": "GET,POST,PUT,PATCH,DELETE,OPTIONS"
+  };
+}
+function response(statusCode, body, origin, extraHeaders) {
+  const cors = buildCors(origin);
+  return {
+    statusCode,
+    headers: { ...cors, ...extraHeaders || {} },
+    body: JSON.stringify(body)
+  };
+}
+
 // infra/src/handlers/clients.ts
 function getClientId(event) {
   return event.pathParameters?.id;
 }
 var handler = async (event) => {
-  const method = event.requestContext.http?.method?.toUpperCase();
-  if (!method) return badRequest("Missing method");
+  const origin = event.headers?.origin || event.headers?.Origin || event.headers?.["origin"] || "";
+  const method = (event.requestContext.http?.method || "").toUpperCase();
+  if (!method) return response(400, { ok: false, error: "Missing method" }, origin);
+  if (method === "OPTIONS") return response(200, { ok: true }, origin);
   const session = requireSession(event);
-  if (!session) return badRequest("Missing session (x-agency-id header expected for now)");
+  if (!session) return response(401, { ok: false, error: "Missing session (x-agency-id header expected for now)" }, origin);
   const clientId = getClientId(event);
   if (method === "GET") {
     if (clientId) {
       const item = await getItem({ PK: `AGENCY#${session.agencyId}`, SK: `CLIENT#${clientId}` });
-      return ok({ ok: true, client: item ?? null });
+      return response(200, { ok: true, client: item ?? null }, origin);
     }
     const items = await queryByPK(`AGENCY#${session.agencyId}`, "CLIENT#");
-    return ok({ ok: true, clients: items });
+    return response(200, { ok: true, clients: items }, origin);
   }
   if (method === "POST") {
-    if (!event.body) return badRequest("Missing body");
+    if (!event.body) return response(400, { ok: false, error: "Missing body" }, origin);
     const payload = JSON.parse(event.body);
     const id = payload.id || newId("client");
     const now = (/* @__PURE__ */ new Date()).toISOString();
@@ -162,29 +176,29 @@ var handler = async (event) => {
       updatedAt: now
     };
     await putItem(rec);
-    return ok({ ok: true, client: rec });
+    return response(200, { ok: true, client: rec }, origin);
   }
   if (method === "PUT" || method === "PATCH") {
-    if (!clientId) return badRequest("Missing client id");
-    if (!event.body) return badRequest("Missing body");
+    if (!clientId) return response(400, { ok: false, error: "Missing client id" }, origin);
+    if (!event.body) return response(400, { ok: false, error: "Missing body" }, origin);
     const payload = JSON.parse(event.body);
     const existing = await getItem({ PK: `AGENCY#${session.agencyId}`, SK: `CLIENT#${clientId}` });
-    if (!existing) return ok({ ok: false, message: "Not found" });
+    if (!existing) return response(404, { ok: false, message: "Not found" }, origin);
     const now = (/* @__PURE__ */ new Date()).toISOString();
     const merged = { ...existing, ...payload, updatedAt: now };
     await putItem(merged);
-    return ok({ ok: true, client: merged });
+    return response(200, { ok: true, client: merged }, origin);
   }
   if (method === "DELETE") {
-    if (!clientId) return badRequest("Missing client id");
+    if (!clientId) return response(400, { ok: false, error: "Missing client id" }, origin);
     await putItem({
       PK: `AGENCY#${session.agencyId}`,
       SK: `CLIENT#${clientId}`,
       deletedAt: (/* @__PURE__ */ new Date()).toISOString()
     });
-    return ok({ ok: true });
+    return response(200, { ok: true }, origin);
   }
-  return badRequest(`Unsupported method ${method}`);
+  return response(405, { ok: false, error: `Method not allowed` }, origin);
 };
 // Annotate the CommonJS export names for ESM import in node:
 0 && (module.exports = {

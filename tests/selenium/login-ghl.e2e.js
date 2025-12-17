@@ -22,7 +22,8 @@ async function run() {
 
     await driver.findElement(By.xpath(`//button[normalize-space(.)="Sign in"]`)).click();
 
-    // Wait for dashboard load indicator
+    // Wait for spinner to appear, then dashboard
+    await driver.wait(until.elementLocated(By.css('[data-testid="login-spinner"]')), 10000);
     await driver.wait(until.elementLocated(By.xpath(`//*[contains(text(),"Dashboard")]`)), 20000);
 
     const logs = await driver.manage().logs().get('browser');

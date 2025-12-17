@@ -1,7 +1,7 @@
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, PutCommand } from '@aws-sdk/lib-dynamodb';
 
-const REGION = process.env.AWS_REGION || 'us-east-1';
+const REGION = process.env.AWS_REGION || 'us-west-1';
 const TABLE_NAME = process.env.TABLE_NAME || 'agency-narrative-crm';
 const client = new DynamoDBClient({ region: REGION });
 const doc = DynamoDBDocumentClient.from(client);
@@ -10,6 +10,7 @@ const agencies = [
   { id: 'agency-001', name: 'Prime Sports', email: 'agency1@an.test', settings: { primaryColor: '#1976d2' } },
   { id: 'agency-002', name: 'NextGen', email: 'agency2@an.test', settings: { primaryColor: '#9c27b0' } },
   { id: 'agency-003', name: 'Elite Edge', email: 'agency3@an.test', settings: { primaryColor: '#2e7d32' } },
+  { id: 'agency-drisan', name: 'Drisan Agency', email: 'drisanjames@gmail.com', settings: { primaryColor: '#00ff66' } },
 ];
 
 const clients = [

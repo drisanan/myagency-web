@@ -3,6 +3,7 @@ import React from 'react';
 import TextField from '@mui/material/TextField';
 import Stack from '@mui/material/Stack';
 import MuiButton from '@mui/material/Button';
+import CircularProgress from '@mui/material/CircularProgress';
 import Alert from '@mui/material/Alert';
 import AlertTitle from '@mui/material/AlertTitle';
 import { validateEmail } from '@/features/auth/validators';
@@ -77,8 +78,14 @@ export function LoginForm({ onSubmit }: Props) {
           error={Boolean(errors.accessCode)}
           helperText={errors.accessCode}
         />
-        <MuiButton type="submit" variant="contained" disabled={submitting}>
-          Sign in
+        <MuiButton
+          type="submit"
+          variant="contained"
+          disabled={submitting}
+          data-testid="login-submit"
+          startIcon={submitting ? <CircularProgress size={18} data-testid="login-spinner" /> : null}
+        >
+          {submitting ? 'Signing in…' : 'Sign in'}
         </MuiButton>
       </Stack>
     </form>
