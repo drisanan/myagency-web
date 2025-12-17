@@ -60,7 +60,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     enabled: Boolean(session?.email),
     queryFn: async () => {
       if (!session?.email) return [] as Task[];
-      return listTasks({ agencyEmail: session.email });
+      return listTasks({});
     },
     staleTime: 30_000,
   });

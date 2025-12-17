@@ -7,6 +7,8 @@ import { parseSessionFromRequest } from '../lib/session';
 const client = new DynamoDBClient({});
 export const docClient = DynamoDBDocumentClient.from(client);
 
+const DEBUG_SESSION = process.env.DEBUG_SESSION === 'true';
+
 export type Handler = (event: APIGatewayProxyEventV2) => Promise<APIGatewayProxyResultV2>;
 
 export function jsonResponse(statusCode: number, body: unknown): APIGatewayProxyResultV2 {
@@ -30,14 +32,29 @@ export function ok(body: unknown) {
 }
 
 export function getSession(event: APIGatewayProxyEventV2): SessionContext | null {
+  const origin = event.headers?.origin || event.headers?.Origin || (event.headers as any)?.['origin'] || '';
   const parsed = parseSessionFromRequest(event);
+  if (DEBUG_SESSION) {
+    console.log('session_debug', {
+      origin,
+      hasCookiesArray: Array.isArray(event.cookies) && event.cookies.length > 0,
+      hasCookieHeader: Boolean((event.headers as any)?.cookie || (event.headers as any)?.Cookie),
+      session: parsed,
+      method: event.requestContext?.http?.method,
+      path: event.rawPath,
+    });
+  }
   if (parsed) return parsed;
   // Fallback for temporary header-based dev mode
-  const agencyId = event.headers['x-agency-id'] || event.headers['X-Agency-Id'];
-  const agencyEmail = event.headers['x-agency-email'] || event.headers['X-Agency-Email'];
+  const agencyId = (event.headers['x-agency-id'] as string) || (event.headers['X-Agency-Id'] as string);
+  const agencyEmail = (event.headers['x-agency-email'] as string) || (event.headers['X-Agency-Email'] as string);
   const role = (event.headers['x-role'] as SessionContext['role']) || 'agency';
   if (!agencyId) return null;
-  return { agencyId, agencyEmail, role };
+  const fallback = { agencyId, agencyEmail, role };
+  if (DEBUG_SESSION) {
+    console.log('session_debug_fallback', { origin, fallback });
+  }
+  return fallback;
 }
 
 export function requireSession(event: APIGatewayProxyEventV2): SessionContext | null {

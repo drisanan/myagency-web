@@ -54,3 +54,19 @@ export type GmailTokenRecord = {
   createdAt: number;
 };
 
+export type TaskRecord = {
+  PK: string;
+  SK: string;
+  id: string;
+  title: string;
+  description?: string;
+  status: 'todo' | 'in-progress' | 'done';
+  dueAt?: number;
+  athleteId?: string | null;
+  agencyId: string;
+  agencyEmail?: string;
+  createdAt: number;
+  updatedAt: number;
+  deletedAt?: string;
+};
+

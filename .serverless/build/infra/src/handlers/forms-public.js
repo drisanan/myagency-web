@@ -81,6 +81,7 @@ var COOKIE_DOMAIN = process.env.COOKIE_DOMAIN || ".myrecruiteragency.com";
 // infra/src/handlers/common.ts
 var client = new import_client_dynamodb.DynamoDBClient({});
 var docClient = import_lib_dynamodb.DynamoDBDocumentClient.from(client);
+var DEBUG_SESSION = process.env.DEBUG_SESSION === "true";
 
 // infra/src/lib/dynamo.ts
 var TABLE_NAME = process.env.TABLE_NAME || "agency-narrative-crm";

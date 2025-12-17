@@ -2,7 +2,8 @@ export type TaskStatus = 'todo' | 'in-progress' | 'done';
 
 export type Task = {
   id: string;
-  agencyEmail: string;
+  agencyEmail?: string;
+  agencyId?: string;
   athleteId?: string | null;
   title: string;
   description?: string;
@@ -10,57 +11,58 @@ export type Task = {
   dueAt?: number; // ms epoch
   createdAt: number;
   updatedAt: number;
+  deletedAt?: string;
 };
 
-let TASKS: Task[] = [];
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.API_BASE_URL;
 
-export function listTasks(input: { agencyEmail: string; athleteId?: string | null; status?: TaskStatus }) {
-  const { agencyEmail, athleteId, status } = input;
-  return TASKS.filter((t) => {
-    if (t.agencyEmail !== agencyEmail) return false;
-    if (athleteId && t.athleteId !== athleteId) return false;
-    if (status && t.status !== status) return false;
-    return true;
-  });
+function requireApiBase() {
+  if (!API_BASE_URL) throw new Error('API_BASE_URL is not configured');
+  return API_BASE_URL;
 }
 
-export function createTask(input: {
-  agencyEmail: string;
-  athleteId?: string | null;
+async function apiFetch(path: string, init?: RequestInit) {
+  const base = requireApiBase();
+  if (typeof fetch === 'undefined') {
+    throw new Error('fetch is not available');
+  }
+  const headers: Record<string, string> = { 'Content-Type': 'application/json', ...(init?.headers as any) };
+  const res = await fetch(`${base}${path}`, { ...init, headers });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`API ${path} failed: ${res.status} ${text}`);
+  }
+  return res.json();
+}
+
+export async function listTasks(input: { athleteId?: string | null; status?: TaskStatus }) {
+  const params = new URLSearchParams();
+  if (input.athleteId) params.set('athleteId', input.athleteId);
+  if (input.status) params.set('status', input.status);
+  const qs = params.toString();
+  const data = await apiFetch(`/tasks${qs ? `?${qs}` : ''}`);
+  return (data?.tasks as Task[]) ?? [];
+}
+
+export async function createTask(input: {
   title: string;
   description?: string;
   status?: TaskStatus;
   dueAt?: number;
+  athleteId?: string | null;
 }) {
-  const now = Date.now();
-  const task: Task = {
-    id: `task-${now}-${Math.random().toString(36).slice(2, 8)}`,
-    agencyEmail: input.agencyEmail,
-    athleteId: input.athleteId || null,
-    title: input.title,
-    description: input.description,
-    status: input.status ?? 'todo',
-    dueAt: input.dueAt,
-    createdAt: now,
-    updatedAt: now,
-  };
-  TASKS.unshift(task);
-  return task;
+  const data = await apiFetch('/tasks', { method: 'POST', body: JSON.stringify(input) });
+  return data?.task as Task;
 }
 
-export function updateTask(id: string, patch: Partial<Omit<Task, 'id' | 'agencyEmail' | 'createdAt'>>) {
-  const idx = TASKS.findIndex((t) => t.id === id);
-  if (idx < 0) return null;
-  const next: Task = { ...TASKS[idx], ...patch, updatedAt: Date.now() };
-  TASKS[idx] = next;
-  return next;
+export async function updateTask(id: string, patch: Partial<Omit<Task, 'id' | 'createdAt'>>) {
+  const data = await apiFetch(`/tasks/${id}`, { method: 'PATCH', body: JSON.stringify(patch) });
+  return data?.task as Task;
 }
 
-export function deleteTask(id: string) {
-  const idx = TASKS.findIndex((t) => t.id === id);
-  if (idx >= 0) {
-    TASKS.splice(idx, 1);
-  }
+export async function deleteTask(id: string) {
+  await apiFetch(`/tasks/${id}`, { method: 'DELETE' });
+  return { ok: true };
 }
 
 export function tasksDueSoon(tasks: Task[], withinMs = 24 * 60 * 60 * 1000) {

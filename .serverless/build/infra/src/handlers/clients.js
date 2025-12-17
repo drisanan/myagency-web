@@ -76,14 +76,30 @@ function parseSessionFromRequest(event) {
 // infra/src/handlers/common.ts
 var client = new import_client_dynamodb.DynamoDBClient({});
 var docClient = import_lib_dynamodb.DynamoDBDocumentClient.from(client);
+var DEBUG_SESSION = process.env.DEBUG_SESSION === "true";
 function getSession(event) {
+  const origin = event.headers?.origin || event.headers?.Origin || event.headers?.["origin"] || "";
   const parsed = parseSessionFromRequest(event);
+  if (DEBUG_SESSION) {
+    console.log("session_debug", {
+      origin,
+      hasCookiesArray: Array.isArray(event.cookies) && event.cookies.length > 0,
+      hasCookieHeader: Boolean(event.headers?.cookie || event.headers?.Cookie),
+      session: parsed,
+      method: event.requestContext?.http?.method,
+      path: event.rawPath
+    });
+  }
   if (parsed) return parsed;
   const agencyId = event.headers["x-agency-id"] || event.headers["X-Agency-Id"];
   const agencyEmail = event.headers["x-agency-email"] || event.headers["X-Agency-Email"];
   const role = event.headers["x-role"] || "agency";
   if (!agencyId) return null;
-  return { agencyId, agencyEmail, role };
+  const fallback = { agencyId, agencyEmail, role };
+  if (DEBUG_SESSION) {
+    console.log("session_debug_fallback", { origin, fallback });
+  }
+  return fallback;
 }
 function requireSession(event) {
   return getSession(event);
@@ -145,6 +161,9 @@ function response(statusCode, body, origin, extraHeaders) {
 }
 
 // infra/src/handlers/clients.ts
+function badRequest(origin, msg) {
+  return response(400, { ok: false, error: msg }, origin);
+}
 function getClientId(event) {
   return event.pathParameters?.id;
 }
@@ -165,8 +184,11 @@ var handler = async (event) => {
     return response(200, { ok: true, clients: items }, origin);
   }
   if (method === "POST") {
-    if (!event.body) return response(400, { ok: false, error: "Missing body" }, origin);
+    if (!event.body) return badRequest(origin, "Missing body");
     const payload = JSON.parse(event.body);
+    if (!payload.email || !payload.firstName || !payload.lastName || !payload.sport) {
+      return badRequest(origin, "email, firstName, lastName, sport are required");
+    }
     const id = payload.id || newId("client");
     const now = (/* @__PURE__ */ new Date()).toISOString();
     const rec = {
@@ -188,8 +210,8 @@ var handler = async (event) => {
     return response(200, { ok: true, client: rec }, origin);
   }
   if (method === "PUT" || method === "PATCH") {
-    if (!clientId) return response(400, { ok: false, error: "Missing client id" }, origin);
-    if (!event.body) return response(400, { ok: false, error: "Missing body" }, origin);
+    if (!clientId) return badRequest(origin, "Missing client id");
+    if (!event.body) return badRequest(origin, "Missing body");
     const payload = JSON.parse(event.body);
     const existing = await getItem({ PK: `AGENCY#${session.agencyId}`, SK: `CLIENT#${clientId}` });
     if (!existing) return response(404, { ok: false, message: "Not found" }, origin);

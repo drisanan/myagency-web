@@ -81,7 +81,7 @@ export function TasksPanel({ athleteId }: Props) {
     }
     const dueMs = dueAt ? new Date(dueAt).getTime() : undefined;
     if (editingId) {
-      await updateTask({ id: editingId, title: title.trim(), description, status, dueAt: dueMs ?? null });
+      await updateTask({ id: editingId, title: title.trim(), description, status, dueAt: dueMs });
     } else {
       await createTask({
         title: title.trim(),

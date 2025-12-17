@@ -5,6 +5,10 @@ import { CoachListRecord } from '../lib/models';
 import { getItem, putItem, queryByPK } from '../lib/dynamo';
 import { response } from './cors';
 
+function badRequest(origin: string, msg: string) {
+  return response(400, { ok: false, error: msg }, origin);
+}
+
 function getListId(event: APIGatewayProxyEventV2) {
   return event.pathParameters?.id;
 }
@@ -31,8 +35,10 @@ export const handler: Handler = async (event: APIGatewayProxyEventV2) => {
   }
 
   if (method === 'POST') {
-    if (!event.body) return response(400, { ok: false, error: 'Missing body' }, origin);
+    if (!event.body) return badRequest(origin, 'Missing body');
     const payload = JSON.parse(event.body);
+    if (!payload.name) return badRequest(origin, 'name is required');
+    if (payload.items && !Array.isArray(payload.items)) return badRequest(origin, 'items must be an array');
     const id = payload.id || newId('list');
     const now = Date.now();
     const rec: CoachListRecord = {
@@ -51,8 +57,8 @@ export const handler: Handler = async (event: APIGatewayProxyEventV2) => {
   }
 
   if (method === 'PUT' || method === 'PATCH') {
-    if (!listId) return response(400, { ok: false, error: 'Missing list id' }, origin);
-    if (!event.body) return response(400, { ok: false, error: 'Missing body' }, origin);
+    if (!listId) return badRequest(origin, 'Missing list id');
+    if (!event.body) return badRequest(origin, 'Missing body');
     const payload = JSON.parse(event.body);
     const existing = await getItem({ PK: `AGENCY#${session.agencyId}`, SK: `LIST#${listId}` });
     if (!existing) return response(404, { ok: false, message: 'Not found' }, origin);
