@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createTask, deleteTask, listTasks, updateTask } from '@/services/tasks';
+import { parseSession } from '../../../infra/src/lib/session';
 
 function getAgencyEmail(req: NextRequest, bodyAgency?: string) {
-  return req.headers.get('x-agency-email') || bodyAgency || '';
+  const headerEmail = req.headers.get('x-agency-email');
+  const sessionToken = req.cookies.get('an_session')?.value;
+  const sessionEmail = sessionToken ? parseSession(sessionToken)?.agencyEmail : undefined;
+  return headerEmail || bodyAgency || sessionEmail || '';
 }
 
 export async function GET(req: NextRequest) {

@@ -76,6 +76,7 @@ var import_lib_dynamodb = require("@aws-sdk/lib-dynamodb");
 
 // infra/src/lib/session.ts
 var SECRET2 = process.env.SESSION_SECRET || "dev-secret-change-me";
+var COOKIE_DOMAIN = process.env.COOKIE_DOMAIN || ".myrecruiteragency.com";
 
 // infra/src/handlers/common.ts
 var client = new import_client_dynamodb.DynamoDBClient({});

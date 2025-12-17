@@ -8,6 +8,8 @@ const agencyNameFieldId = 'mSth0jJ8VQk1k9caFxCC';
 const agencyColorFieldId = '0STRDPbWyZ6ChSApAtjz';
 const agencyLogoFieldId = 'Bvng0E2Yf5TkmEI8KyD6';
 const ALLOWED_ORIGINS = [
+  'https://myrecruiteragency.com',
+  'https://www.myrecruiteragency.com',
   'https://master.d2yp6hyv6u0efd.amplifyapp.com',
   'http://localhost:3001',
   'http://localhost:3000',

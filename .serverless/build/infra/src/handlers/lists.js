@@ -32,6 +32,7 @@ var import_lib_dynamodb = require("@aws-sdk/lib-dynamodb");
 var import_crypto = require("crypto");
 var SECRET = process.env.SESSION_SECRET || "dev-secret-change-me";
 var COOKIE_NAME = "an_session";
+var COOKIE_DOMAIN = process.env.COOKIE_DOMAIN || ".myrecruiteragency.com";
 function verify(token) {
   const idx = token.lastIndexOf(".");
   if (idx < 0) return null;
@@ -59,8 +60,14 @@ function parseCookie(header) {
     return acc;
   }, {});
 }
+function readCookieString(event) {
+  if (event.cookies && event.cookies.length > 0) {
+    return event.cookies.join("; ");
+  }
+  return event.headers.cookie || event.headers.Cookie;
+}
 function parseSessionFromRequest(event) {
-  const cookieHeader = event.headers.cookie || event.headers.Cookie;
+  const cookieHeader = readCookieString(event);
   const cookies = parseCookie(cookieHeader);
   const token = cookies[COOKIE_NAME];
   return parseSession(token);
@@ -147,7 +154,7 @@ var handler = async (event) => {
   if (!method) return response(400, { ok: false, error: "Missing method" }, origin);
   if (method === "OPTIONS") return response(200, { ok: true }, origin);
   const session = requireSession(event);
-  if (!session) return response(401, { ok: false, error: "Missing session (x-agency-id header expected for now)" }, origin);
+  if (!session) return response(401, { ok: false, error: "Missing session" }, origin);
   const listId = getListId(event);
   if (method === "GET") {
     if (listId) {

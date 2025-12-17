@@ -32,6 +32,8 @@ var agencyNameFieldId = "mSth0jJ8VQk1k9caFxCC";
 var agencyColorFieldId = "0STRDPbWyZ6ChSApAtjz";
 var agencyLogoFieldId = "Bvng0E2Yf5TkmEI8KyD6";
 var ALLOWED_ORIGINS = [
+  "https://myrecruiteragency.com",
+  "https://www.myrecruiteragency.com",
   "https://master.d2yp6hyv6u0efd.amplifyapp.com",
   "http://localhost:3001",
   "http://localhost:3000"

@@ -28,6 +28,7 @@ module.exports = __toCommonJS(auth_exports);
 var import_crypto = require("crypto");
 var SECRET = process.env.SESSION_SECRET || "dev-secret-change-me";
 var COOKIE_NAME = "an_session";
+var COOKIE_DOMAIN = process.env.COOKIE_DOMAIN || ".myrecruiteragency.com";
 function sign(payload) {
   const sig = (0, import_crypto.createHmac)("sha256", SECRET).update(payload).digest("base64url");
   return `${payload}.${sig}`;
@@ -63,8 +64,14 @@ function parseCookie(header) {
     return acc;
   }, {});
 }
+function readCookieString(event) {
+  if (event.cookies && event.cookies.length > 0) {
+    return event.cookies.join("; ");
+  }
+  return event.headers.cookie || event.headers.Cookie;
+}
 function parseSessionFromRequest(event) {
-  const cookieHeader = event.headers.cookie || event.headers.Cookie;
+  const cookieHeader = readCookieString(event);
   const cookies = parseCookie(cookieHeader);
   const token = cookies[COOKIE_NAME];
   return parseSession(token);
@@ -75,6 +82,7 @@ function buildSessionCookie(token, secure = true) {
     "HttpOnly",
     "Path=/",
     "SameSite=None",
+    `Domain=${COOKIE_DOMAIN}`,
     ...secure ? ["Secure"] : [],
     "Max-Age=604800"
     // 7d
@@ -82,7 +90,9 @@ function buildSessionCookie(token, secure = true) {
   return attrs.join("; ");
 }
 function buildClearCookie(secure = true) {
-  const attrs = [`${COOKIE_NAME}=; Path=/; Max-Age=0; HttpOnly; SameSite=None${secure ? "; Secure" : ""}`];
+  const attrs = [
+    `${COOKIE_NAME}=; Path=/; Max-Age=0; HttpOnly; SameSite=None; Domain=${COOKIE_DOMAIN}${secure ? "; Secure" : ""}`
+  ];
   return attrs.join("; ");
 }
 

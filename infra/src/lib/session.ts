@@ -4,6 +4,7 @@ import { SessionContext } from './models';
 
 const SECRET = process.env.SESSION_SECRET || 'dev-secret-change-me';
 const COOKIE_NAME = 'an_session';
+const COOKIE_DOMAIN = process.env.COOKIE_DOMAIN || '.myrecruiteragency.com';
 
 function sign(payload: string) {
   const sig = createHmac('sha256', SECRET).update(payload).digest('base64url');
@@ -45,8 +46,15 @@ function parseCookie(header?: string): Record<string, string> {
   }, {});
 }
 
+function readCookieString(event: APIGatewayProxyEventV2): string | undefined {
+  if (event.cookies && event.cookies.length > 0) {
+    return event.cookies.join('; ');
+  }
+  return event.headers.cookie || (event.headers as any).Cookie;
+}
+
 export function parseSessionFromRequest(event: APIGatewayProxyEventV2): SessionContext | null {
-  const cookieHeader = event.headers.cookie || event.headers.Cookie;
+  const cookieHeader = readCookieString(event);
   const cookies = parseCookie(cookieHeader);
   const token = cookies[COOKIE_NAME];
   return parseSession(token);
@@ -58,6 +66,7 @@ export function buildSessionCookie(token: string, secure = true) {
     'HttpOnly',
     'Path=/',
     'SameSite=None',
+    `Domain=${COOKIE_DOMAIN}`,
     ...(secure ? ['Secure'] : []),
     'Max-Age=604800', // 7d
   ];
@@ -65,7 +74,11 @@ export function buildSessionCookie(token: string, secure = true) {
 }
 
 export function buildClearCookie(secure = true) {
-  const attrs = [`${COOKIE_NAME}=; Path=/; Max-Age=0; HttpOnly; SameSite=None${secure ? '; Secure' : ''}`];
+  const attrs = [
+    `${COOKIE_NAME}=; Path=/; Max-Age=0; HttpOnly; SameSite=None; Domain=${COOKIE_DOMAIN}${
+      secure ? '; Secure' : ''
+    }`,
+  ];
   return attrs.join('; ');
 }
 

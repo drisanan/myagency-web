@@ -17,7 +17,7 @@ export const handler: Handler = async (event: APIGatewayProxyEventV2) => {
   if (method === 'OPTIONS') return response(200, { ok: true }, origin);
 
   const session = requireSession(event);
-  if (!session) return response(401, { ok: false, error: 'Missing session (x-agency-id header expected for now)' }, origin);
+  if (!session) return response(401, { ok: false, error: 'Missing session' }, origin);
 
   const clientId = getClientId(event);
 
