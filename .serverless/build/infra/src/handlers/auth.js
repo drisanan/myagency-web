@@ -89,6 +89,8 @@ function buildClearCookie(secure = true) {
 // infra/src/handlers/cors.ts
 var ALLOWED_ORIGINS = [
   "https://master.d2yp6hyv6u0efd.amplifyapp.com",
+  "https://myrecruiteragency.com",
+  "https://www.myrecruiteragency.com",
   "http://localhost:3000",
   "http://localhost:3001"
 ];
@@ -124,7 +126,10 @@ var handler = async (event) => {
     return response(200, { ok: true }, origin);
   }
   if (method === "GET") {
-    return response(200, { ok: true, session: parseSessionFromRequest(event) }, origin);
+    const cookieHeader = event.headers?.cookie || event.headers?.Cookie;
+    const session = parseSessionFromRequest(event);
+    console.log("auth GET", { origin, cookie: cookieHeader, session });
+    return response(200, { ok: true, session }, origin);
   }
   if (method === "POST") {
     if (!event.body) return response(400, { ok: false, error: "Missing body" }, origin);

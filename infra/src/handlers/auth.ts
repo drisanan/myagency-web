@@ -17,7 +17,10 @@ export const handler = async (event: APIGatewayProxyEventV2) => {
   }
 
   if (method === 'GET') {
-    return response(200, { ok: true, session: parseSessionFromRequest(event) }, origin);
+    const cookieHeader = event.headers?.cookie || event.headers?.Cookie;
+    const session = parseSessionFromRequest(event);
+    console.log('auth GET', { origin, cookie: cookieHeader, session });
+    return response(200, { ok: true, session }, origin);
   }
 
   if (method === 'POST') {

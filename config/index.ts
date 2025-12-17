@@ -26,7 +26,7 @@ let cachedTenantRegistry: TenantRegistry | null = null;
 export function getServiceConfig(): ServiceConfig {
   if (cachedServiceConfig) return cachedServiceConfig;
   // Single source of truth; hardwired to prod API base
-  const apiBaseUrl = 'https://iakaowunc5.execute-api.us-west-1.amazonaws.com';
+  const apiBaseUrl = 'https://api.myrecruiteragency.com';
   cachedServiceConfig = { apiBaseUrl };
   return cachedServiceConfig;
 }

@@ -116,6 +116,8 @@ async function queryGSI1(GSI1PK, beginsWith) {
 // infra/src/handlers/cors.ts
 var ALLOWED_ORIGINS = [
   "https://master.d2yp6hyv6u0efd.amplifyapp.com",
+  "https://myrecruiteragency.com",
+  "https://www.myrecruiteragency.com",
   "http://localhost:3000",
   "http://localhost:3001"
 ];

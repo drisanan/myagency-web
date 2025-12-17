@@ -2,7 +2,7 @@ import { getAgencyByEmail } from '@/services/agencies';
 import { createAgencyFromGHL } from '@/services/agencies';
 import { loginWithGHL } from '@/services/authGHL';
 
-const NEXT_PUBLIC_API_BASE_URL='https://iakaowunc5.execute-api.us-west-1.amazonaws.com'
+const NEXT_PUBLIC_API_BASE_URL='https://api.myrecruiteragency.com'
 const API_BASE_URL = NEXT_PUBLIC_API_BASE_URL;
 
 function requireApiBase() {

@@ -468,3 +468,201 @@ https://react.dev/link/hydration-mismatch
 [00:15:17.330] Browser ERROR   You are mounting a new %s component when a previous one has not first unmounted. It is an error to render more than one %s component at a time and attributes and children of these components will likely fail in unpredictable ways. Please only render a single instance of <%s> and if you need to mount a new one, ensure any previous ones have unmounted first. html html html
 [00:15:17.330] Browser ERROR   You are mounting a new %s component when a previous one has not first unmounted. It is an error to render more than one %s component at a time and attributes and children of these components will likely fail in unpredictable ways. Please only render a single instance of <%s> and if you need to mount a new one, ensure any previous ones have unmounted first. body body body
 [00:15:17.452] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[00:21:14.436] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[00:21:14.832] Browser ERROR   In HTML, %s cannot be a child of <%s>.%s
+This will cause a hydration error.%s <html> body  
+
+  ...
+    <HotReload globalError={[...]} webSocket={WebSocket} staticIndicatorState={{pathname:null, ...}}>
+      <AppDevOverlayErrorBoundary globalError={[...]}>
+        <ReplaySsrOnlyErrors>
+        <DevRootHTTPAccessFallbackBoundary>
+          <HTTPAccessFallbackBoundary notFound={<NotAllowedRootHTTPFallbackError>}>
+            <HTTPAccessFallbackErrorBoundary pathname="/" notFound={<NotAllowedRootHTTPFallbackError>} ...>
+              <RedirectBoundary>
+                <RedirectErrorBoundary router={{...}}>
+                  <Head>
+                  <__next_root_layout_boundary__>
+                    <SegmentViewNode type="layout" pagePath="layout.tsx">
+                      <SegmentTrieNode>
+                      <script>
+                      <script>
+                      <script>
+                      <RootLayout>
+                        <html lang="en">
+>                         <body>
+                            ...
+                              <SegmentViewNode type="layout" pagePath="(public)/l...">
+                                <SegmentTrieNode>
+                                <PublicLayout>
+>                                 <html lang="en">
+                  ...
+
+[00:21:14.832] Browser ERROR   <%s> cannot contain a nested %s.
+See this log for the ancestor stack trace. body <html>
+[00:21:14.832] Browser ERROR   You are mounting a new %s component when a previous one has not first unmounted. It is an error to render more than one %s component at a time and attributes and children of these components will likely fail in unpredictable ways. Please only render a single instance of <%s> and if you need to mount a new one, ensure any previous ones have unmounted first. html html html
+[00:21:14.832] Browser ERROR   You are mounting a new %s component when a previous one has not first unmounted. It is an error to render more than one %s component at a time and attributes and children of these components will likely fail in unpredictable ways. Please only render a single instance of <%s> and if you need to mount a new one, ensure any previous ones have unmounted first. body body body
+[00:21:14.832] Browser ERROR   uncaughtError: Error: Hydration failed because the server rendered HTML didn't match the client. As a result this tree will be regenerated on the client. This can happen if a SSR-ed Client Component used:
+
+- A server/client branch `if (typeof window !== 'undefined')`.
+- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.
+- Date formatting in a user's locale which doesn't match the server.
+- External changing data without sending a snapshot of it along with the HTML.
+- Invalid HTML tag nesting.
+
+It can also happen if the client has a browser extension installed which messes with the HTML before React loaded.
+
+https://react.dev/link/hydration-mismatch
+
+  ...
+    <HotReload globalError={[...]} webSocket={WebSocket} staticIndicatorState={{pathname:null, ...}}>
+      <AppDevOverlayErrorBoundary globalError={[...]}>
+        <ReplaySsrOnlyErrors>
+        <DevRootHTTPAccessFallbackBoundary>
+          <HTTPAccessFallbackBoundary notFound={<NotAllowedRootHTTPFallbackError>}>
+            <HTTPAccessFallbackErrorBoundary pathname="/" notFound={<NotAllowedRootHTTPFallbackError>} ...>
+              <RedirectBoundary>
+                <RedirectErrorBoundary router={{...}}>
+                  <Head>
+                  <__next_root_layout_boundary__>
+                    <SegmentViewNode type="layout" pagePath="layout.tsx">
+                      <SegmentTrieNode>
+                      <script>
+                      <script>
+                      <script>
+                      <RootLayout>
+                        <html lang="en">
+                          <body
+-                           className="marketing-page"
+                          >
+                            ...
+                              <PublicLayout>
+                                <html lang="en">
+                                  <head>
++                                   <link rel="stylesheet" href="/marketing/marketing.css">
+-                                   <meta charset="utf-8">
+                                  ...
+                  ...
+
+[00:21:14.832] Browser ERROR   You are mounting a new %s component when a previous one has not first unmounted. It is an error to render more than one %s component at a time and attributes and children of these components will likely fail in unpredictable ways. Please only render a single instance of <%s> and if you need to mount a new one, ensure any previous ones have unmounted first. html html html
+[00:21:14.832] Browser ERROR   You are mounting a new %s component when a previous one has not first unmounted. It is an error to render more than one %s component at a time and attributes and children of these components will likely fail in unpredictable ways. Please only render a single instance of <%s> and if you need to mount a new one, ensure any previous ones have unmounted first. body body body
+[00:21:25.450] Browser LOG     result {
+  "ok": true,
+  "contact": {
+    "id": "nXGAMiUcDEOwL3sU4o4S",
+    "email": "drisanjames@gmail.com",
+    "firstName": "Drisan",
+    "lastName": "James",
+    "phone": "+12084407940",
+    "accessCode": "123456"
+  },
+  "agency": {
+    "id": "READY",
+    "name": "Drisan Agency",
+    "color": "#FF000",
+    "logoUrl": "https://a.espncdn.com/i/teamlogos/ncaa/500/68.png",
+    "isNew": true
+  }
+}
+[00:21:25.450] Browser LOG     agencyId READY
+[00:21:25.451] Browser LOG     agencyName Drisan Agency
+[00:21:25.451] Browser LOG     agencyColor #FF000
+[00:21:25.451] Browser LOG     agencyLogo https://a.espncdn.com/i/teamlogos/ncaa/500/68.png
+[00:21:25.451] Browser LOG     Creating new agency from GHL metadata
+[00:21:26.246] Browser LOG     agencyId agency-71087139-42d8-4475-bc27-a396ab4a11e3
+[00:21:26.246] Browser LOG     agencyId agency-71087139-42d8-4475-bc27-a396ab4a11e3
+[00:21:26.246] Browser LOG     result.contact.email drisanjames@gmail.com
+[00:21:38.733] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[00:39:02.129] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[00:39:02.323] Browser ERROR   uncaughtError: Error: Hydration failed because the server rendered HTML didn't match the client. As a result this tree will be regenerated on the client. This can happen if a SSR-ed Client Component used:
+
+- A server/client branch `if (typeof window !== 'undefined')`.
+- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.
+- Date formatting in a user's locale which doesn't match the server.
+- External changing data without sending a snapshot of it along with the HTML.
+- Invalid HTML tag nesting.
+
+It can also happen if the client has a browser extension installed which messes with the HTML before React loaded.
+
+https://react.dev/link/hydration-mismatch
+
+  ...
+    <SegmentViewNode type="page" pagePath="forms/[tok...">
+      <SegmentTrieNode>
+      <IntakeFormPage>
+        <IntakeFormPageClient token="eyJhbGciOi...">
+          <ThemeProvider theme={{...}}>
+            <ThemeProviderNoVars theme={{...}}>
+              <ThemeProvider themeId={undefined} theme={{...}}>
+                <ThemeProvider theme={{...}}>
+                  <RtlProvider value={false}>
+                    <DefaultPropsProvider value={{}}>
+                      <Box sx={{maxWidth:720, ...}}>
+                        <Styled(div) as="div" ref={null} className="MuiBox-root" theme={{...}} sx={{maxWidth:720, ...}}>
+                          <Insertion>
++                         <div className="MuiBox-root css-1rjolha">
+-                         <style data-emotion="css-global k80eza" data-s="">
+    ...
+
+[00:39:05.833] Browser INFO    [intake:submit:success] {"id":"form-c0fcb7eb-3c9e-4056-b0f9-21a9e0885346"}
+[00:39:07.601] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[00:39:07.827] Browser ERROR   uncaughtError: Error: Hydration failed because the server rendered HTML didn't match the client. As a result this tree will be regenerated on the client. This can happen if a SSR-ed Client Component used:
+
+- A server/client branch `if (typeof window !== 'undefined')`.
+- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.
+- Date formatting in a user's locale which doesn't match the server.
+- External changing data without sending a snapshot of it along with the HTML.
+- Invalid HTML tag nesting.
+
+It can also happen if the client has a browser extension installed which messes with the HTML before React loaded.
+
+https://react.dev/link/hydration-mismatch
+
+  ...
+    <SegmentViewNode type="page" pagePath="forms/[tok...">
+      <SegmentTrieNode>
+      <IntakeFormPage>
+        <IntakeFormPageClient token="eyJhbGciOi...">
+          <ThemeProvider theme={{...}}>
+            <ThemeProviderNoVars theme={{...}}>
+              <ThemeProvider themeId={undefined} theme={{...}}>
+                <ThemeProvider theme={{...}}>
+                  <RtlProvider value={false}>
+                    <DefaultPropsProvider value={{}}>
+                      <Box sx={{maxWidth:720, ...}}>
+                        <Styled(div) as="div" ref={null} className="MuiBox-root" theme={{...}} sx={{maxWidth:720, ...}}>
+                          <Insertion>
++                         <div className="MuiBox-root css-1rjolha">
+-                         <style data-emotion="css-global k80eza" data-s="">
+    ...
+
+[00:39:09.095] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[00:39:10.074] Browser LOG     result {
+  "ok": true,
+  "contact": {
+    "id": "nXGAMiUcDEOwL3sU4o4S",
+    "email": "drisanjames@gmail.com",
+    "firstName": "Drisan",
+    "lastName": "James",
+    "phone": "+12084407940",
+    "accessCode": "123456"
+  },
+  "agency": {
+    "id": "READY",
+    "name": "Drisan Agency",
+    "color": "#FF000",
+    "logoUrl": "https://a.espncdn.com/i/teamlogos/ncaa/500/68.png",
+    "isNew": true
+  }
+}
+[00:39:10.074] Browser LOG     agencyId READY
+[00:39:10.074] Browser LOG     agencyName Drisan Agency
+[00:39:10.074] Browser LOG     agencyColor #FF000
+[00:39:10.074] Browser LOG     agencyLogo https://a.espncdn.com/i/teamlogos/ncaa/500/68.png
+[00:39:10.074] Browser LOG     Creating new agency from GHL metadata
+[00:39:10.273] Browser LOG     agencyId agency-b2f50001-eb2b-4f1d-9012-4a31a1ad33a5
+[00:39:10.273] Browser LOG     agencyId agency-b2f50001-eb2b-4f1d-9012-4a31a1ad33a5
+[00:39:10.273] Browser LOG     result.contact.email drisanjames@gmail.com
+[00:39:10.864] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[02:25:51.647] Server  LOG      ✓ Compiled in 279ms
+[02:25:58.230] Server  LOG      ✓ Compiled in 75ms

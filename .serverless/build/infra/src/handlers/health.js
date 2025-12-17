@@ -27,6 +27,8 @@ module.exports = __toCommonJS(health_exports);
 // infra/src/handlers/cors.ts
 var ALLOWED_ORIGINS = [
   "https://master.d2yp6hyv6u0efd.amplifyapp.com",
+  "https://myrecruiteragency.com",
+  "https://www.myrecruiteragency.com",
   "http://localhost:3000",
   "http://localhost:3001"
 ];

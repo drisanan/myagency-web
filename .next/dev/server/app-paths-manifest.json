@@ -8,6 +8,7 @@
   "/_not-found/page": "app/_not-found/page.js",
   "/api/commits/route": "app/api/commits/route.js",
   "/api/metrics/stats/route": "app/api/metrics/stats/route.js",
+  "/api/recruiting-periods/route": "app/api/recruiting-periods/route.js",
   "/auth/login/page": "app/auth/login/page.js",
   "/forms/[token]/page": "app/forms/[token]/page.js"
 }

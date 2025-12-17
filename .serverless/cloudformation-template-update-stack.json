@@ -161,7 +161,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "serverless-framework-deployments-us-west-1-25549dfe-b9a3",
-          "S3Key": "serverless/athlete-narrative-api/prod/1765949738063-2025-12-17T05:35:38.063Z/athlete-narrative-api-health.zip"
+          "S3Key": "serverless/athlete-narrative-api/prod/1765959032489-2025-12-17T08:10:32.489Z/athlete-narrative-api-health.zip"
         },
         "Handler": "infra/src/handlers/health.handler",
         "Runtime": "nodejs20.x",
@@ -192,7 +192,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "serverless-framework-deployments-us-west-1-25549dfe-b9a3",
-          "S3Key": "serverless/athlete-narrative-api/prod/1765949738063-2025-12-17T05:35:38.063Z/athlete-narrative-api-authSession.zip"
+          "S3Key": "serverless/athlete-narrative-api/prod/1765959032489-2025-12-17T08:10:32.489Z/athlete-narrative-api-authSession.zip"
         },
         "Handler": "infra/src/handlers/auth.handler",
         "Runtime": "nodejs20.x",
@@ -223,7 +223,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "serverless-framework-deployments-us-west-1-25549dfe-b9a3",
-          "S3Key": "serverless/athlete-narrative-api/prod/1765949738063-2025-12-17T05:35:38.063Z/athlete-narrative-api-agencies.zip"
+          "S3Key": "serverless/athlete-narrative-api/prod/1765959032489-2025-12-17T08:10:32.489Z/athlete-narrative-api-agencies.zip"
         },
         "Handler": "infra/src/handlers/agencies.handler",
         "Runtime": "nodejs20.x",
@@ -254,7 +254,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "serverless-framework-deployments-us-west-1-25549dfe-b9a3",
-          "S3Key": "serverless/athlete-narrative-api/prod/1765949738063-2025-12-17T05:35:38.063Z/athlete-narrative-api-clients.zip"
+          "S3Key": "serverless/athlete-narrative-api/prod/1765959032489-2025-12-17T08:10:32.489Z/athlete-narrative-api-clients.zip"
         },
         "Handler": "infra/src/handlers/clients.handler",
         "Runtime": "nodejs20.x",
@@ -285,7 +285,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "serverless-framework-deployments-us-west-1-25549dfe-b9a3",
-          "S3Key": "serverless/athlete-narrative-api/prod/1765949738063-2025-12-17T05:35:38.063Z/athlete-narrative-api-lists.zip"
+          "S3Key": "serverless/athlete-narrative-api/prod/1765959032489-2025-12-17T08:10:32.489Z/athlete-narrative-api-lists.zip"
         },
         "Handler": "infra/src/handlers/lists.handler",
         "Runtime": "nodejs20.x",
@@ -316,7 +316,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "serverless-framework-deployments-us-west-1-25549dfe-b9a3",
-          "S3Key": "serverless/athlete-narrative-api/prod/1765949738063-2025-12-17T05:35:38.063Z/athlete-narrative-api-formsPublic.zip"
+          "S3Key": "serverless/athlete-narrative-api/prod/1765959032489-2025-12-17T08:10:32.489Z/athlete-narrative-api-formsPublic.zip"
         },
         "Handler": "infra/src/handlers/forms-public.handler",
         "Runtime": "nodejs20.x",
@@ -347,7 +347,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "serverless-framework-deployments-us-west-1-25549dfe-b9a3",
-          "S3Key": "serverless/athlete-narrative-api/prod/1765949738063-2025-12-17T05:35:38.063Z/athlete-narrative-api-gmail.zip"
+          "S3Key": "serverless/athlete-narrative-api/prod/1765959032489-2025-12-17T08:10:32.489Z/athlete-narrative-api-gmail.zip"
         },
         "Handler": "infra/src/handlers/gmail.handler",
         "Runtime": "nodejs20.x",
@@ -378,7 +378,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "serverless-framework-deployments-us-west-1-25549dfe-b9a3",
-          "S3Key": "serverless/athlete-narrative-api/prod/1765949738063-2025-12-17T05:35:38.063Z/athlete-narrative-api-googleOauth.zip"
+          "S3Key": "serverless/athlete-narrative-api/prod/1765959032489-2025-12-17T08:10:32.489Z/athlete-narrative-api-googleOauth.zip"
         },
         "Handler": "infra/src/handlers/google-oauth.handler",
         "Runtime": "nodejs20.x",
@@ -409,7 +409,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "serverless-framework-deployments-us-west-1-25549dfe-b9a3",
-          "S3Key": "serverless/athlete-narrative-api/prod/1765949738063-2025-12-17T05:35:38.063Z/athlete-narrative-api-ghlLogin.zip"
+          "S3Key": "serverless/athlete-narrative-api/prod/1765959032489-2025-12-17T08:10:32.489Z/athlete-narrative-api-ghlLogin.zip"
         },
         "Handler": "infra/src/handlers/ghl-login.handler",
         "Runtime": "nodejs20.x",
@@ -440,7 +440,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "serverless-framework-deployments-us-west-1-25549dfe-b9a3",
-          "S3Key": "serverless/athlete-narrative-api/prod/1765949738063-2025-12-17T05:35:38.063Z/athlete-narrative-api-login.zip"
+          "S3Key": "serverless/athlete-narrative-api/prod/1765959032489-2025-12-17T08:10:32.489Z/athlete-narrative-api-login.zip"
         },
         "Handler": "infra/src/handlers/login.handler",
         "Runtime": "nodejs20.x",
@@ -466,104 +466,104 @@
         "LoginLogGroup"
       ]
     },
-    "HealthLambdaVersionXkW9cEo14qSKSspau7PRmF2qYGIWoBQD3zYP605if4": {
+    "HealthLambdaVersionAyXK957ywO0yA21Xxx4JFJsHzENqilMgJmFXafNjcg": {
       "Type": "AWS::Lambda::Version",
       "DeletionPolicy": "Retain",
       "Properties": {
         "FunctionName": {
           "Ref": "HealthLambdaFunction"
         },
-        "CodeSha256": "CTLD79ADUDcXU9zpmIJzKtJ+L5gh03a8m+srZLvM8Ks="
+        "CodeSha256": "+Ga8LychvYPXK4t9vtJhsh9YdsqSBfzDctPR1Gcr+7c="
       }
     },
-    "ClientsLambdaVersionJ4SRaDXxC4D5t5kGIL2ViEco7WOzRQqpG1nhIOPR000": {
-      "Type": "AWS::Lambda::Version",
-      "DeletionPolicy": "Retain",
-      "Properties": {
-        "FunctionName": {
-          "Ref": "ClientsLambdaFunction"
-        },
-        "CodeSha256": "fi/SzfP5ZnkJqyeEarZuQR11XACNxgN4mso1/kghQ50="
-      }
-    },
-    "AuthSessionLambdaVersionR5vwRqDZPveQv4tHRmI0pnSftJKJznYloHGZ1KZmM": {
-      "Type": "AWS::Lambda::Version",
-      "DeletionPolicy": "Retain",
-      "Properties": {
-        "FunctionName": {
-          "Ref": "AuthSessionLambdaFunction"
-        },
-        "CodeSha256": "RMDV6AZLT/7mncZPmZKSWITTS+JLryizUByW3ghRbek="
-      }
-    },
-    "AgenciesLambdaVersionxtPf7okOBxKrBx40zhcx6EmxuFA3cdoseQHr7DSSM": {
+    "AgenciesLambdaVersioncvBRXNaYJCahv2mrUQYrsbPpMFWBpgXgYel9aLk3QZc": {
       "Type": "AWS::Lambda::Version",
       "DeletionPolicy": "Retain",
       "Properties": {
         "FunctionName": {
           "Ref": "AgenciesLambdaFunction"
         },
-        "CodeSha256": "rSqQKkseTn3Z4AxSxcrtXKGc4g9u43726VyGv2D0mz4="
+        "CodeSha256": "OXRzmq0wwOUXQejn9URkI35MrQTsYyPOM9WEiPI1hQU="
       }
     },
-    "FormsPublicLambdaVersionEFKZxhvYQu91vkds0If5lLrRKMbURaT0SzY6Hzpfo": {
+    "ClientsLambdaVersioncQfPbtpeWUxG5LmSy4eHyJgwGUZPMYL9XcGvbS7r4": {
+      "Type": "AWS::Lambda::Version",
+      "DeletionPolicy": "Retain",
+      "Properties": {
+        "FunctionName": {
+          "Ref": "ClientsLambdaFunction"
+        },
+        "CodeSha256": "E6MDEF9LlTUCuiUkmJYHV/T5sChbPp81JNAzcQmPHGE="
+      }
+    },
+    "AuthSessionLambdaVersionY2na2XC04Aj07Muxde4f3vbNIDmWo2p5wDOdVmOYQw": {
+      "Type": "AWS::Lambda::Version",
+      "DeletionPolicy": "Retain",
+      "Properties": {
+        "FunctionName": {
+          "Ref": "AuthSessionLambdaFunction"
+        },
+        "CodeSha256": "M8HA1O7v4PUrjiM+7k+7nPeEZZpH9VV2vsgO9WpE/PM="
+      }
+    },
+    "FormsPublicLambdaVersionfn0YkH0XwLYNFt1QOCUytYxyhjkkKBIrz1AbPyYVGg": {
       "Type": "AWS::Lambda::Version",
       "DeletionPolicy": "Retain",
       "Properties": {
         "FunctionName": {
           "Ref": "FormsPublicLambdaFunction"
         },
-        "CodeSha256": "LSmmi2AlUGoytU2E3WFIZHLL+vDiJ/1CcH0NT1zzfd0="
+        "CodeSha256": "AH86EpsZ6jbjIf+GInKNyNMM4XFbk81/29bgJu3BAZk="
       }
     },
-    "LoginLambdaVersionYnAApPu3QKHa2QhClfUutFzkIeMU7OibLSPF8c": {
-      "Type": "AWS::Lambda::Version",
-      "DeletionPolicy": "Retain",
-      "Properties": {
-        "FunctionName": {
-          "Ref": "LoginLambdaFunction"
-        },
-        "CodeSha256": "ecjJgfRI+KmegtUMWaasXzmX9dtf4Xezm6QfKVUVnc8="
-      }
-    },
-    "GhlLoginLambdaVersionT8HUgG5qCL5RJEdHf6ILK3SEO38UYBqj3PupOz4EE": {
+    "GhlLoginLambdaVersion6oe6F4CjyMIGwcI8y6nPwMuI0rwWcYc0W5ELcIu9U": {
       "Type": "AWS::Lambda::Version",
       "DeletionPolicy": "Retain",
       "Properties": {
         "FunctionName": {
           "Ref": "GhlLoginLambdaFunction"
         },
-        "CodeSha256": "dl5NIIC/vJ3Cgu+1EK/XCkY5f4eqUXeOW0s4rqzMVNk="
+        "CodeSha256": "SxTBbgWHmUDx3ei1+14Tw0yk+lePJZNVu+FqL4iqBdQ="
       }
     },
-    "ListsLambdaVersionLJBYPpKWoXEQqc9ewPAxtcpimPNirolNg7mUfKD4WlE": {
+    "LoginLambdaVersionw4n0SdML1kgA0ULMoSz353WbB8H2TreZ562ITfZiY": {
+      "Type": "AWS::Lambda::Version",
+      "DeletionPolicy": "Retain",
+      "Properties": {
+        "FunctionName": {
+          "Ref": "LoginLambdaFunction"
+        },
+        "CodeSha256": "gNk7m7mwdKYv1Nj1d5Fg0EeLWQjXD+ld1XaajRUv/4g="
+      }
+    },
+    "ListsLambdaVersionrTk0Cly0gzlxbqXl15O53SEVp7KqfGUdqKLx22VMoZ4": {
       "Type": "AWS::Lambda::Version",
       "DeletionPolicy": "Retain",
       "Properties": {
         "FunctionName": {
           "Ref": "ListsLambdaFunction"
         },
-        "CodeSha256": "hvykPfblXJPD+zp3Mg0F0mxg+vFwIzNbL1nteXTRBN4="
+        "CodeSha256": "niTuqyx6V+D/nuV3yLj9WoLpLh09404fNedNU+fBr1E="
       }
     },
-    "GmailLambdaVersionzy6FBZILHSOCUTWxcdzX41UWuYUR5ASCPqOFFVViA": {
+    "GmailLambdaVersionHUNkPK9684wPzIGT8jlnxWIoX5P7CmgzQbbVX33wfU": {
       "Type": "AWS::Lambda::Version",
       "DeletionPolicy": "Retain",
       "Properties": {
         "FunctionName": {
           "Ref": "GmailLambdaFunction"
         },
-        "CodeSha256": "cOLGzHrhsaO2KHapjvqve2oSH55OQ15Ccyganax2Mr0="
+        "CodeSha256": "xefeULOBIvNEuUl3LNOdMb0J1oQKmM7nhmwSDWmFDqQ="
       }
     },
-    "GoogleOauthLambdaVersion9FoTZCve8riajnxotEYl4pEJgHiJTqgq27VeVlJgcAc": {
+    "GoogleOauthLambdaVersionjzjH1KkGlDqITa6k38KCpra7RJY30Y5Hu1HJe5cG0FE": {
       "Type": "AWS::Lambda::Version",
       "DeletionPolicy": "Retain",
       "Properties": {
         "FunctionName": {
           "Ref": "GoogleOauthLambdaFunction"
         },
-        "CodeSha256": "EAGlAeFPhZodrCgfu8JTa5ztNIZ3II6ebg/TX/VCrio="
+        "CodeSha256": "vRW55YALSaCD5rS/HLlZNnfMHVFpVgAuHlLWIadOA0c="
       }
     },
     "HttpApi": {
@@ -1592,16 +1592,25 @@
     "HealthLambdaFunctionQualifiedArn": {
       "Description": "Current Lambda function version",
       "Value": {
-        "Ref": "HealthLambdaVersionXkW9cEo14qSKSspau7PRmF2qYGIWoBQD3zYP605if4"
+        "Ref": "HealthLambdaVersionAyXK957ywO0yA21Xxx4JFJsHzENqilMgJmFXafNjcg"
       },
       "Export": {
         "Name": "sls-athlete-narrative-api-prod-HealthLambdaFunctionQualifiedArn"
       }
     },
+    "AgenciesLambdaFunctionQualifiedArn": {
+      "Description": "Current Lambda function version",
+      "Value": {
+        "Ref": "AgenciesLambdaVersioncvBRXNaYJCahv2mrUQYrsbPpMFWBpgXgYel9aLk3QZc"
+      },
+      "Export": {
+        "Name": "sls-athlete-narrative-api-prod-AgenciesLambdaFunctionQualifiedArn"
+      }
+    },
     "ClientsLambdaFunctionQualifiedArn": {
       "Description": "Current Lambda function version",
       "Value": {
-        "Ref": "ClientsLambdaVersionJ4SRaDXxC4D5t5kGIL2ViEco7WOzRQqpG1nhIOPR000"
+        "Ref": "ClientsLambdaVersioncQfPbtpeWUxG5LmSy4eHyJgwGUZPMYL9XcGvbS7r4"
       },
       "Export": {
         "Name": "sls-athlete-narrative-api-prod-ClientsLambdaFunctionQualifiedArn"
@@ -1610,52 +1619,43 @@
     "AuthSessionLambdaFunctionQualifiedArn": {
       "Description": "Current Lambda function version",
       "Value": {
-        "Ref": "AuthSessionLambdaVersionR5vwRqDZPveQv4tHRmI0pnSftJKJznYloHGZ1KZmM"
+        "Ref": "AuthSessionLambdaVersionY2na2XC04Aj07Muxde4f3vbNIDmWo2p5wDOdVmOYQw"
       },
       "Export": {
         "Name": "sls-athlete-narrative-api-prod-AuthSessionLambdaFunctionQualifiedArn"
       }
     },
-    "AgenciesLambdaFunctionQualifiedArn": {
-      "Description": "Current Lambda function version",
-      "Value": {
-        "Ref": "AgenciesLambdaVersionxtPf7okOBxKrBx40zhcx6EmxuFA3cdoseQHr7DSSM"
-      },
-      "Export": {
-        "Name": "sls-athlete-narrative-api-prod-AgenciesLambdaFunctionQualifiedArn"
-      }
-    },
     "FormsPublicLambdaFunctionQualifiedArn": {
       "Description": "Current Lambda function version",
       "Value": {
-        "Ref": "FormsPublicLambdaVersionEFKZxhvYQu91vkds0If5lLrRKMbURaT0SzY6Hzpfo"
+        "Ref": "FormsPublicLambdaVersionfn0YkH0XwLYNFt1QOCUytYxyhjkkKBIrz1AbPyYVGg"
       },
       "Export": {
         "Name": "sls-athlete-narrative-api-prod-FormsPublicLambdaFunctionQualifiedArn"
       }
     },
-    "LoginLambdaFunctionQualifiedArn": {
-      "Description": "Current Lambda function version",
-      "Value": {
-        "Ref": "LoginLambdaVersionYnAApPu3QKHa2QhClfUutFzkIeMU7OibLSPF8c"
-      },
-      "Export": {
-        "Name": "sls-athlete-narrative-api-prod-LoginLambdaFunctionQualifiedArn"
-      }
-    },
     "GhlLoginLambdaFunctionQualifiedArn": {
       "Description": "Current Lambda function version",
       "Value": {
-        "Ref": "GhlLoginLambdaVersionT8HUgG5qCL5RJEdHf6ILK3SEO38UYBqj3PupOz4EE"
+        "Ref": "GhlLoginLambdaVersion6oe6F4CjyMIGwcI8y6nPwMuI0rwWcYc0W5ELcIu9U"
       },
       "Export": {
         "Name": "sls-athlete-narrative-api-prod-GhlLoginLambdaFunctionQualifiedArn"
       }
     },
+    "LoginLambdaFunctionQualifiedArn": {
+      "Description": "Current Lambda function version",
+      "Value": {
+        "Ref": "LoginLambdaVersionw4n0SdML1kgA0ULMoSz353WbB8H2TreZ562ITfZiY"
+      },
+      "Export": {
+        "Name": "sls-athlete-narrative-api-prod-LoginLambdaFunctionQualifiedArn"
+      }
+    },
     "ListsLambdaFunctionQualifiedArn": {
       "Description": "Current Lambda function version",
       "Value": {
-        "Ref": "ListsLambdaVersionLJBYPpKWoXEQqc9ewPAxtcpimPNirolNg7mUfKD4WlE"
+        "Ref": "ListsLambdaVersionrTk0Cly0gzlxbqXl15O53SEVp7KqfGUdqKLx22VMoZ4"
       },
       "Export": {
         "Name": "sls-athlete-narrative-api-prod-ListsLambdaFunctionQualifiedArn"
@@ -1664,7 +1664,7 @@
     "GmailLambdaFunctionQualifiedArn": {
       "Description": "Current Lambda function version",
       "Value": {
-        "Ref": "GmailLambdaVersionzy6FBZILHSOCUTWxcdzX41UWuYUR5ASCPqOFFVViA"
+        "Ref": "GmailLambdaVersionHUNkPK9684wPzIGT8jlnxWIoX5P7CmgzQbbVX33wfU"
       },
       "Export": {
         "Name": "sls-athlete-narrative-api-prod-GmailLambdaFunctionQualifiedArn"
@@ -1673,7 +1673,7 @@
     "GoogleOauthLambdaFunctionQualifiedArn": {
       "Description": "Current Lambda function version",
       "Value": {
-        "Ref": "GoogleOauthLambdaVersion9FoTZCve8riajnxotEYl4pEJgHiJTqgq27VeVlJgcAc"
+        "Ref": "GoogleOauthLambdaVersionjzjH1KkGlDqITa6k38KCpra7RJY30Y5Hu1HJe5cG0FE"
       },
       "Export": {
         "Name": "sls-athlete-narrative-api-prod-GoogleOauthLambdaFunctionQualifiedArn"
