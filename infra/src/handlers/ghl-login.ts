@@ -1,12 +1,22 @@
 import { APIGatewayProxyEventV2, APIGatewayProxyResultV2 } from 'aws-lambda';
+import fetch from 'node-fetch';
+import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
+import { DynamoDBDocumentClient, PutCommand } from '@aws-sdk/lib-dynamodb';
+import { randomUUID } from 'crypto';
 
+// --- Configuration ---
+// Use the existing table name and schema (PK/SK) consistent with the rest of the stack.
+const TABLE_NAME = process.env.TABLE_NAME || 'agency-narrative-crm';
 const bearerToken =
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJsb2NhdGlvbl9pZCI6IjZCSXRESEVyQTRTVllyUDgxVk1DIiwiY29tcGFueV9pZCI6IjFVbGN6NWpEUjY1N0hwUEFIU0VyIiwidmVyc2lvbiI6MSwiaWF0IjoxNzAyNTAwMjk3Njg4LCJzdWIiOiJ1c2VyX2lkIn0.fqrY7YeSxhmjWhgXySUrWTYvlZwfjjXCP9o8mTZ8exU';
+
+// --- Field IDs ---
 const accessCodeFieldId = 'D3ogBTF9YTkxJybeMVvF';
 const agencyIdFieldId = '2nUnTxRCuWPiGQ4j23we';
 const agencyNameFieldId = 'mSth0jJ8VQk1k9caFxCC';
 const agencyColorFieldId = '0STRDPbWyZ6ChSApAtjz';
 const agencyLogoFieldId = 'Bvng0E2Yf5TkmEI8KyD6';
+
 const ALLOWED_ORIGINS = [
   'https://myrecruiteragency.com',
   'https://www.myrecruiteragency.com',
@@ -14,6 +24,10 @@ const ALLOWED_ORIGINS = [
   'http://localhost:3001',
   'http://localhost:3000',
 ];
+
+// --- Clients ---
+const client = new DynamoDBClient({});
+const docClient = DynamoDBDocumentClient.from(client);
 
 function getHeaders(origin?: string) {
   const allowOrigin = origin && ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
@@ -31,6 +45,7 @@ export const handler = async (event: APIGatewayProxyEventV2): Promise<APIGateway
   const headers = getHeaders(origin);
   const method = (event.requestContext.http?.method || '').toUpperCase();
 
+  // 1. Handle CORS Preflight
   if (method === 'OPTIONS') {
     return { statusCode: 200, headers, body: JSON.stringify({ ok: true }) };
   }
@@ -40,6 +55,7 @@ export const handler = async (event: APIGatewayProxyEventV2): Promise<APIGateway
   }
 
   try {
+    // 2. Validate Inputs
     if (!event.body) {
       return { statusCode: 400, headers, body: JSON.stringify({ ok: false, error: 'Missing body' }) };
     }
@@ -60,6 +76,7 @@ export const handler = async (event: APIGatewayProxyEventV2): Promise<APIGateway
       return { statusCode: 400, headers, body: JSON.stringify({ ok: false, error: 'Invalid access code format' }) };
     }
 
+    // 3. Lookup Contact in GHL
     const encodedEmail = encodeURIComponent(emailTrim);
     const encodedPhone = encodeURIComponent(phoneTrim);
     const apiUrl = `https://rest.gohighlevel.com/v1/contacts/lookup?email=${encodedEmail}&phone=${encodedPhone}`;
@@ -69,20 +86,24 @@ export const handler = async (event: APIGatewayProxyEventV2): Promise<APIGateway
         Authorization: `Bearer ${bearerToken}`,
         'Content-Type': 'application/json',
       },
-      cache: 'no-store',
     });
 
     const data = await res.json();
     if (!res.ok) {
-      const errMsg = data?.message || 'Lookup failed';
+      const errMsg =
+        data && typeof data === 'object' && 'message' in data ? (data as any).message : 'Lookup failed';
       return { statusCode: res.status, headers, body: JSON.stringify({ ok: false, error: errMsg }) };
     }
 
-    const contact = data?.contacts?.[0];
+    const contact =
+      data && typeof data === 'object' && Array.isArray((data as any).contacts)
+        ? (data as any).contacts[0]
+        : undefined;
     if (!contact) {
       return { statusCode: 404, headers, body: JSON.stringify({ ok: false, error: 'Contact not found' }) };
     }
     
+    // 4. Validate Access Code
     const customFields = contact.customField || [];
     const accessField = customFields.find((f: any) => f.id === accessCodeFieldId);
     const storedAccessCode = accessField?.value;
@@ -92,12 +113,82 @@ export const handler = async (event: APIGatewayProxyEventV2): Promise<APIGateway
       return { statusCode: 401, headers, body: JSON.stringify({ ok: false, error: 'Invalid access code' }) };
     }
 
-    const agencyId = (customFields.find((f: any) => f.id === agencyIdFieldId)?.value || '').toString().trim();
+    // 5. Parse Agency Details
+    let agencyId = (customFields.find((f: any) => f.id === agencyIdFieldId)?.value || '').toString().trim();
     const agencyName = (customFields.find((f: any) => f.id === agencyNameFieldId)?.value || '').toString().trim();
     const agencyColor = (customFields.find((f: any) => f.id === agencyColorFieldId)?.value || '').toString().trim();
     const agencyLogo = (customFields.find((f: any) => f.id === agencyLogoFieldId)?.value || '').toString().trim();
+    
     const isNew = agencyId === 'READY';
+    let resolvedAgencyId = agencyId;
 
+    // --- NEW LOGIC: Create Agency if READY ---
+    if (isNew) {
+      console.log('Agency ID is READY. Initializing new agency record...');
+      
+      // A. Generate new ID
+      const newAgencyId = `agency-${randomUUID()}`;
+      
+      // B. Save to DynamoDB (PK/SK schema)
+      try {
+        await docClient.send(new PutCommand({
+          TableName: TABLE_NAME,
+          Item: {
+            PK: `AGENCY#${newAgencyId}`,
+            SK: 'PROFILE',
+            id: newAgencyId,
+            name: agencyName || 'New Agency',
+            email: contact.email,
+            contactId: contact.id,
+            color: agencyColor,
+            logoUrl: agencyLogo,
+            createdAt: new Date().toISOString(),
+          }
+        }));
+        console.log(`Created agency ${newAgencyId} in DynamoDB`);
+        
+        resolvedAgencyId = newAgencyId;
+      } catch (dbError: any) {
+        console.error('Failed to create agency in DynamoDB', dbError);
+        // Fail hard here? Or continue? Usually safer to fail so we don't end up in inconsistent state.
+        return { statusCode: 500, headers, body: JSON.stringify({ ok: false, error: 'Failed to initialize agency database record' }) };
+      }
+
+      // C. Update GHL with the new ID
+      if (contact.id) {
+        try {
+          const updateBody = {
+            customField: customFields.map((f: any) =>
+              f.id === agencyIdFieldId ? { ...f, value: resolvedAgencyId } : f
+            ),
+          };
+          const updateRes = await fetch(`https://rest.gohighlevel.com/v1/contacts/${contact.id}`, {
+            method: 'PUT',
+            headers: {
+              Authorization: `Bearer ${bearerToken}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(updateBody),
+          });
+
+          if (!updateRes.ok) {
+            const updateJson = await updateRes.json().catch(() => ({}));
+            console.error('Failed to update GHL contact with new agency id', {
+              status: updateRes.status,
+              body: updateJson,
+            });
+            // We logged it, but we can still proceed since the local DB is correct. 
+            // Next login might trigger "isNew" logic again or manual fix needed if GHL fails.
+          } else {
+            console.log(`Updated GHL contact ${contact.id} with new Agency ID ${resolvedAgencyId}`);
+          }
+        } catch (err: any) {
+          console.error('Error updating GHL contact with new agency id', { error: err?.message });
+        }
+      }
+    }
+
+    // 6. Return Success with Resolved ID
     return {
       statusCode: 200,
       headers,
@@ -112,11 +203,11 @@ export const handler = async (event: APIGatewayProxyEventV2): Promise<APIGateway
           accessCode: storedAccessCode,
         },
         agency: {
-          id: agencyId || undefined,
+          id: resolvedAgencyId, // This is now the Real UUID, never "READY"
           name: agencyName || undefined,
           color: agencyColor || undefined,
           logoUrl: agencyLogo || undefined,
-          isNew,
+          isNew: false, // Always false now because we just handled the "new" case
         },
       }),
     };
@@ -129,4 +220,3 @@ export const handler = async (event: APIGatewayProxyEventV2): Promise<APIGateway
     };
   }
 };
-
