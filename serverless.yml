@@ -14,6 +14,7 @@ provider:
     AWS_NODEJS_CONNECTION_REUSE_ENABLED: 1
     NODE_OPTIONS: --enable-source-maps
     FORMS_SECRET: ${env:FORMS_SECRET, 'ff58bc99-63a5-4493-83dc-6720cb3c7db7'}
+    DEBUG_SESSION: ${env:DEBUG_SESSION, 'false'}
   httpApi:
     cors:
       allowedOrigins:

@@ -27,7 +27,17 @@ async function apiFetch(path: string, init?: RequestInit) {
     throw new Error('fetch is not available');
   }
   const headers: Record<string, string> = { 'Content-Type': 'application/json', ...(init?.headers as any) };
-  const res = await fetch(`${base}${path}`, { ...init, headers });
+  const url = `${base}${path}`;
+  const options: RequestInit = { ...init, headers, credentials: 'include' };
+  // Lightweight logging to help diagnose missing session/cookies
+  console.log('[tasks.apiFetch]', {
+    url,
+    method: options.method || 'GET',
+    hasBody: Boolean(options.body),
+    hasContentType: Boolean(headers['Content-Type']),
+    credentials: options.credentials,
+  });
+  const res = await fetch(url, options);
   if (!res.ok) {
     const text = await res.text();
     throw new Error(`API ${path} failed: ${res.status} ${text}`);
