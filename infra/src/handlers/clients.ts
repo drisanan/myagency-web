@@ -26,15 +26,45 @@ export const handler: Handler = async (event: APIGatewayProxyEventV2) => {
   const session = requireSession(event);
   if (!session) return response(401, { ok: false, error: 'Missing session' }, origin);
 
+  // CRITICAL FIX: Trim any invisible whitespace from the ID
+  const cleanAgencyId = session.agencyId.trim();
   const clientId = getClientId(event);
 
   // --- GET ---
   if (method === 'GET') {
+    // A. Get Single Client
     if (clientId) {
-      const item = await getItem({ PK: `AGENCY#${session.agencyId}`, SK: `CLIENT#${clientId}` });
+      const item = await getItem({ PK: `AGENCY#${cleanAgencyId}`, SK: `CLIENT#${clientId}` });
       return response(200, { ok: true, client: item ?? null }, origin);
     }
-    const items = await queryByPK(`AGENCY#${session.agencyId}`, 'CLIENT#');
+    
+    // B. List All Clients
+    const pk = `AGENCY#${cleanAgencyId}`;
+    
+    // Attempt 1: Standard Optimized Query
+    let items = await queryByPK(pk, 'CLIENT#');
+
+    // Attempt 2: Fallback (If DynamoDB SK filtering is behaving unexpectedly)
+    // If we get 0 results, but we know data exists, try querying JUST the PK.
+    if (items.length === 0) {
+      console.log('[Clients] WARN: Standard query returned 0. Attempting PK-only fallback.', { pk });
+      
+      const allAgencyItems = await queryByPK(pk); // Fetch PROFILE, TASKS, CLIENTS, etc.
+      
+      // Filter for clients in memory
+      const recoveredClients = allAgencyItems.filter((i: any) => i.SK && i.SK.startsWith('CLIENT#'));
+      
+      if (recoveredClients.length > 0) {
+        console.log('[Clients] RECOVERED: Found clients via manual memory filter.', { count: recoveredClients.length });
+        items = recoveredClients;
+      } else {
+        console.log('[Clients] ERROR: PK-only query also returned 0 clients.', { 
+           totalItemsFound: allAgencyItems.length,
+           typesFound: allAgencyItems.map((i: any) => i.SK)
+        });
+      }
+    }
+
     return response(200, { ok: true, clients: items }, origin);
   }
 
@@ -49,8 +79,10 @@ export const handler: Handler = async (event: APIGatewayProxyEventV2) => {
     
     const id = payload.id || newId('client');
     const now = new Date().toISOString();
+    
+    // Use the cleaned ID
     const rec: ClientRecord = {
-      PK: `AGENCY#${session.agencyId}`,
+      PK: `AGENCY#${cleanAgencyId}`,
       SK: `CLIENT#${id}`,
       GSI1PK: `EMAIL#${payload.email}`,
       GSI1SK: `CLIENT#${id}`,
@@ -59,7 +91,7 @@ export const handler: Handler = async (event: APIGatewayProxyEventV2) => {
       firstName: payload.firstName,
       lastName: payload.lastName,
       sport: payload.sport,
-      agencyId: session.agencyId,
+      agencyId: cleanAgencyId,
       agencyEmail: session.agencyEmail,
       createdAt: now,
       updatedAt: now,
@@ -75,7 +107,7 @@ export const handler: Handler = async (event: APIGatewayProxyEventV2) => {
     if (!event.body) return badRequest(origin, 'Missing body');
     const payload = JSON.parse(event.body);
     
-    const existing = await getItem({ PK: `AGENCY#${session.agencyId}`, SK: `CLIENT#${clientId}` });
+    const existing = await getItem({ PK: `AGENCY#${cleanAgencyId}`, SK: `CLIENT#${clientId}` });
     if (!existing) return response(404, { ok: false, message: 'Not found' }, origin);
     
     const now = new Date().toISOString();
@@ -88,8 +120,7 @@ export const handler: Handler = async (event: APIGatewayProxyEventV2) => {
   if (method === 'DELETE') {
     if (!clientId) return response(400, { ok: false, error: 'Missing client id' }, origin);
     
-    // Soft Delete: Fetch first to preserve data
-    const existing = await getItem({ PK: `AGENCY#${session.agencyId}`, SK: `CLIENT#${clientId}` });
+    const existing = await getItem({ PK: `AGENCY#${cleanAgencyId}`, SK: `CLIENT#${clientId}` });
     if (existing) {
       await putItem({
         ...existing,

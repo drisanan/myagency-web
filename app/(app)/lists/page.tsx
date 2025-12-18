@@ -125,7 +125,7 @@ export default function ListsPage() {
 
   async function saveCurrent() {
     if (!session?.email) {
-      setSaveError('You must be logged in to save a list.');
+      setSaveError(`You must be logged in to save a list.${JSON.stringify(session)}`);
       return;
     }
     if (!currentName.trim()) {

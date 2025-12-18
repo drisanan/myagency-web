@@ -174,13 +174,29 @@ var handler = async (event) => {
   if (!method) return response(400, { ok: false, error: "Missing method" }, origin);
   const session = requireSession(event);
   if (!session) return response(401, { ok: false, error: "Missing session" }, origin);
+  const cleanAgencyId = session.agencyId.trim();
   const clientId = getClientId(event);
   if (method === "GET") {
     if (clientId) {
-      const item = await getItem({ PK: `AGENCY#${session.agencyId}`, SK: `CLIENT#${clientId}` });
+      const item = await getItem({ PK: `AGENCY#${cleanAgencyId}`, SK: `CLIENT#${clientId}` });
       return response(200, { ok: true, client: item ?? null }, origin);
     }
-    const items = await queryByPK(`AGENCY#${session.agencyId}`, "CLIENT#");
+    const pk = `AGENCY#${cleanAgencyId}`;
+    let items = await queryByPK(pk, "CLIENT#");
+    if (items.length === 0) {
+      console.log("[Clients] WARN: Standard query returned 0. Attempting PK-only fallback.", { pk });
+      const allAgencyItems = await queryByPK(pk);
+      const recoveredClients = allAgencyItems.filter((i) => i.SK && i.SK.startsWith("CLIENT#"));
+      if (recoveredClients.length > 0) {
+        console.log("[Clients] RECOVERED: Found clients via manual memory filter.", { count: recoveredClients.length });
+        items = recoveredClients;
+      } else {
+        console.log("[Clients] ERROR: PK-only query also returned 0 clients.", {
+          totalItemsFound: allAgencyItems.length,
+          typesFound: allAgencyItems.map((i) => i.SK)
+        });
+      }
+    }
     return response(200, { ok: true, clients: items }, origin);
   }
   if (method === "POST") {
@@ -192,7 +208,7 @@ var handler = async (event) => {
     const id = payload.id || newId("client");
     const now = (/* @__PURE__ */ new Date()).toISOString();
     const rec = {
-      PK: `AGENCY#${session.agencyId}`,
+      PK: `AGENCY#${cleanAgencyId}`,
       SK: `CLIENT#${id}`,
       GSI1PK: `EMAIL#${payload.email}`,
       GSI1SK: `CLIENT#${id}`,
@@ -201,7 +217,7 @@ var handler = async (event) => {
       firstName: payload.firstName,
       lastName: payload.lastName,
       sport: payload.sport,
-      agencyId: session.agencyId,
+      agencyId: cleanAgencyId,
       agencyEmail: session.agencyEmail,
       createdAt: now,
       updatedAt: now
@@ -213,7 +229,7 @@ var handler = async (event) => {
     if (!clientId) return badRequest(origin, "Missing client id");
     if (!event.body) return badRequest(origin, "Missing body");
     const payload = JSON.parse(event.body);
-    const existing = await getItem({ PK: `AGENCY#${session.agencyId}`, SK: `CLIENT#${clientId}` });
+    const existing = await getItem({ PK: `AGENCY#${cleanAgencyId}`, SK: `CLIENT#${clientId}` });
     if (!existing) return response(404, { ok: false, message: "Not found" }, origin);
     const now = (/* @__PURE__ */ new Date()).toISOString();
     const merged = { ...existing, ...payload, updatedAt: now };
@@ -222,7 +238,7 @@ var handler = async (event) => {
   }
   if (method === "DELETE") {
     if (!clientId) return response(400, { ok: false, error: "Missing client id" }, origin);
-    const existing = await getItem({ PK: `AGENCY#${session.agencyId}`, SK: `CLIENT#${clientId}` });
+    const existing = await getItem({ PK: `AGENCY#${cleanAgencyId}`, SK: `CLIENT#${clientId}` });
     if (existing) {
       await putItem({
         ...existing,
