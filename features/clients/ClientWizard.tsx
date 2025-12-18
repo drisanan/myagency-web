@@ -161,9 +161,15 @@ function BasicInfoStep({
   const sports = getSports();
   const [showUrlInput, setShowUrlInput] = React.useState(false);
   const fileInputRef = React.useRef<HTMLInputElement | null>(null);
+  const [photoError, setPhotoError] = React.useState<string | null>(null);
   const handlePhotoFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    const MAX_IMAGE_BYTES = 1_000_000; // 1MB cap for profile images
+    if (file.size > MAX_IMAGE_BYTES) {
+      setPhotoError('Image must be 1MB or smaller.');
+      return;
+    }
     const reader = new FileReader();
     reader.onload = () => {
       onChange({
@@ -172,6 +178,7 @@ function BasicInfoStep({
         profileImageUrl: reader.result as string,
         photoFileName: file.name,
       });
+      setPhotoError(null);
     };
     reader.readAsDataURL(file);
   };
@@ -232,6 +239,11 @@ function BasicInfoStep({
         </Stack>
         <input ref={fileInputRef} type="file" accept="image/*" hidden onChange={handlePhotoFile} data-testid="photo-upload" />
       </Box>
+      {photoError && (
+        <Typography variant="caption" color="error">
+          {photoError}
+        </Typography>
+      )}
       {showUrlInput && (
         <TextField
           label="Profile Image URL"

@@ -1,97 +1,103 @@
-export type Client = {
-  id: string;
-  email: string;
-  firstName: string;
-  lastName: string;
-  sport: string;
-  agencyId: string;
-  agencyEmail?: string;
-  createdAt: string;
-  updatedAt: string;
-  deletedAt?: string;
+import { APIGatewayProxyEventV2 } from 'aws-lambda';
+import { Handler, requireSession } from './common';
+import { newId } from '../lib/ids';
+import { ClientRecord } from '../lib/models';
+import { getItem, putItem, queryByPK } from '../lib/dynamo';
+import { response } from './cors';
+
+function badRequest(origin: string, msg: string) {
+  return response(400, { ok: false, error: msg }, origin);
+}
+
+function getClientId(event: APIGatewayProxyEventV2) {
+  return event.pathParameters?.id;
+}
+
+export const handler: Handler = async (event: APIGatewayProxyEventV2) => {
+  const origin = event.headers?.origin || event.headers?.Origin || event.headers?.['origin'] || '';
+  const method = (event.requestContext.http?.method || '').toUpperCase();
+  
+  // 1. Handle OPTIONS for CORS Preflight
+  if (method === 'OPTIONS') return response(200, { ok: true }, origin);
+  
+  if (!method) return response(400, { ok: false, error: 'Missing method' }, origin);
+
+  // 2. Validate Session
+  const session = requireSession(event);
+  if (!session) return response(401, { ok: false, error: 'Missing session' }, origin);
+
+  const clientId = getClientId(event);
+
+  // --- GET ---
+  if (method === 'GET') {
+    if (clientId) {
+      const item = await getItem({ PK: `AGENCY#${session.agencyId}`, SK: `CLIENT#${clientId}` });
+      return response(200, { ok: true, client: item ?? null }, origin);
+    }
+    const items = await queryByPK(`AGENCY#${session.agencyId}`, 'CLIENT#');
+    return response(200, { ok: true, clients: items }, origin);
+  }
+
+  // --- POST ---
+  if (method === 'POST') {
+    if (!event.body) return badRequest(origin, 'Missing body');
+    const payload = JSON.parse(event.body);
+    
+    if (!payload.email || !payload.firstName || !payload.lastName || !payload.sport) {
+      return badRequest(origin, 'email, firstName, lastName, sport are required');
+    }
+    
+    const id = payload.id || newId('client');
+    const now = new Date().toISOString();
+    const rec: ClientRecord = {
+      PK: `AGENCY#${session.agencyId}`,
+      SK: `CLIENT#${id}`,
+      GSI1PK: `EMAIL#${payload.email}`,
+      GSI1SK: `CLIENT#${id}`,
+      id,
+      email: payload.email,
+      firstName: payload.firstName,
+      lastName: payload.lastName,
+      sport: payload.sport,
+      agencyId: session.agencyId,
+      agencyEmail: session.agencyEmail,
+      createdAt: now,
+      updatedAt: now,
+    };
+    
+    await putItem(rec);
+    return response(200, { ok: true, client: rec }, origin);
+  }
+
+  // --- PUT / PATCH ---
+  if (method === 'PUT' || method === 'PATCH') {
+    if (!clientId) return badRequest(origin, 'Missing client id');
+    if (!event.body) return badRequest(origin, 'Missing body');
+    const payload = JSON.parse(event.body);
+    
+    const existing = await getItem({ PK: `AGENCY#${session.agencyId}`, SK: `CLIENT#${clientId}` });
+    if (!existing) return response(404, { ok: false, message: 'Not found' }, origin);
+    
+    const now = new Date().toISOString();
+    const merged = { ...existing, ...payload, updatedAt: now };
+    await putItem(merged);
+    return response(200, { ok: true, client: merged }, origin);
+  }
+
+  // --- DELETE ---
+  if (method === 'DELETE') {
+    if (!clientId) return response(400, { ok: false, error: 'Missing client id' }, origin);
+    
+    // Soft Delete: Fetch first to preserve data
+    const existing = await getItem({ PK: `AGENCY#${session.agencyId}`, SK: `CLIENT#${clientId}` });
+    if (existing) {
+      await putItem({
+        ...existing,
+        deletedAt: new Date().toISOString(),
+      });
+    }
+    return response(200, { ok: true }, origin);
+  }
+
+  return response(405, { ok: false, error: `Method not allowed` }, origin);
 };
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.API_BASE_URL;
-
-function requireApiBase() {
-  if (!API_BASE_URL) throw new Error('API_BASE_URL is not configured');
-  return API_BASE_URL;
-}
-
-// The Critical Helper: Ensures credentials (cookies) are sent with every request
-async function apiFetch(path: string, init?: RequestInit) {
-  const base = requireApiBase();
-  if (typeof fetch === 'undefined') {
-    throw new Error('fetch is not available');
-  }
-  
-  const headers: Record<string, string> = { 
-    'Content-Type': 'application/json', 
-    ...(init?.headers as any) 
-  };
-  
-  const url = `${base}${path}`;
-  
-  const options: RequestInit = { 
-    ...init, 
-    headers, 
-    credentials: 'include' // <--- THIS FIXES THE 401 "MISSING SESSION"
-  };
-
-  // Logging to match tasks.ts pattern for debugging
-  console.log('[clients.apiFetch]', {
-    url,
-    method: options.method || 'GET',
-    hasBody: Boolean(options.body),
-    credentials: options.credentials,
-  });
-
-  const res = await fetch(url, options);
-  
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`API ${path} failed: ${res.status} ${text}`);
-  }
-  return res.json();
-}
-
-export async function listClients() {
-  // GET /clients
-  const data = await apiFetch('/clients');
-  return (data?.clients as Client[]) ?? [];
-}
-
-export async function getClient(id: string) {
-  // GET /clients/:id
-  const data = await apiFetch(`/clients/${id}`);
-  return data?.client as Client | null;
-}
-
-export async function createClient(input: {
-  email: string;
-  firstName: string;
-  lastName: string;
-  sport: string;
-}) {
-  // POST /clients
-  const data = await apiFetch('/clients', { 
-    method: 'POST', 
-    body: JSON.stringify(input) 
-  });
-  return data?.client as Client;
-}
-
-export async function updateClient(id: string, patch: Partial<Omit<Client, 'id' | 'createdAt' | 'agencyId'>>) {
-  // PATCH /clients/:id
-  const data = await apiFetch(`/clients/${id}`, { 
-    method: 'PATCH', 
-    body: JSON.stringify(patch) 
-  });
-  return data?.client as Client;
-}
-
-export async function deleteClient(id: string) {
-  // DELETE /clients/:id
-  await apiFetch(`/clients/${id}`, { method: 'DELETE' });
-  return { ok: true };
-}

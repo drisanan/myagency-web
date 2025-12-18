@@ -27,6 +27,7 @@ export default function ListsPage() {
 
   const [saved, setSaved] = React.useState<CoachList[]>([]);
   const [error, setError] = React.useState<string | null>(null);
+  const [saveError, setSaveError] = React.useState<string | null>(null);
 
   const sports = React.useMemo(() => getSports(), []);
 
@@ -119,11 +120,22 @@ export default function ListsPage() {
     setEditingId('');
     setCurrentName('');
     setCurrentItems([]);
+    setSaveError(null);
   }
 
   async function saveCurrent() {
-    if (!session?.email) return;
-    if (!currentName.trim() || currentItems.length === 0) return;
+    if (!session?.email) {
+      setSaveError('You must be logged in to save a list.');
+      return;
+    }
+    if (!currentName.trim()) {
+      setSaveError('List name is required.');
+      return;
+    }
+    if (currentItems.length === 0) {
+      setSaveError('Add at least one coach before saving.');
+      return;
+    }
     if (editingId) {
       const updated = await updateList({ id: editingId, name: currentName.trim(), items: currentItems });
       if (updated) {
@@ -135,11 +147,13 @@ export default function ListsPage() {
           return next.sort((a, b) => b.updatedAt - a.updatedAt);
         });
       }
+      setSaveError(null);
     } else {
       const rec = await saveList({ agencyEmail: session.email, name: currentName.trim(), items: currentItems });
       if (rec) {
         setSaved((p) => [rec, ...p]);
         setEditingId(rec.id);
+        setSaveError(null);
       }
     }
   }
@@ -264,6 +278,11 @@ export default function ListsPage() {
             <Button variant="contained" onClick={saveCurrent} disabled={!currentName.trim() || currentItems.length === 0}>{editingId ? 'Update List' : 'Save List'}</Button>
             <Button variant="text" onClick={resetCurrent}>New</Button>
           </Stack>
+          {saveError && (
+            <Typography variant="caption" color="error" sx={{ mt: 0.5, display: 'block' }}>
+              {saveError}
+            </Typography>
+          )}
 
           <Divider sx={{ my: 2 }} />
 
