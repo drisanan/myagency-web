@@ -38,7 +38,9 @@ export default function PromptPlaygroundPage() {
 
   React.useEffect(() => {
     if (!session?.email) return;
-    setTemplates(listPrompts({ agencyEmail: session.email, clientId }));
+    listPrompts({ agencyEmail: session.email, clientId })
+      .then(setTemplates)
+      .catch(() => setTemplates([]));
   }, [session?.email, clientId]);
 
   async function handleRun() {
@@ -68,10 +70,10 @@ export default function PromptPlaygroundPage() {
     }
   }
 
-  function handleSave() {
+  async function handleSave() {
     if (!session?.email) return;
     const name = templateName || `Prompt ${new Date().toLocaleString()}`;
-    const rec = savePrompt({ agencyEmail: session.email, clientId, name, text: prompt });
+    const rec = await savePrompt({ agencyEmail: session.email, clientId, name, text: prompt });
     setTemplates([rec, ...templates]);
     setTemplateName('');
   }

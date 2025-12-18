@@ -12,7 +12,8 @@ export async function GET(req: NextRequest) {
   if (!athleteId || !agencyEmail) {
     return NextResponse.json({ ok: false, error: 'athleteId and agencyEmail are required' }, { status: 400 });
   }
-  const data = listNotes(athleteId, agencyEmail).sort((a, b) => b.createdAt - a.createdAt);
+  const listed = await listNotes(athleteId, agencyEmail);
+  const data = listed.sort((a, b) => b.createdAt - a.createdAt);
   return NextResponse.json({ ok: true, data });
 }
 
