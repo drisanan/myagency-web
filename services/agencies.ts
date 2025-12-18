@@ -5,11 +5,35 @@ function requireApiBase() {
   return API_BASE_URL;
 }
 
+// Standardized fetch wrapper ensuring credentials (cookies) are sent
 async function apiFetch(path: string, init?: RequestInit) {
   const base = requireApiBase();
-  if (typeof fetch === 'undefined') return null;
-  const headers: Record<string, string> = { 'Content-Type': 'application/json', ...(init?.headers as any) };
-  const res = await fetch(`${base}${path}`, { ...init, headers });
+  if (typeof fetch === 'undefined') {
+    throw new Error('fetch is not available');
+  }
+
+  const headers: Record<string, string> = { 
+    'Content-Type': 'application/json', 
+    ...(init?.headers as any) 
+  };
+
+  const url = `${base}${path}`;
+  
+  const options: RequestInit = { 
+    ...init, 
+    headers, 
+    credentials: 'include' // <--- THIS FIXES THE 401 "MISSING SESSION"
+  };
+
+  console.log('[agencies.apiFetch]', {
+    url,
+    method: options.method || 'GET',
+    hasBody: Boolean(options.body),
+    credentials: options.credentials,
+  });
+
+  const res = await fetch(url, options);
+
   if (!res.ok) {
     const text = await res.text();
     throw new Error(`API ${path} failed: ${res.status} ${text}`);
@@ -22,6 +46,7 @@ export type AgencySettings = {
   secondaryColor?: string;
   logoDataUrl?: string;
 };
+
 export type Agency = {
   id: string;
   name: string;
@@ -42,68 +67,53 @@ const SEED_AGENCIES: Agency[] = [
 ];
 
 export async function listAgencies() {
-  if (API_BASE_URL) {
-    const data = await apiFetch('/agencies');
-    return data?.agencies ?? [];
-  }
-  return [];
+  const data = await apiFetch('/agencies');
+  return data?.agencies ?? [];
 }
 
 export async function getAgencies() {
-  if (API_BASE_URL) {
-    const data = await apiFetch('/agencies');
-    return data?.agencies ?? [];
-  }
-  return [];
+  const data = await apiFetch('/agencies');
+  return data?.agencies ?? [];
 }
 
 export async function getAgencyByEmail(email: string) {
-  if (API_BASE_URL) {
-    const data = await apiFetch('/agencies');
-    const list = data?.agencies ?? [];
-    return list.find((a: Agency) => a.email === email) ?? null;
-  }
-  return null;
+  const data = await apiFetch('/agencies');
+  const list = data?.agencies ?? [];
+  return list.find((a: Agency) => a.email === email) ?? null;
 }
 
 export async function getAgencyById(id: string) {
-  if (API_BASE_URL) {
-    const data = await apiFetch('/agencies');
-    const list = data?.agencies ?? [];
-    return list.find((a: Agency) => a.id === id) ?? null;
-  }
-  return null;
+  const data = await apiFetch('/agencies');
+  const list = data?.agencies ?? [];
+  return list.find((a: Agency) => a.id === id) ?? null;
 }
 
 export async function getAgencySettings(email: string) {
-  if (API_BASE_URL) {
-    const data = await apiFetch(`/agencies?email=${encodeURIComponent(email)}`);
-    const list = data?.agencies ?? [];
-    const a = list.find((x: Agency) => x.email === email);
-    return a?.settings ?? {};
-  }
-  return {};
+  const data = await apiFetch(`/agencies?email=${encodeURIComponent(email)}`);
+  const list = data?.agencies ?? [];
+  const a = list.find((x: Agency) => x.email === email);
+  return a?.settings ?? {};
 }
 
 export async function updateAgencySettings(email: string, settings: AgencySettings) {
-  if (API_BASE_URL) {
-    const data = await apiFetch('/agencies/settings', { method: 'PUT', body: JSON.stringify({ email, settings }) });
-    return data;
-  }
-  return { ok: false };
+  const data = await apiFetch('/agencies/settings', { 
+    method: 'PUT', 
+    body: JSON.stringify({ email, settings }) 
+  });
+  return data;
 }
 
 type UpsertInput = Omit<Agency, 'id'> & { id?: string };
+
 export async function upsertAgency(input: UpsertInput) {
-  if (API_BASE_URL) {
-    const data = await apiFetch('/agencies', { method: 'POST', body: JSON.stringify(input) });
-    return data;
-  }
-  return { id: undefined };
+  const data = await apiFetch('/agencies', { 
+    method: 'POST', 
+    body: JSON.stringify(input) 
+  });
+  return data;
 }
 
 export async function createAgencyFromGHL(input: { name?: string; email: string; color?: string; logoUrl?: string }) {
-  if (!API_BASE_URL) throw new Error('API_BASE_URL is not configured');
   const payload: UpsertInput = {
     name: input.name || 'New Agency',
     email: input.email,
@@ -112,17 +122,15 @@ export async function createAgencyFromGHL(input: { name?: string; email: string;
       logoDataUrl: input.logoUrl,
     },
   };
-  const res = await apiFetch('/agencies', { method: 'POST', body: JSON.stringify(payload) });
+  const res = await apiFetch('/agencies', { 
+    method: 'POST', 
+    body: JSON.stringify(payload) 
+  });
   const id = res?.id || res?.agency?.id;
   return { id, ...payload };
 }
 
 export async function deleteAgency(id: string) {
-  if (API_BASE_URL) {
-    const data = await apiFetch(`/agencies/${id}`, { method: 'DELETE' });
-    return data ?? { ok: true };
-  }
-  return { ok: false };
+  const data = await apiFetch(`/agencies/${id}`, { method: 'DELETE' });
+  return data ?? { ok: true };
 }
-
-

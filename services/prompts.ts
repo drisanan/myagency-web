@@ -1,5 +1,3 @@
-const STORAGE_KEY = 'ai_prompts_v1';
-
 export type PromptRecord = {
   id: string;
   agencyEmail: string;
@@ -10,48 +8,69 @@ export type PromptRecord = {
   updatedAt: number;
 };
 
-function read(): PromptRecord[] {
-  if (typeof window === 'undefined') return [];
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    return raw ? (JSON.parse(raw) as PromptRecord[]) : [];
-  } catch {
-    return [];
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.API_BASE_URL;
+
+function requireApiBase() {
+  if (!API_BASE_URL) throw new Error('API_BASE_URL is not configured');
+  return API_BASE_URL;
+}
+
+// Standardized fetch wrapper ensuring credentials (cookies) are sent
+async function apiFetch(path: string, init?: RequestInit) {
+  const base = requireApiBase();
+  if (typeof fetch === 'undefined') {
+    throw new Error('fetch is not available');
   }
-}
 
-function write(items: PromptRecord[]) {
-  if (typeof window === 'undefined') return;
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
-}
-
-export function listPrompts(input: { agencyEmail: string; clientId?: string }): PromptRecord[] {
-  const all = read();
-  return all
-    .filter(p => p.agencyEmail === input.agencyEmail && (input.clientId ? p.clientId === input.clientId : true))
-    .sort((a, b) => b.updatedAt - a.updatedAt);
-}
-
-export function savePrompt(input: { agencyEmail: string; clientId?: string; name: string; text: string }): PromptRecord {
-  const all = read();
-  const id = `p-${Math.random().toString(36).slice(2, 10)}`;
-  const now = Date.now();
-  const rec: PromptRecord = {
-    id,
-    agencyEmail: input.agencyEmail,
-    clientId: input.clientId,
-    name: input.name,
-    text: input.text,
-    createdAt: now,
-    updatedAt: now,
+  const headers: Record<string, string> = { 
+    'Content-Type': 'application/json', 
+    ...(init?.headers as any) 
   };
-  write([rec, ...all]);
-  return rec;
+
+  const url = `${base}${path}`;
+  
+  const options: RequestInit = { 
+    ...init, 
+    headers, 
+    credentials: 'include' // <--- Ensures the session cookie is passed
+  };
+
+  console.log('[prompts.apiFetch]', {
+    url,
+    method: options.method || 'GET',
+    hasBody: Boolean(options.body),
+    credentials: options.credentials,
+  });
+
+  const res = await fetch(url, options);
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`API ${path} failed: ${res.status} ${text}`);
+  }
+  return res.json();
 }
 
-export function deletePrompt(id: string) {
-  const all = read();
-  write(all.filter(p => p.id !== id));
+export async function listPrompts(input: { agencyEmail: string; clientId?: string }): Promise<PromptRecord[]> {
+  const params = new URLSearchParams();
+  // We pass these as query params. 
+  // Note: The backend should ideally verify the agencyEmail matches the session.
+  if (input.agencyEmail) params.set('agencyEmail', input.agencyEmail);
+  if (input.clientId) params.set('clientId', input.clientId);
+
+  const data = await apiFetch(`/prompts?${params.toString()}`);
+  return (data?.prompts as PromptRecord[]) ?? [];
 }
 
+export async function savePrompt(input: { agencyEmail: string; clientId?: string; name: string; text: string }): Promise<PromptRecord> {
+  const data = await apiFetch('/prompts', {
+    method: 'POST',
+    body: JSON.stringify(input)
+  });
+  return data?.prompt as PromptRecord;
+}
 
+export async function deletePrompt(id: string) {
+  await apiFetch(`/prompts/${id}`, { method: 'DELETE' });
+  return { ok: true };
+}

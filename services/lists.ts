@@ -5,11 +5,35 @@ function requireApiBase() {
   return API_BASE_URL;
 }
 
+// Standardized fetch wrapper ensuring credentials (cookies) are sent
 async function apiFetch(path: string, init?: RequestInit) {
   const base = requireApiBase();
-  if (typeof fetch === 'undefined') return null;
-  const headers: Record<string, string> = { 'Content-Type': 'application/json', ...(init?.headers as any) };
-  const res = await fetch(`${base}${path}`, { ...init, headers });
+  if (typeof fetch === 'undefined') {
+    throw new Error('fetch is not available');
+  }
+
+  const headers: Record<string, string> = { 
+    'Content-Type': 'application/json', 
+    ...(init?.headers as any) 
+  };
+
+  const url = `${base}${path}`;
+  
+  const options: RequestInit = { 
+    ...init, 
+    headers, 
+    credentials: 'include' // <--- THIS FIXES THE 401 "MISSING SESSION"
+  };
+
+  console.log('[lists.apiFetch]', {
+    url,
+    method: options.method || 'GET',
+    hasBody: Boolean(options.body),
+    credentials: options.credentials,
+  });
+
+  const res = await fetch(url, options);
+
   if (!res.ok) {
     const text = await res.text();
     throw new Error(`API ${path} failed: ${res.status} ${text}`);
@@ -38,6 +62,8 @@ export type CoachList = {
 };
 
 export async function listLists(_: string): Promise<CoachList[]> {
+  // The backend uses the session cookie to identify the agency, 
+  // so the argument '_' is technically unused here but kept for signature compatibility.
   const data = await apiFetch('/lists');
   return (data?.lists as CoachList[]) ?? [];
 }
@@ -48,17 +74,21 @@ export async function getList(id: string): Promise<CoachList | null> {
 }
 
 export async function saveList(input: { agencyEmail: string; name: string; items: CoachEntry[] }): Promise<CoachList> {
-  const data = await apiFetch('/lists', { method: 'POST', body: JSON.stringify(input) });
+  const data = await apiFetch('/lists', { 
+    method: 'POST', 
+    body: JSON.stringify(input) 
+  });
   return data?.list as CoachList;
 }
 
 export async function updateList(input: { id: string; name: string; items: CoachEntry[] }): Promise<CoachList | null> {
-  const data = await apiFetch(`/lists/${input.id}`, { method: 'PUT', body: JSON.stringify(input) });
+  const data = await apiFetch(`/lists/${input.id}`, { 
+    method: 'PUT', 
+    body: JSON.stringify(input) 
+  });
   return data?.list as CoachList;
 }
 
 export async function deleteList(id: string) {
   await apiFetch(`/lists/${id}`, { method: 'DELETE' });
 }
-
-

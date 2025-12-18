@@ -16,15 +16,17 @@ function getListId(event: APIGatewayProxyEventV2) {
 export const handler: Handler = async (event: APIGatewayProxyEventV2) => {
   const origin = event.headers?.origin || event.headers?.Origin || event.headers?.['origin'] || '';
   const method = (event.requestContext.http?.method || '').toUpperCase();
+  
   if (!method) return response(400, { ok: false, error: 'Missing method' }, origin);
-
   if (method === 'OPTIONS') return response(200, { ok: true }, origin);
 
+  // 1. Secure Session Check
   const session = requireSession(event);
   if (!session) return response(401, { ok: false, error: 'Missing session' }, origin);
 
   const listId = getListId(event);
 
+  // --- GET ---
   if (method === 'GET') {
     if (listId) {
       const item = await getItem({ PK: `AGENCY#${session.agencyId}`, SK: `LIST#${listId}` });
@@ -34,11 +36,13 @@ export const handler: Handler = async (event: APIGatewayProxyEventV2) => {
     return response(200, { ok: true, lists: items }, origin);
   }
 
+  // --- POST ---
   if (method === 'POST') {
     if (!event.body) return badRequest(origin, 'Missing body');
     const payload = JSON.parse(event.body);
     if (!payload.name) return badRequest(origin, 'name is required');
     if (payload.items && !Array.isArray(payload.items)) return badRequest(origin, 'items must be an array');
+    
     const id = payload.id || newId('list');
     const now = Date.now();
     const rec: CoachListRecord = {
@@ -56,28 +60,40 @@ export const handler: Handler = async (event: APIGatewayProxyEventV2) => {
     return response(200, { ok: true, list: rec }, origin);
   }
 
+  // --- PUT / PATCH ---
   if (method === 'PUT' || method === 'PATCH') {
     if (!listId) return badRequest(origin, 'Missing list id');
     if (!event.body) return badRequest(origin, 'Missing body');
     const payload = JSON.parse(event.body);
+    
     const existing = await getItem({ PK: `AGENCY#${session.agencyId}`, SK: `LIST#${listId}` });
     if (!existing) return response(404, { ok: false, message: 'Not found' }, origin);
+    
     const now = Date.now();
     const merged = { ...existing, ...payload, updatedAt: now };
     await putItem(merged);
     return response(200, { ok: true, list: merged }, origin);
   }
 
+  // --- DELETE (Soft Delete) ---
   if (method === 'DELETE') {
     if (!listId) return response(400, { ok: false, error: 'Missing list id' }, origin);
-    await putItem({
-      PK: `AGENCY#${session.agencyId}`,
-      SK: `LIST#${listId}`,
-      deletedAt: new Date().toISOString(),
-    });
+    
+    // FIX: Fetch first to preserve data during soft delete
+    const existing = await getItem({ PK: `AGENCY#${session.agencyId}`, SK: `LIST#${listId}` });
+    
+    if (existing) {
+      await putItem({
+        ...existing, // Keep the name and items!
+        deletedAt: new Date().toISOString(),
+      });
+    } else {
+      // If it doesn't exist, we can just return success or 404. 
+      // Returning success is idempotent.
+    }
+    
     return response(200, { ok: true }, origin);
   }
 
   return response(405, { ok: false, error: `Method not allowed` }, origin);
 };
-

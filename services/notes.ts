@@ -1,4 +1,4 @@
-type Note = {
+export type Note = {
   id: string;
   athleteId: string;
   agencyEmail: string;
@@ -10,65 +10,78 @@ type Note = {
   updatedAt: number;
 };
 
-const STORAGE_KEY = 'notes_data';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.API_BASE_URL;
 
-function readStore(): Note[] {
-  if (typeof window === 'undefined') return [];
-  const raw = window.localStorage.getItem(STORAGE_KEY);
-  if (!raw) return [];
-  try {
-    return JSON.parse(raw) as Note[];
-  } catch {
-    return [];
+function requireApiBase() {
+  if (!API_BASE_URL) throw new Error('API_BASE_URL is not configured');
+  return API_BASE_URL;
+}
+
+// Standardized fetch wrapper ensuring credentials (cookies) are sent
+async function apiFetch(path: string, init?: RequestInit) {
+  const base = requireApiBase();
+  if (typeof fetch === 'undefined') {
+    throw new Error('fetch is not available');
   }
-}
 
-function writeStore(items: Note[]) {
-  if (typeof window === 'undefined') return;
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
-}
-
-let NOTES: Note[] = readStore();
-
-export function listNotes(athleteId: string, agencyEmail: string) {
-  if (typeof window !== 'undefined') NOTES = readStore();
-  return NOTES.filter((n) => n.athleteId === athleteId && n.agencyEmail === agencyEmail);
-}
-
-export function createNote(input: Partial<Note> & { athleteId: string; agencyEmail: string; body: string }) {
-  const now = Date.now();
-  const note: Note = {
-    id: input.id ?? `n-${now}-${Math.random().toString(36).slice(2, 8)}`,
-    athleteId: input.athleteId,
-    agencyEmail: input.agencyEmail,
-    author: input.author,
-    title: input.title,
-    body: input.body,
-    type: (input.type as Note['type']) ?? 'other',
-    createdAt: now,
-    updatedAt: now,
+  const headers: Record<string, string> = { 
+    'Content-Type': 'application/json', 
+    ...(init?.headers as any) 
   };
-  NOTES.unshift(note);
-  writeStore(NOTES);
-  return note;
+
+  const url = `${base}${path}`;
+  
+  const options: RequestInit = { 
+    ...init, 
+    headers, 
+    credentials: 'include' // <--- Key for session persistence
+  };
+
+  console.log('[notes.apiFetch]', {
+    url,
+    method: options.method || 'GET',
+    hasBody: Boolean(options.body),
+    credentials: options.credentials,
+  });
+
+  const res = await fetch(url, options);
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`API ${path} failed: ${res.status} ${text}`);
+  }
+  return res.json();
 }
 
-export function updateNote(id: string, patch: Partial<Note>, agencyEmail: string) {
-  if (typeof window !== 'undefined') NOTES = readStore();
-  const idx = NOTES.findIndex((n) => n.id === id && n.agencyEmail === agencyEmail);
-  if (idx === -1) return null;
-  const merged = { ...NOTES[idx], ...patch, updatedAt: Date.now() };
-  NOTES[idx] = merged;
-  writeStore(NOTES);
-  return merged;
+export async function listNotes(athleteId: string, agencyEmail: string): Promise<Note[]> {
+  // GET /notes?athleteId=...&agencyEmail=...
+  const params = new URLSearchParams({ athleteId, agencyEmail });
+  const data = await apiFetch(`/notes?${params.toString()}`);
+  return (data?.notes as Note[]) ?? [];
 }
 
-export function deleteNote(id: string, agencyEmail: string) {
-  if (typeof window !== 'undefined') NOTES = readStore();
-  const before = NOTES.length;
-  NOTES = NOTES.filter((n) => !(n.id === id && n.agencyEmail === agencyEmail));
-  if (NOTES.length !== before) writeStore(NOTES);
+export async function createNote(input: Partial<Note> & { athleteId: string; agencyEmail: string; body: string }): Promise<Note> {
+  // POST /notes
+  const data = await apiFetch('/notes', {
+    method: 'POST',
+    body: JSON.stringify(input)
+  });
+  return data?.note as Note;
+}
+
+export async function updateNote(id: string, patch: Partial<Note>, agencyEmail: string): Promise<Note | null> {
+  // PATCH /notes/:id
+  // We can pass agencyEmail in the body for backend verification if needed, 
+  // though the session cookie usually handles auth.
+  const data = await apiFetch(`/notes/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ ...patch, agencyEmail })
+  });
+  return (data?.note as Note) ?? null;
+}
+
+export async function deleteNote(id: string, agencyEmail: string) {
+  // DELETE /notes/:id
+  await apiFetch(`/notes/${id}`, { method: 'DELETE' });
   return { ok: true };
 }
-
-

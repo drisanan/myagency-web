@@ -217,11 +217,15 @@ var handler = async (event) => {
   }
   if (method === "DELETE") {
     if (!listId) return response(400, { ok: false, error: "Missing list id" }, origin);
-    await putItem({
-      PK: `AGENCY#${session.agencyId}`,
-      SK: `LIST#${listId}`,
-      deletedAt: (/* @__PURE__ */ new Date()).toISOString()
-    });
+    const existing = await getItem({ PK: `AGENCY#${session.agencyId}`, SK: `LIST#${listId}` });
+    if (existing) {
+      await putItem({
+        ...existing,
+        // Keep the name and items!
+        deletedAt: (/* @__PURE__ */ new Date()).toISOString()
+      });
+    } else {
+    }
     return response(200, { ok: true }, origin);
   }
   return response(405, { ok: false, error: `Method not allowed` }, origin);
