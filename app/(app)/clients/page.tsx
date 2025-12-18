@@ -1,7 +1,7 @@
 'use client';
 import React from 'react';
 import { ClientsList } from '@/features/clients/ClientsList';
-import { Typography, Button, Stack, TextField } from '@mui/material';
+import { Typography, Button, Stack, TextField, CircularProgress } from '@mui/material';
 import Link from 'next/link';
 import { useSession } from '@/features/auth/session';
 import { upsertClient } from '@/services/clients';
@@ -11,13 +11,14 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.API_BAS
 const resolvedApiBase = API_BASE_URL || (typeof window !== 'undefined' ? `${window.location.origin}/api` : '');
 
 export default function ClientsPage() {
-  const { session } = useSession();
+  const { session, loading } = useSession();
   const queryClient = useQueryClient();
   const [inviteUrl, setInviteUrl] = React.useState<string>('');
   const [issuing, setIssuing] = React.useState<boolean>(false);
   const [copied, setCopied] = React.useState<boolean>(false);
   React.useEffect(() => {
     (async () => {
+      if (loading) return; // wait for session to hydrate
       if (!session?.email) return;
       if (!resolvedApiBase) {
         console.error('[clients:forms:error]', { error: 'API_BASE_URL missing' });
@@ -60,7 +61,24 @@ export default function ClientsPage() {
         }
       } catch {}
     })();
-  }, [session?.email]);
+  }, [session?.email, loading]);
+
+  if (loading) {
+    return (
+      <Stack spacing={2} alignItems="center" sx={{ py: 4 }}>
+        <CircularProgress size={24} />
+        <Typography>Verifying session…</Typography>
+      </Stack>
+    );
+  }
+
+  if (!session?.email) {
+    return (
+      <Stack spacing={2} sx={{ py: 4 }}>
+        <Typography>Please log in to view clients.</Typography>
+      </Stack>
+    );
+  }
   async function handleGenerateLink() {
     try {
       if (!session?.email) return;

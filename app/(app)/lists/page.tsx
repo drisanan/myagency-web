@@ -10,7 +10,7 @@ import { listUniversities, getUniversityDetails, DIVISION_API_MAPPING } from '@/
 import { listLists, saveList, updateList, deleteList, CoachEntry, CoachList } from '@/services/lists';
 
 export default function ListsPage() {
-  const { session } = useSession();
+  const { session, loading } = useSession();
 
   const [sport, setSport] = React.useState('');
   const [division, setDivision] = React.useState('');
@@ -70,13 +70,14 @@ export default function ListsPage() {
   }, [selectedSchool, sport, division, stateCode]);
 
   React.useEffect(() => {
+    if (loading) return; // wait for session to hydrate
     if (!session?.email) return;
     let cancelled = false;
     listLists(session.email)
       .then((l) => { if (!cancelled) setSaved(l || []); })
       .catch(() => {});
     return () => { cancelled = true; };
-  }, [session?.email]);
+  }, [session?.email, loading]);
 
   function addCoach(c: any, coachId: string) {
     const entry: CoachEntry = {
@@ -124,6 +125,7 @@ export default function ListsPage() {
   }
 
   async function saveCurrent() {
+    if (loading) return;
     if (!session?.email) {
       setSaveError(`You must be logged in to save a list.${JSON.stringify(session)}`);
       return;
@@ -177,6 +179,16 @@ export default function ListsPage() {
 
   return (
     <Box sx={{ display: 'grid', gap: 2 }}>
+      {loading && (
+        <Typography variant="body2" color="text.secondary">
+          Verifying session…
+        </Typography>
+      )}
+      {!loading && !session?.email && (
+        <Typography variant="body2" color="error">
+          Please log in to view and save lists.
+        </Typography>
+      )}
       <Typography variant="h5">Lists</Typography>
       {error && <Typography color="error">{error}</Typography>}
 

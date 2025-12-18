@@ -1,37 +1,52 @@
 'use client';
-import React from 'react';
+import React, { createContext, useContext, useEffect, useState } from 'react';
 import type { Session } from '@/features/auth/service';
 import { fetchSession } from '@/features/auth/service';
 
-type Ctx = { session: Session | null; setSession: (s: Session | null) => void; loading: boolean };
-const SessionCtx = React.createContext<Ctx | null>(null);
+type SessionContextType = {
+  session: Session | null;
+  loading: boolean;
+  refreshSession: () => Promise<void>;
+  setSession: (s: Session | null) => void;
+};
+
+const SessionCtx = createContext<SessionContextType>({
+  session: null,
+  loading: true,
+  refreshSession: async () => {},
+  setSession: () => {},
+});
 
 export function SessionProvider({ children }: { children: React.ReactNode }) {
-  const [session, setSession] = React.useState<Session | null>(null);
-  const [loading, setLoading] = React.useState(true);
+  const [session, setSession] = useState<Session | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  React.useEffect(() => {
-    let mounted = true;
-    (async () => {
+  const refreshSession = async () => {
+    try {
+      setLoading(true);
       const apiSession = await fetchSession();
-      if (!mounted) return;
       setSession(apiSession);
+    } catch (err) {
+      console.error('Session fetch failed', err);
+      setSession(null);
+    } finally {
       setLoading(false);
-    })();
-    return () => {
-      mounted = false;
-    };
+    }
+  };
+
+  useEffect(() => {
+    refreshSession();
   }, []);
 
-  const set = React.useCallback((s: Session | null) => {
-    setSession(s);
-  }, []);
-
-  return <SessionCtx.Provider value={{ session, setSession: set, loading }}>{children}</SessionCtx.Provider>;
+  return (
+    <SessionCtx.Provider value={{ session, loading, refreshSession, setSession }}>
+      {children}
+    </SessionCtx.Provider>
+  );
 }
 
 export function useSession() {
-  const ctx = React.useContext(SessionCtx);
+  const ctx = useContext(SessionCtx);
   if (!ctx) throw new Error('useSession must be used within SessionProvider');
   return ctx;
 }
