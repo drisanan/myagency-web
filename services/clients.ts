@@ -73,10 +73,22 @@ export async function listClientsByAgency(agencyId: string) {
 }
 
 export async function upsertClient(input: any) {
-  // Method defaults to POST in apiFetch logic if not specified, 
-  // but explicitly setting it here matches your pattern.
-  const data = await apiFetch('/clients', { method: 'POST', body: JSON.stringify(input) });
-  return data?.client;
+  // FIX: Detect Update (PUT) vs Create (POST)
+  if (input.id) {
+    console.log('[upsertClient] Updating existing client', input.id);
+    const data = await apiFetch(`/clients/${input.id}`, { 
+      method: 'PUT', 
+      body: JSON.stringify(input) 
+    });
+    return data?.client;
+  } else {
+    console.log('[upsertClient] Creating new client');
+    const data = await apiFetch('/clients', { 
+      method: 'POST', 
+      body: JSON.stringify(input) 
+    });
+    return data?.client;
+  }
 }
 
 export async function getClient(id: string) {

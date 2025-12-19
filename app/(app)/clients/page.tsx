@@ -20,6 +20,9 @@ export default function ClientsPage() {
   const [issuing, setIssuing] = React.useState<boolean>(false);
   const [copied, setCopied] = React.useState<boolean>(false);
 
+  // FIX: Safely grab the email regardless of property name
+  const userEmail = session?.agencyEmail || session?.email;
+
   // 1. Sync Submissions Effect
   React.useEffect(() => {
     let mounted = true;
@@ -29,13 +32,13 @@ export default function ClientsPage() {
       if (loading) return;
 
       // B. Verify we actually have a logged-in user
-      if (!session || !session.email) {
+      if (!userEmail) {
         return;
       }
 
       try {
         // C. Fetch pending submissions
-        const res = await fetch(`${API_BASE_URL}/forms/submissions?agencyEmail=${encodeURIComponent(session.email)}`, {
+        const res = await fetch(`${API_BASE_URL}/forms/submissions?agencyEmail=${encodeURIComponent(userEmail)}`, {
           credentials: 'include', // Critical: Passes the session cookie
         });
 
@@ -60,7 +63,7 @@ export default function ClientsPage() {
             lastName: v.lastName || '',
             sport: v.sport || '',
             division: v.division || '',
-            agencyEmail: session.email,
+            agencyEmail: userEmail,
             photoUrl: v.profileImageUrl || '',
             radar: v.radar || {},
             // Default password if needed, or handle via invite logic
@@ -78,7 +81,7 @@ export default function ClientsPage() {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'include',
-            body: JSON.stringify({ agencyEmail: session.email, ids: idsToConsume }),
+            body: JSON.stringify({ agencyEmail: userEmail, ids: idsToConsume }),
           });
           
           // Refresh the react-query list to show new clients immediately
@@ -92,7 +95,7 @@ export default function ClientsPage() {
     syncSubmissions();
 
     return () => { mounted = false; };
-  }, [session, loading, queryClient]); // FIX: Depend on the full session object
+  }, [userEmail, loading, queryClient]); // FIX: Depend on userEmail
 
   // 2. Loading State
   if (loading) {
@@ -105,7 +108,7 @@ export default function ClientsPage() {
   }
 
   // 3. Not Logged In State
-  if (!session?.email) {
+  if (!userEmail) {
     return (
       <Stack spacing={2} sx={{ py: 4 }}>
         <Typography>Please log in to view clients.</Typography>
@@ -116,7 +119,7 @@ export default function ClientsPage() {
 
   // 4. Action Handlers
   async function handleGenerateLink() {
-    if (!session?.email) return;
+    if (!userEmail) return;
 
     try {
       setIssuing(true);
@@ -126,7 +129,7 @@ export default function ClientsPage() {
         credentials: 'include',
         // Backend handles token generation; body might not even be needed if using cookies,
         // but sending agencyEmail is explicit and safe.
-        body: JSON.stringify({ agencyEmail: session.email }),
+        body: JSON.stringify({ agencyEmail: userEmail }),
       });
 
       const data = await res.json();
