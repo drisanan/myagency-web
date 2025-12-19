@@ -170,6 +170,9 @@ functions:
       - httpApi:
           path: /prompts/{id}
           method: any
+      - httpApi:
+          path: /ai/intro
+          method: post
 
 resources:
   Resources:

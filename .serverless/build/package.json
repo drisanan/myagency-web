@@ -1,0 +1,28 @@
+{
+  "name": "web-app",
+  "packageManager": "yarn@4.9.1",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "postbuild": "rm -rf .next/cache",
+    "start": "next start",
+    "typecheck": "tsc --noEmit",
+    "test": "jest --passWithNoTests",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage --runInBand",
+    "infra:deploy": "serverless deploy --stage ${STAGE:-prod} --region ${AWS_REGION:-us-west-1}",
+    "infra:remove": "serverless remove --stage ${STAGE:-prod} --region ${AWS_REGION:-us-west-1}",
+    "test:selenium:intake": "node tests/selenium/intake.e2e.js",
+    "test:selenium:client-create": "node tests/selenium/client-create.e2e.js",
+    "test:selenium:agency-wizard": "node tests/selenium/agency-wizard.e2e.js",
+    "test:selenium:recruiter-wizard": "node tests/selenium/recruiter-wizard.e2e.js",
+    "test:selenium:ai-prompts": "node tests/selenium/ai-prompts.e2e.js",
+    "test:selenium:lists": "node tests/selenium/lists.e2e.js",
+    "test:selenium:athlete-profile": "node tests/selenium/athlete-profile.e2e.js",
+    "test:selenium:login-ghl": "node tests/selenium/login-ghl.e2e.js",
+    "test:selenium:login-ghl-negative": "node tests/selenium/login-ghl-negative.e2e.js",
+    "test:selenium:intake-negative": "node tests/selenium/intake-negative.e2e.js",
+    "test:selenium:all": "npm-run-all --sequential test:selenium:intake test:selenium:intake-negative test:selenium:client-create test:selenium:agency-wizard test:selenium:recruiter-wizard test:selenium:ai-prompts test:selenium:lists test:selenium:athlete-profile test:selenium:login-ghl test:selenium:login-ghl-negative",
+    "infra:seed": "node scripts/seed-dynamo.mjs"
+  }
+}

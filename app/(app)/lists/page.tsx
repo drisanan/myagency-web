@@ -12,6 +12,9 @@ import { listLists, saveList, updateList, deleteList, CoachEntry, CoachList } fr
 export default function ListsPage() {
   const { session, loading } = useSession();
 
+  // FIX: Safely grab the email regardless of property name
+  const userEmail = session?.agencyEmail || session?.email;
+
   const [sport, setSport] = React.useState('');
   const [division, setDivision] = React.useState('');
   const [stateCode, setStateCode] = React.useState('');
@@ -69,15 +72,17 @@ export default function ListsPage() {
       .catch((e) => { setError(e?.message || 'Failed to load school'); setSchoolDetails(null); });
   }, [selectedSchool, sport, division, stateCode]);
 
+  // FIX: Use userEmail in dependency array and logic
   React.useEffect(() => {
-    if (loading) return; // wait for session to hydrate
-    if (!session?.email) return;
+    if (loading) return; 
+    if (!userEmail) return;
+
     let cancelled = false;
-    listLists(session.email)
+    listLists(userEmail)
       .then((l) => { if (!cancelled) setSaved(l || []); })
       .catch(() => {});
     return () => { cancelled = true; };
-  }, [session?.email, loading]);
+  }, [userEmail, loading]);
 
   function addCoach(c: any, coachId: string) {
     const entry: CoachEntry = {
@@ -126,8 +131,9 @@ export default function ListsPage() {
 
   async function saveCurrent() {
     if (loading) return;
-    if (!session?.email) {
-      setSaveError(`You must be logged in to save a list.${JSON.stringify(session)}`);
+    // FIX: Use userEmail check
+    if (!userEmail) {
+      setSaveError(`You must be logged in to save a list.`);
       return;
     }
     if (!currentName.trim()) {
@@ -151,7 +157,8 @@ export default function ListsPage() {
       }
       setSaveError(null);
     } else {
-      const rec = await saveList({ agencyEmail: session.email, name: currentName.trim(), items: currentItems });
+      // FIX: Use userEmail for saving
+      const rec = await saveList({ agencyEmail: userEmail, name: currentName.trim(), items: currentItems });
       if (rec) {
         setSaved((p) => [rec, ...p]);
         setEditingId(rec.id);
@@ -184,7 +191,7 @@ export default function ListsPage() {
           Verifying session…
         </Typography>
       )}
-      {!loading && !session?.email && (
+      {!loading && !userEmail && (
         <Typography variant="body2" color="error">
           Please log in to view and save lists.
         </Typography>
@@ -322,5 +329,3 @@ export default function ListsPage() {
     </Box>
   );
 }
-
-
