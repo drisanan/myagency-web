@@ -27,6 +27,7 @@ import { getMailEntries } from '@/services/mailStatus';
 import { NotesPanel } from '@/features/notes/NotesPanel';
 import { TasksPanel } from '@/features/tasks/TasksPanel';
 import { useSearchParams } from 'next/navigation';
+import { useSession } from '@/features/auth/session';
 
 type MailEntry = {
   id?: string;
@@ -50,23 +51,36 @@ export default function ClientProfilePage() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const id = Array.isArray(params?.id) ? params?.id[0] : (params?.id as string | undefined);
+  const { session, loading } = useSession();
 
   const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
   const [tab, setTab] = React.useState(0);
   const [expandedId, setExpandedId] = React.useState<string | null>(null);
   const [client, setClient] = React.useState<any | null>(null);
+  const [error, setError] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     let mounted = true;
+    setError(null);
+    if (loading) return; // wait for session hydration
+    if (!session?.email) {
+      if (mounted) setError('Please log in to view this client.');
+      return;
+    }
+    if (!id) return;
     (async () => {
-      if (!id) return;
-      const c = await getClient(id);
-      if (mounted) setClient(c);
+      try {
+        const c = await getClient(id);
+        if (mounted) setClient(c);
+      } catch (err) {
+        console.error('getClient failed', err);
+        if (mounted) setError('Unable to load client. Please ensure you are logged in.');
+      }
     })();
     return () => {
       mounted = false;
     };
-  }, [id]);
+  }, [id, session?.email, loading]);
 
   const mails: MailEntry[] = React.useMemo(() => {
     if (!client?.id) return [];
@@ -77,6 +91,22 @@ export default function ClientProfilePage() {
     const t = searchParams?.get('tab');
     if (t === 'notes') setTab(1);
   }, [searchParams]);
+
+  if (loading) {
+    return (
+      <Box sx={{ p: 3 }}>
+        <Typography>Verifying session…</Typography>
+      </Box>
+    );
+  }
+
+  if (error) {
+    return (
+      <Box sx={{ p: 3 }}>
+        <Typography color="error">{error}</Typography>
+      </Box>
+    );
+  }
 
   if (!client) {
     return (
