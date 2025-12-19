@@ -9,7 +9,7 @@ import { putItem, queryByPK, getItem, deleteItem } from '../lib/dynamo';
 // import fetch from 'node-fetch'; 
 
 const OPENAI_BASE = 'https://api.openai.com';
-const OPENAI_KEY = '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';
+const OPENAI_KEY = '';
 const MODEL = 'gpt-4o-mini';
 
 /**
