@@ -59,15 +59,24 @@ export default function ClientProfilePage() {
   const [client, setClient] = React.useState<any | null>(null);
   const [error, setError] = React.useState<string | null>(null);
 
+  // FIX: Safely grab the email regardless of property name
+  const userEmail = session?.agencyEmail || session?.email;
+
   React.useEffect(() => {
     let mounted = true;
     setError(null);
-    if (loading) return; // wait for session hydration
-    if (!session?.email) {
+    
+    // 1. Wait for session to load
+    if (loading) return; 
+    
+    // 2. Check using the safe email variable
+    if (!userEmail) {
       if (mounted) setError('Please log in to view this client.');
       return;
     }
+
     if (!id) return;
+
     (async () => {
       try {
         const c = await getClient(id);
@@ -80,7 +89,7 @@ export default function ClientProfilePage() {
     return () => {
       mounted = false;
     };
-  }, [id, session?.email, loading]);
+  }, [id, userEmail, loading]);
 
   const mails: MailEntry[] = React.useMemo(() => {
     if (!client?.id) return [];

@@ -1,44 +1,61 @@
 'use client';
+
 import React from 'react';
-import { ClientsList } from '@/features/clients/ClientsList';
-import { Typography, Button, Stack, TextField, CircularProgress } from '@mui/material';
 import Link from 'next/link';
+import { useQueryClient } from '@tanstack/react-query';
+import { Typography, Button, Stack, TextField, CircularProgress } from '@mui/material';
+
+import { ClientsList } from '@/features/clients/ClientsList';
 import { useSession } from '@/features/auth/session';
 import { upsertClient } from '@/services/clients';
-import { useQueryClient } from '@tanstack/react-query';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.API_BASE_URL || '';
-const resolvedApiBase = API_BASE_URL || (typeof window !== 'undefined' ? `${window.location.origin}/api` : '');
+// FIX: Hardcode the fallback to your actual API domain to prevent localhost issues
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://api.myrecruiteragency.com';
 
 export default function ClientsPage() {
   const { session, loading } = useSession();
   const queryClient = useQueryClient();
+  
   const [inviteUrl, setInviteUrl] = React.useState<string>('');
   const [issuing, setIssuing] = React.useState<boolean>(false);
   const [copied, setCopied] = React.useState<boolean>(false);
+
+  // 1. Sync Submissions Effect
   React.useEffect(() => {
-    (async () => {
-      if (loading) return; // wait for session to hydrate
-      if (!session?.email) return;
-      if (!resolvedApiBase) {
-        console.error('[clients:forms:error]', { error: 'API_BASE_URL missing' });
+    let mounted = true;
+
+    const syncSubmissions = async () => {
+      // A. Wait for global auth loading to finish
+      if (loading) return;
+
+      // B. Verify we actually have a logged-in user
+      if (!session || !session.email) {
         return;
       }
+
       try {
-        const res = await fetch(`${resolvedApiBase}/forms/submissions?agencyEmail=${encodeURIComponent(session.email)}`, {
-          credentials: 'include',
+        // C. Fetch pending submissions
+        const res = await fetch(`${API_BASE_URL}/forms/submissions?agencyEmail=${encodeURIComponent(session.email)}`, {
+          credentials: 'include', // Critical: Passes the session cookie
         });
+
+        if (!res.ok) return;
+
         const data = await res.json();
-        if (!data?.ok) return;
-        const items = Array.isArray(data.items) ? data.items : [];
+        const items = (data?.items && Array.isArray(data.items)) ? data.items : [];
+
+        if (items.length === 0) return;
+
+        console.log('[ClientsPage] Found new submissions:', items.length);
+
+        // D. Upsert clients locally
         const idsToConsume: string[] = [];
         for (const s of items) {
           const v = s?.data || {};
-          const client = {
-            id: s.id,
+          const clientPayload = {
+            id: s.id, // Use form ID as client ID or generate new one if preferred
             email: v.email || '',
             phone: v.phone || '',
-            password: v.password || '',
             firstName: v.firstName || '',
             lastName: v.lastName || '',
             sport: v.sport || '',
@@ -46,23 +63,38 @@ export default function ClientsPage() {
             agencyEmail: session.email,
             photoUrl: v.profileImageUrl || '',
             radar: v.radar || {},
+            // Default password if needed, or handle via invite logic
+            password: v.password || undefined, 
           };
-          await upsertClient(client as any);
+
+          // Upsert to your Client Service
+          await upsertClient(clientPayload);
           idsToConsume.push(s.id);
         }
-        if (idsToConsume.length) {
-          await fetch(`${resolvedApiBase}/forms/consume`, {
+
+        // E. Mark submissions as consumed so they don't sync again
+        if (idsToConsume.length > 0 && mounted) {
+          await fetch(`${API_BASE_URL}/forms/consume`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'include',
             body: JSON.stringify({ agencyEmail: session.email, ids: idsToConsume }),
           });
-          queryClient.invalidateQueries({ queryKey: ['clients', session.email] });
+          
+          // Refresh the react-query list to show new clients immediately
+          queryClient.invalidateQueries({ queryKey: ['clients'] });
         }
-      } catch {}
-    })();
-  }, [session?.email, loading]);
+      } catch (err) {
+        console.error('[ClientsPage] Sync failed', err);
+      }
+    };
 
+    syncSubmissions();
+
+    return () => { mounted = false; };
+  }, [session, loading, queryClient]); // FIX: Depend on the full session object
+
+  // 2. Loading State
   if (loading) {
     return (
       <Stack spacing={2} alignItems="center" sx={{ py: 4 }}>
@@ -72,62 +104,94 @@ export default function ClientsPage() {
     );
   }
 
+  // 3. Not Logged In State
   if (!session?.email) {
     return (
       <Stack spacing={2} sx={{ py: 4 }}>
         <Typography>Please log in to view clients.</Typography>
+        <Button LinkComponent={Link} href="/login" variant="outlined">Go to Login</Button>
       </Stack>
     );
   }
+
+  // 4. Action Handlers
   async function handleGenerateLink() {
+    if (!session?.email) return;
+
     try {
-      if (!session?.email) return;
-      if (!resolvedApiBase) throw new Error('API_BASE_URL is not configured');
       setIssuing(true);
-      const res = await fetch(`${resolvedApiBase}/forms/issue`, {
+      const res = await fetch(`${API_BASE_URL}/forms/issue`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
+        // Backend handles token generation; body might not even be needed if using cookies,
+        // but sending agencyEmail is explicit and safe.
         body: JSON.stringify({ agencyEmail: session.email }),
       });
+
       const data = await res.json();
-      if (!res.ok || !data?.ok) throw new Error(data?.error || 'Failed to create link');
+      if (!res.ok || !data?.ok) {
+        throw new Error(data?.error || 'Failed to create link');
+      }
+      
+      // Use the URL returned by the backend
       setInviteUrl(data.url);
-    } catch {
+    } catch (e: any) {
+      console.error('Generate link failed', e);
       setInviteUrl('');
+      // Optional: alert(e.message);
     } finally {
       setIssuing(false);
     }
   }
+
   async function handleCopy() {
     if (!inviteUrl) return;
     try {
       await navigator.clipboard.writeText(inviteUrl);
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
-    } catch {}
+    } catch (err) {
+      console.error('Copy failed', err);
+    }
   }
+
+  // 5. Render
   return (
-    <Stack spacing={2}>
+    <Stack spacing={2} sx={{ p: 2 }}>
       <Stack direction="row" justifyContent="space-between" alignItems="center">
         <Typography variant="h4">Athletes</Typography>
         <Stack direction="row" spacing={1}>
-          <Button LinkComponent={Link} href="/clients/new" variant="contained">New</Button>
+          <Button LinkComponent={Link} href="/clients/new" variant="contained">
+            New
+          </Button>
           <Button variant="outlined" onClick={handleGenerateLink} disabled={issuing}>
             {issuing ? 'Generating…' : 'Generate Form Link'}
           </Button>
         </Stack>
       </Stack>
-      {inviteUrl ? (
-        <Stack direction={{ xs: 'column', md: 'row' }} spacing={1} alignItems="center">
-          <TextField label="Intake Link" value={inviteUrl} fullWidth InputProps={{ readOnly: true }} />
-          <Button variant="outlined" onClick={handleCopy}>{copied ? 'Copied' : 'Copy'}</Button>
-          <Button variant="text" LinkComponent={Link} href={inviteUrl} target="_blank">Open</Button>
+
+      {inviteUrl && (
+        <Stack direction={{ xs: 'column', md: 'row' }} spacing={1} alignItems="center" sx={{ p: 2, bgcolor: '#f5f5f5', borderRadius: 1 }}>
+          <TextField 
+            label="Intake Link" 
+            value={inviteUrl} 
+            fullWidth 
+            size="small"
+            InputProps={{ readOnly: true }} 
+          />
+          <Stack direction="row" spacing={1}>
+            <Button variant="outlined" onClick={handleCopy}>
+              {copied ? 'Copied' : 'Copy'}
+            </Button>
+            <Button variant="text" LinkComponent={Link} href={inviteUrl} target="_blank">
+              Open
+            </Button>
+          </Stack>
         </Stack>
-      ) : null}
+      )}
+
       <ClientsList />
     </Stack>
   );
 }
-
-

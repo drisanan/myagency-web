@@ -27,5 +27,3 @@ export function verify<T = any>(token: string): T | null {
     return null;
   }
 }
-
-

@@ -1,126 +1,145 @@
-export type FormSubmissionData = {
-  email: string;
-  phone?: string;
-  password?: string;
-  firstName: string;
-  lastName: string;
-  sport: string;
-  division?: string;
-  graduationYear?: string;
-  profileImageUrl?: string;
-  radar?: Record<string, number>;
-};
+import { APIGatewayProxyEventV2 } from 'aws-lambda';
+import { response } from './cors';
+import { newId } from '../lib/ids';
+import { putItem, getItem, queryGSI1, queryByPK } from '../lib/dynamo';
+import { verify, sign } from '../lib/formsToken';
+import { requireSession } from './common';
 
-export type FormSubmissionRecord = {
-  id: string;
-  PK: string;
-  SK: string;
-  createdAt: number;
-  consumed: boolean;
-  agencyEmail: string;
-  data: FormSubmissionData;
-};
+export const handler = async (event: APIGatewayProxyEventV2) => {
+  const origin = event.headers?.origin || event.headers?.Origin || event.headers?.['origin'] || '';
+  const method = (event.requestContext.http?.method || '').toUpperCase();
+  const path = event.rawPath || event.requestContext.http?.path || '';
 
-export type AgencyPublicProfile = {
-  name: string;
-  email: string;
-  settings: Record<string, any>;
-};
+  // 1. Handle CORS Preflight (Always allowed)
+  if (method === 'OPTIONS') return response(200, { ok: true }, origin);
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.API_BASE_URL;
+  // =========================================================================
+  // PUBLIC ROUTES (No Session Required)
+  // Protected by JWT Token instead of Session Cookie
+  // =========================================================================
 
-function requireApiBase() {
-  if (!API_BASE_URL) throw new Error('API_BASE_URL is not configured');
-  return API_BASE_URL;
-}
+  // A. Athlete viewing the form: Resolve Token -> Agency Info
+  if (method === 'GET' && path.endsWith('/forms/agency')) {
+    const token = event.queryStringParameters?.token;
+    if (!token) return response(400, { ok: false, error: 'Missing token' }, origin);
+    
+    const payload = verify<{ agencyEmail: string }>(token);
+    if (!payload?.agencyEmail) {
+      return response(400, { ok: false, error: 'Invalid or expired token' }, origin);
+    }
 
-// Standardized fetch wrapper ensuring credentials (cookies) are sent
-async function apiFetch(path: string, init?: RequestInit) {
-  const base = requireApiBase();
-  if (typeof fetch === 'undefined') {
-    throw new Error('fetch is not available');
+    const agencies = await queryGSI1(`EMAIL#${payload.agencyEmail}`, 'AGENCY#');
+    const agency = agencies?.[0];
+    
+    if (!agency) return response(404, { ok: false, error: 'Agency not found' }, origin);
+
+    return response(200, { 
+      ok: true, 
+      agency: { 
+        name: agency.name, 
+        email: agency.email, 
+        settings: agency.settings || {} 
+      } 
+    }, origin);
   }
 
-  const headers: Record<string, string> = { 
-    'Content-Type': 'application/json', 
-    ...(init?.headers as any) 
-  };
+  // B. Athlete submitting the form
+  if (method === 'POST' && path.endsWith('/forms/submit')) {
+    if (!event.body) return response(400, { ok: false, error: 'Missing body' }, origin);
+    const body = JSON.parse(event.body);
+    const { token, form } = body;
 
-  const url = `${base}${path}`;
-  const options: RequestInit = { 
-    ...init, 
-    headers, 
-    credentials: 'include' // <--- Key for session persistence
-  };
+    if (!token || !form) return response(400, { ok: false, error: 'Missing token or form data' }, origin);
 
-  console.log('[forms.apiFetch]', {
-    url,
-    method: options.method || 'GET',
-    hasBody: Boolean(options.body),
-    credentials: options.credentials,
-  });
+    const payload = verify<{ agencyEmail: string }>(token);
+    if (!payload?.agencyEmail) return response(400, { ok: false, error: 'Invalid or expired token' }, origin);
 
-  const res = await fetch(url, options);
+    const agencies = await queryGSI1(`EMAIL#${payload.agencyEmail}`, 'AGENCY#');
+    const agency = agencies?.[0];
+    if (!agency) return response(404, { ok: false, error: 'Agency not found' }, origin);
 
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`API ${path} failed: ${res.status} ${text}`);
+    const id = newId('form');
+    const now = Date.now();
+    
+    const submission = {
+        PK: `AGENCY#${agency.id}`, 
+        SK: `FORM#${id}`,
+        id,
+        createdAt: now,
+        consumed: false, 
+        agencyEmail: agency.email,
+        data: form,
+    };
+    
+    await putItem(submission);
+    return response(200, { ok: true, id }, origin);
   }
-  return res.json();
-}
 
-/**
- * Issues a new signed token for a public form.
- */
-export async function issueFormToken(agencyEmail: string) {
-  // POST /forms/issue
-  const data = await apiFetch('/forms/issue', {
-    method: 'POST',
-    body: JSON.stringify({ agencyEmail }),
-  });
-  return data as { ok: boolean; token: string; url: string };
-}
+  // =========================================================================
+  // PRIVATE ROUTES (Session Required)
+  // Protected by 'requireSession'
+  // =========================================================================
 
-/**
- * Retrieves public agency details using a form token.
- */
-export async function getFormAgency(token: string) {
-  // GET /forms/agency?token=...
-  const qs = new URLSearchParams({ token }).toString();
-  const data = await apiFetch(`/forms/agency?${qs}`);
-  return data?.agency as AgencyPublicProfile;
-}
+  // Helper: Enforce session locally for these routes
+  const ensureSession = () => {
+    const s = requireSession(event);
+    if (!s) throw new Error('Unauthorized');
+    return s;
+  };
 
-/**
- * Submits a new form entry.
- */
-export async function submitForm(token: string, form: Partial<FormSubmissionData>) {
-  // POST /forms/submit
-  const data = await apiFetch('/forms/submit', {
-    method: 'POST',
-    body: JSON.stringify({ token, form }),
-  });
-  return data as { ok: boolean; id: string };
-}
+  try {
+    // C. Issue a new Form Token
+    if (method === 'POST' && path.endsWith('/forms/issue')) {
+      const session = ensureSession();
+      
+      const payload = {
+        agencyEmail: session.agencyEmail,
+        iat: Date.now(),
+        exp: Date.now() + (1000 * 60 * 60 * 24 * 30) // 30 days
+      };
+      const token = sign(payload);
+      
+      const frontendHost = process.env.FRONTEND_URL || 'www.myrecruiteragency.com'; 
+      const url = `https://${frontendHost}/forms/start?token=${token}`;
+      
+      return response(200, { ok: true, token, url }, origin);
+    }
 
-/**
- * Lists pending (unconsumed) form submissions for an agency.
- */
-export async function listFormSubmissions(agencyEmail: string) {
-  // GET /forms/submissions?agencyEmail=...
-  const qs = new URLSearchParams({ agencyEmail }).toString();
-  const data = await apiFetch(`/forms/submissions?${qs}`);
-  return (data?.items as FormSubmissionRecord[]) ?? [];
-}
+    // D. List Submissions
+    if (method === 'GET' && path.endsWith('/forms/submissions')) {
+      const session = ensureSession();
+      
+      const items = await queryByPK(`AGENCY#${session.agencyId}`, 'FORM#');
+      const pending = (items || []).filter((s: any) => !s.consumed);
+      return response(200, { ok: true, items: pending }, origin);
+    }
 
-/**
- * Marks specific form submissions as consumed (processed).
- */
-export async function consumeFormSubmissions(agencyEmail: string, ids: string[]) {
-  // POST /forms/consume
-  await apiFetch('/forms/consume', {
-    method: 'POST',
-    body: JSON.stringify({ agencyEmail, ids }),
-  });
-  return { ok: true };
-}
+    // E. Consume (Mark Read) Submissions
+    if (method === 'POST' && path.endsWith('/forms/consume')) {
+      const session = ensureSession();
+      
+      if (!event.body) return response(400, { ok: false, error: 'Missing body' }, origin);
+      const { ids } = JSON.parse(event.body);
+      
+      if (!Array.isArray(ids)) return response(400, { ok: false, error: 'ids must be array' }, origin);
+
+      for (const id of ids) {
+        const item = await getItem({ PK: `AGENCY#${session.agencyId}`, SK: `FORM#${id}` });
+        // Security check: ensure item belongs to this agency
+        if (item) {
+          await putItem({ ...item, consumed: true });
+        }
+      }
+      return response(200, { ok: true }, origin);
+    }
+
+  } catch (error: any) {
+    if (error.message === 'Unauthorized') {
+      return response(401, { ok: false, error: 'Missing session' }, origin);
+    }
+    console.error('Handler Error', error);
+    return response(500, { ok: false, error: 'Internal Server Error' }, origin);
+  }
+
+  return response(404, { ok: false, error: 'Path not found' }, origin);
+};
