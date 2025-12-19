@@ -24,24 +24,31 @@ export default function PromptPlaygroundPage() {
   const [error, setError] = React.useState<string | null>(null);
   const [agencyName, setAgencyName] = React.useState<string>('');
 
+  // FIX: Safely grab the email regardless of property name
+  const userEmail = session?.agencyEmail || session?.email;
+
   const currentClient = React.useMemo(
     () => clients.find(c => c.id === clientId) || null,
     [clients, clientId]
   );
 
   React.useEffect(() => {
-    if (!session?.email) return;
-    listClientsByAgencyEmail(session.email).then(setClients);
+    if (!userEmail) return;
+
+    // Load Clients
+    listClientsByAgencyEmail(userEmail).then(setClients);
+    
     // Load agency name for use as collegeName in prompts
-    getAgencyByEmail(session.email).then(a => setAgencyName(a?.name || ''));
-  }, [session?.email]);
+    getAgencyByEmail(userEmail).then(a => setAgencyName(a?.name || ''));
+  }, [userEmail]); // FIX: Dependency is now the correct email variable
 
   React.useEffect(() => {
-    if (!session?.email) return;
-    listPrompts({ agencyEmail: session.email, clientId })
+    if (!userEmail) return;
+    
+    listPrompts({ agencyEmail: userEmail, clientId })
       .then(setTemplates)
       .catch(() => setTemplates([]));
-  }, [session?.email, clientId]);
+  }, [userEmail, clientId]);
 
   async function handleRun() {
     try {
@@ -71,9 +78,9 @@ export default function PromptPlaygroundPage() {
   }
 
   async function handleSave() {
-    if (!session?.email) return;
+    if (!userEmail) return;
     const name = templateName || `Prompt ${new Date().toLocaleString()}`;
-    const rec = await savePrompt({ agencyEmail: session.email, clientId, name, text: prompt });
+    const rec = await savePrompt({ agencyEmail: userEmail, clientId, name, text: prompt });
     setTemplates([rec, ...templates]);
     setTemplateName('');
   }
@@ -190,7 +197,7 @@ export default function PromptPlaygroundPage() {
             onChange={(e) => setTemplateName(e.target.value)}
             sx={{ width: 220 }}
           />
-          <Button variant="outlined" onClick={handleSave} disabled={!session?.email || !prompt}>Save Prompt</Button>
+          <Button variant="outlined" onClick={handleSave} disabled={!userEmail || !prompt}>Save Prompt</Button>
           <Button
             variant="outlined"
             color="error"
@@ -211,5 +218,3 @@ export default function PromptPlaygroundPage() {
     </Box>
   );
 }
-
-
