@@ -14,6 +14,7 @@ export type Session = {
   role: 'parent' | 'agency';
   agencyId?: string;
   email: string;
+  agencyEmail?: string;
   agencyLogo?: string;
   impersonatedBy?: { email: string; role: 'parent' };
   contactId?: string;
@@ -92,6 +93,7 @@ console.log('agencyId', agencyId);
   const session: Session = {
     role: 'agency',
     email: result.contact.email,
+    agencyEmail: result.contact.email,
     agencyId,
     contactId: result.contact.id,
   };
