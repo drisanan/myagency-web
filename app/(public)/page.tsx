@@ -3,6 +3,7 @@ import React from 'react';
 import { MarketingHeader } from '@/features/marketing/MarketingHeader';
 import { Container, Typography, Box, Button, Stack } from '@mui/material';
 import Image from 'next/image';
+import Link from 'next/link';
 
 export default function MarketingPage() {
   return (
@@ -130,6 +131,14 @@ export default function MarketingPage() {
           <Box>
             <Image src="/marketing/ambassador.png" alt="Ambassador" width={747} height={800} style={{ width: '100%', height: 'auto', borderRadius: 8 }} />
           </Box>
+        </Box>
+
+        <Box component="footer" sx={{ borderTop: '1px solid #e0e0e0', pt: 3, mt: 8, display: 'flex', flexWrap: 'wrap', gap: 2, justifyContent: 'space-between', alignItems: 'center' }}>
+          <Typography variant="body2" color="text.secondary">© {new Date().getFullYear()} MyRecruiterAgency</Typography>
+          <Stack direction="row" spacing={2}>
+            <Link href="/privacy">Privacy</Link>
+            <Link href="/terms">Terms</Link>
+          </Stack>
         </Box>
       </Container>
     </>
