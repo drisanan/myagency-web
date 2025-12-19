@@ -161,6 +161,15 @@ functions:
       - httpApi:
           path: /tasks/{id}
           method: any
+  prompts:
+    handler: infra/src/handlers/prompts.handler
+    events:
+      - httpApi:
+          path: /prompts
+          method: any
+      - httpApi:
+          path: /prompts/{id}
+          method: any
 
 resources:
   Resources:
