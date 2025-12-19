@@ -8,12 +8,16 @@ import { useSession } from '@/features/auth/session';
 
 export function ClientsList() {
   const { session } = useSession();
-  const agencyEmail = session?.email || '';
+  
+  // FIX: Check for agencyEmail OR email so it works with your API response
+  const agencyEmail = session?.agencyEmail || session?.email || '';
+
   const { data = [], refetch } = useQuery({
     queryKey: ['clients', agencyEmail],
     queryFn: () => agencyEmail ? listClientsByAgencyEmail(agencyEmail) : [],
-    enabled: Boolean(agencyEmail),
+    enabled: Boolean(agencyEmail), // Now true, so the fetch happens!
   });
+
   const cols: GridColDef[] = [
     {
       field: 'athlete',
@@ -81,5 +85,3 @@ export function ClientsList() {
     </Paper>
   );
 }
-
-
