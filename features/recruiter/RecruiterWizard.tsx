@@ -15,7 +15,11 @@ type ClientRow = { id: string; email: string; firstName?: string; lastName?: str
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.API_BASE_URL || '';
 
 export function RecruiterWizard() {
-  const { session } = useSession();
+  const { session, loading } = useSession();
+  
+  // FIX: Safely grab the email regardless of property name
+  const userEmail = session?.agencyEmail || session?.email;
+
   const [activeStep, setActiveStep] = React.useState(0);
 
   // Step 1 - client selection
@@ -363,7 +367,14 @@ export function RecruiterWizard() {
         const res = await fetch(draftUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ clientId: id, to: [recipient], subject, html: personalizedHtml, tokens: savedTokens || undefined, agencyEmail: session?.email || '' }),
+          body: JSON.stringify({ 
+              clientId: id, 
+              to: [recipient], 
+              subject, 
+              html: personalizedHtml, 
+              tokens: savedTokens || undefined, 
+              agencyEmail: userEmail || ''  // FIX: Use safe email
+          }),
         });
         const data = await res.json();
         if (!res.ok || !data?.ok) {
@@ -492,14 +503,19 @@ export function RecruiterWizard() {
     return `<p>Hello Coach ${coachLast},</p><p>${introFixed}</p>${rest}`;
   }
 
+  // FIX: Load Initial Data using safe userEmail
   React.useEffect(() => {
-    if (!session) return;
-    if (session.role !== 'agency') return;
-    listClientsByAgencyEmail(session.email).then(setClients);
+    if (!userEmail) return;
+    
+    // Load Clients
+    listClientsByAgencyEmail(userEmail).then(setClients);
+    
+    // Load Meta
     getDivisions().then(setDivisions);
-    // load saved lists for this agency
-    listLists(session.email).then(setLists).catch(() => setLists([]));
-  }, [session]);
+    
+    // Load Lists
+    listLists(userEmail).then(setLists).catch(() => setLists([]));
+  }, [userEmail]); // Dependencies correct now
 
   React.useEffect(() => {
     if (!division) {
@@ -542,10 +558,12 @@ export function RecruiterWizard() {
       .catch((e) => { setSchoolDetails(null); setSelectedCoachIds({}); setError(e?.message || 'Failed to load university'); });
   }, [selectedSchoolName, clientId, division, state, clients]);
   React.useEffect(() => { setError(null); }, [division, state, selectedSchoolName, clientId]);
+
+  // FIX: Use userEmail for templates
   React.useEffect(() => {
-    if (!session?.email) return;
-    setTemplates(listTemplates({ agencyEmail: session.email, clientId }));
-  }, [session, clientId]);
+    if (!userEmail) return;
+    setTemplates(listTemplates({ agencyEmail: userEmail, clientId }));
+  }, [userEmail, clientId]);
 
   const isLast = activeStep === 3;
   const canNext =
@@ -591,12 +609,12 @@ export function RecruiterWizard() {
   }
 
   function handleSaveTemplate() {
-    if (!session?.email) return;
+    if (!userEmail) return;
     const html = (aiHtml || buildEmailPreview());
     const ctx = currentEmailContext();
     const placeholderHtml = toTemplateHtml(html, ctx);
     const rec = saveTemplate({
-      agencyEmail: session.email,
+      agencyEmail: userEmail,
       clientId,
       name: templateName || `Template ${new Date().toLocaleString()}`,
       html: placeholderHtml,
@@ -614,6 +632,23 @@ export function RecruiterWizard() {
     setDraft(html);
     if (t.enabledSections) setEnabledSections(t.enabledSections);
     setSelectedTemplateId(id);
+  }
+
+  if (loading) {
+    return (
+      <Box sx={{ p: 4, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+        <CircularProgress size={32} />
+        <Typography>Loading Wizard…</Typography>
+      </Box>
+    );
+  }
+
+  if (!userEmail) {
+    return (
+      <Box sx={{ p: 4 }}>
+        <Typography variant="h6" color="error">Please log in to use the Recruiting Wizard.</Typography>
+      </Box>
+    );
   }
 
   return (
@@ -1003,7 +1038,7 @@ export function RecruiterWizard() {
                 )}
                 {gmailConnected && (
                   <Typography variant="body2" sx={{ bgcolor: '#e8fbe0', px: 1.5, py: 0.75, borderRadius: 1 }}>
-                    Mailing from: {session?.email || 'Connected Gmail'}
+                    Mailing from: {userEmail || 'Connected Gmail'}
                   </Typography>
                 )}
 
@@ -1115,5 +1150,3 @@ export function RecruiterWizard() {
     </Box>
   );
 }
-
-
