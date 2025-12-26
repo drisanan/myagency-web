@@ -15,6 +15,10 @@ provider:
     NODE_OPTIONS: --enable-source-maps
     FORMS_SECRET: ${env:FORMS_SECRET, 'ff58bc99-63a5-4493-83dc-6720cb3c7db7'}
     DEBUG_SESSION: ${env:DEBUG_SESSION, 'false'}
+    GOOGLE_CLIENT_ID: ${env:GOOGLE_CLIENT_ID}
+    GOOGLE_CLIENT_SECRET: ${env:GOOGLE_CLIENT_SECRET}
+    GOOGLE_REDIRECT_URI: ${env:GOOGLE_REDIRECT_URI, 'https://api.myrecruiteragency.com/google/oauth/callback'}
+    FRONTEND_URL: ${env:FRONTEND_URL, 'https://www.myrecruiteragency.com'}
   httpApi:
     cors:
       allowedOrigins:
@@ -139,6 +143,15 @@ functions:
           method: get
       - httpApi:
           path: /google/oauth/callback
+          method: get
+      - httpApi:
+          path: /google/tokens
+          method: post
+      - httpApi:
+          path: /google/tokens
+          method: get
+      - httpApi:
+          path: /google/status
           method: get
   ghlLogin:
     handler: infra/src/handlers/ghl-login.handler

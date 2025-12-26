@@ -281,7 +281,10 @@ export function RecruiterWizard() {
   React.useEffect(() => {
     if (!currentClient?.id) { setGmailConnected(false); return; }
     if (typeof window === 'undefined' || typeof fetch === 'undefined') { setGmailConnected(false); return; }
-    fetch(`/api/google/status?clientId=${encodeURIComponent(currentClient.id)}`)
+    const statusUrl = API_BASE_URL
+      ? `${API_BASE_URL}/google/status?clientId=${encodeURIComponent(currentClient.id)}`
+      : `/api/google/status?clientId=${encodeURIComponent(currentClient.id)}`;
+    fetch(statusUrl, { credentials: 'include' })
       .then(r => r.json())
       .then(d => setGmailConnected(Boolean(d?.connected)))
       .catch(() => setGmailConnected(false));
@@ -294,7 +297,10 @@ export function RecruiterWizard() {
         return;
       }
       setGmailConnecting(true);
-      const res = await fetch(`/api/google/oauth/url?clientId=${encodeURIComponent(currentClient.id)}`);
+      const oauthUrl = API_BASE_URL
+        ? `${API_BASE_URL}/google/oauth/url?clientId=${encodeURIComponent(currentClient.id)}`
+        : `/api/google/oauth/url?clientId=${encodeURIComponent(currentClient.id)}`;
+      const res = await fetch(oauthUrl, { credentials: 'include' });
       const data = await res.json();
       if (!data?.url) throw new Error('Failed to start Gmail connection flow');
       const w = 500, h = 700;
