@@ -20,28 +20,7 @@ provider:
     GOOGLE_REDIRECT_URI: ${env:GOOGLE_REDIRECT_URI, 'https://api.myrecruiteragency.com/google/oauth/callback'}
     FRONTEND_URL: ${env:FRONTEND_URL, 'https://www.myrecruiteragency.com'}
   httpApi:
-    cors:
-      allowedOrigins:
-        - https://master.d2yp6hyv6u0efd.amplifyapp.com
-        - https://myrecruiteragency.com
-        - https://www.myrecruiteragency.com
-        - http://localhost:3000
-        - http://localhost:3001
-      allowedMethods:
-        - GET
-        - POST
-        - PUT
-        - PATCH
-        - DELETE
-        - OPTIONS
-      allowedHeaders:
-        - Content-Type
-        - Authorization
-        - X-Amz-Date
-        - X-Api-Key
-        - X-Amz-Security-Token
-      allowCredentials: true
-      maxAge: 86400
+    id: ${env:HTTP_API_ID, 'pv8zcu3aa9'}
   iam:
     role:
       statements:

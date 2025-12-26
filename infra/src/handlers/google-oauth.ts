@@ -114,12 +114,17 @@ export const handler = async (event: APIGatewayProxyEventV2) => {
         body: `
           <html><body>
           <script>
-            // Send success message to the React app
-            if (window.opener) {
-              window.opener.postMessage(${JSON.stringify(successPayload)}, '${FRONTEND_URL}');
-              window.opener.postMessage(${JSON.stringify(successPayload)}, 'http://localhost:3000');
-            }
-            window.close();
+            (function() {
+              var payload = ${JSON.stringify(successPayload)};
+              try {
+                if (window.opener) {
+                  window.opener.postMessage(payload, '${FRONTEND_URL}');
+                }
+              } catch (e) {
+                console.error('postMessage failed', e);
+              }
+              window.close();
+            })();
           </script>
           <p>Connected! You can close this window.</p>
           </body></html>
@@ -174,13 +179,18 @@ export const handler = async (event: APIGatewayProxyEventV2) => {
   // GET /google/status?clientId=...
   // =========================================================================
   if (method === 'GET' && path.endsWith('/google/status')) {
-    const clientId = event.queryStringParameters?.clientId;
-    if (!clientId) return response(400, { ok: false, error: 'Missing clientId' }, origin);
+    try {
+      const clientId = event.queryStringParameters?.clientId;
+      if (!clientId) return response(400, { ok: false, error: 'Missing clientId' }, origin);
 
-    const item = await getItem({ PK: `AGENCY#${session.agencyId}`, SK: `GMAIL_TOKEN#${clientId}` });
-    const connected = Boolean(item?.tokens?.refresh_token);
+      const item = await getItem({ PK: `AGENCY#${session.agencyId}`, SK: `GMAIL_TOKEN#${clientId}` });
+      const connected = Boolean(item?.tokens?.refresh_token);
 
-    return response(200, { ok: true, connected }, origin);
+      return response(200, { ok: true, connected }, origin);
+    } catch (e: any) {
+      console.error('google-status error', e);
+      return response(500, { ok: false, error: 'Status lookup failed' }, origin);
+    }
   }
 
   return response(404, { ok: false, error: 'Path not found' }, origin);
