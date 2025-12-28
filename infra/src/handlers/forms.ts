@@ -28,8 +28,9 @@ export const handler = async (event: APIGatewayProxyEventV2) => {
     };
     const token = sign(payload);
     
-    const frontendHost = 'www.myrecruiteragency.com'; 
-    const url = `https://${frontendHost}/forms/start?token=${token}`;
+    const frontendHost = process.env.FRONTEND_URL || 'www.myrecruiteragency.com';
+    const base = frontendHost.startsWith('http') ? frontendHost : `https://${frontendHost}`;
+    const url = `${base}/forms/${token}`;
     
     return response(200, { ok: true, token, url }, origin);
   }

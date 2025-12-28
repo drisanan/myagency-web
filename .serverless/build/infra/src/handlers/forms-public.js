@@ -275,7 +275,8 @@ var handler = async (event) => {
       };
       const token = sign(payload);
       const frontendHost = process.env.FRONTEND_URL || "www.myrecruiteragency.com";
-      const url = `https://${frontendHost}/forms/start?token=${token}`;
+      const base = frontendHost.startsWith("http") ? frontendHost : `https://${frontendHost}`;
+      const url = `${base}/forms/${token}`;
       return response(200, { ok: true, token, url }, origin);
     }
     if (method === "GET" && path.endsWith("/forms/submissions")) {

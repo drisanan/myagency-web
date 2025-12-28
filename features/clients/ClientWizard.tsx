@@ -276,7 +276,20 @@ type ClientWizardProps = {
   onSaved?: () => void;
 };
 
-export function ClientWizard({ initialClient, mode = 'create', onSaved }: ClientWizardProps) {
+export function ClientWizard({
+  initialClient,
+  mode = 'create',
+  onSaved,
+  publicMode = false,
+  publicSubmit,
+  overrideAgencyEmail,
+  onSubmitSuccess,
+}: ClientWizardProps & {
+  publicMode?: boolean;
+  publicSubmit?: (payload: Record<string, any>) => Promise<void>;
+  overrideAgencyEmail?: string;
+  onSubmitSuccess?: () => void;
+}) {
   const { session } = useSession();
   const router = useRouter();
   const [activeStep, setActiveStep] = React.useState(0);
@@ -291,6 +304,7 @@ export function ClientWizard({ initialClient, mode = 'create', onSaved }: Client
   const [errors, setErrors] = React.useState<{ email?: string; firstName?: string; lastName?: string; sport?: string }>({});
   const [submitting, setSubmitting] = React.useState(false);
   const [submitError, setSubmitError] = React.useState('');
+  const [submitSuccess, setSubmitSuccess] = React.useState('');
 
   React.useEffect(() => {
     if (!initialClient) return;
@@ -344,11 +358,12 @@ export function ClientWizard({ initialClient, mode = 'create', onSaved }: Client
       } else {
         setErrors({});
         setSubmitError('');
+        setSubmitSuccess('');
       }
       const payload: Record<string, any> = {
         ...basic,
         radar,
-        agencyEmail: initialClient?.agencyEmail ?? session?.email,
+        agencyEmail: overrideAgencyEmail ?? initialClient?.agencyEmail ?? session?.email,
         id: initialClient?.id,
       };
       if (!payload.password) {
@@ -357,9 +372,18 @@ export function ClientWizard({ initialClient, mode = 'create', onSaved }: Client
       setSubmitting(true);
       setSubmitError('');
       try {
-        await upsertClient(payload);
+        if (publicMode && publicSubmit) {
+          await publicSubmit(payload);
+        } else {
+          await upsertClient(payload);
+        }
         onSaved?.();
-        router.push('/clients');
+        onSubmitSuccess?.();
+        if (publicMode) {
+          setSubmitSuccess('Submitted!');
+        } else {
+          router.push('/clients');
+        }
         return;
       } catch (e: any) {
         setSubmitError(e?.message || 'Failed to save client');
@@ -388,6 +412,11 @@ export function ClientWizard({ initialClient, mode = 'create', onSaved }: Client
         {submitError && (
           <Typography color="error" sx={{ mb: 2 }}>
             {submitError}
+          </Typography>
+        )}
+        {!submitError && submitSuccess && (
+          <Typography color="success.main" sx={{ mb: 2 }}>
+            {submitSuccess}
           </Typography>
         )}
         {activeStep === 0 && (
