@@ -684,32 +684,6 @@ export function RecruiterWizard() {
             {error}
           </Typography>
         )}
-        {prompts.length > 0 && (
-          <Box sx={{ mb: 2, display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 2 }}>
-            <TextField
-              select
-              label="Saved Prompts"
-              value={selectedPromptId}
-              onChange={(e) => {
-                const id = String(e.target.value);
-                setSelectedPromptId(id);
-                const p = prompts.find((x) => x.id === id);
-                if (p?.text) {
-                  setAiHtml(p.text);
-                  setDraft(p.text);
-                }
-              }}
-              SelectProps={{ MenuProps: { disablePortal: true } }}
-            >
-              <MenuItem value="">(Select a prompt)</MenuItem>
-              {prompts.map((p) => (
-                <MenuItem key={p.id} value={p.id}>
-                  {p.name}
-                </MenuItem>
-              ))}
-            </TextField>
-          </Box>
-        )}
         {activeStep === 0 && (
           <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 2, maxWidth: 700 }}>
             <TextField
@@ -989,6 +963,32 @@ export function RecruiterWizard() {
         {activeStep === 3 && (
           <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '2fr 1fr' }, gap: 2 }}>
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              {prompts.length > 0 && (
+                <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 2 }}>
+                  <TextField
+                    select
+                    label="Saved Prompts"
+                    value={selectedPromptId}
+                    onChange={(e) => {
+                      const id = String(e.target.value);
+                      setSelectedPromptId(id);
+                      const p = prompts.find((x) => x.id === id);
+                      if (p?.text) {
+                        setAiHtml(p.text);
+                        setDraft(p.text);
+                      }
+                    }}
+                    SelectProps={{ MenuProps: { disablePortal: true } }}
+                  >
+                    <MenuItem value="">(Select a prompt)</MenuItem>
+                    {prompts.map((p) => (
+                      <MenuItem key={p.id} value={p.id}>
+                        {p.name}
+                      </MenuItem>
+                    ))}
+                  </TextField>
+                </Box>
+              )}
               {listMode && (
             <Box>
                   <Typography variant="h6" gutterBottom>Recipients</Typography>
