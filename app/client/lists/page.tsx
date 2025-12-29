@@ -6,6 +6,7 @@ import { useSession } from '@/features/auth/session';
 import AppLayout from '@/app/(app)/layout';
 import { getDivisions, getStates } from '@/services/recruiterMeta';
 import { getSports } from '@/features/recruiter/divisionMapping';
+import { getClient } from '@/services/clients';
 import {
   Box,
   Button,
@@ -43,6 +44,7 @@ export default function ClientListsPage() {
   const [selected, setSelected] = React.useState<Record<string, boolean>>({});
   const [loadingUnis, setLoadingUnis] = React.useState(false);
   const [saving, setSaving] = React.useState(false);
+  const [clientProfile, setClientProfile] = React.useState<any>(null);
 
   React.useEffect(() => {
     (async () => {
@@ -86,6 +88,19 @@ export default function ClientListsPage() {
       })
       .catch(() => {});
   }, [division]);
+
+  // Load client profile and seed sport/division/state if present
+  React.useEffect(() => {
+    if (!session?.clientId) return;
+    getClient(session.clientId)
+      .then((c) => {
+        setClientProfile(c);
+        if (c?.sport) setSport(c.sport);
+        if (c?.division) setDivision(c.division);
+        if (c?.state) setState(c.state);
+      })
+      .catch(() => {});
+  }, [session?.clientId]);
 
   const loadUniversities = async () => {
     try {
