@@ -522,8 +522,10 @@ export function RecruiterWizard() {
     // Load Meta
     getDivisions().then(setDivisions);
     
-    // Load Lists
-    listLists(userEmail).then(setLists).catch(() => setLists([]));
+    // Load Lists (agency-created only; exclude client interest lists)
+    listLists(userEmail)
+      .then((ls) => setLists((ls || []).filter((l) => l.type !== 'CLIENT_INTEREST')))
+      .catch(() => setLists([]));
 
     // Load Prompts
     listPrompts({ agencyEmail: userEmail, clientId }).then(setPrompts).catch(() => setPrompts([]));
@@ -533,6 +535,14 @@ export function RecruiterWizard() {
   React.useEffect(() => {
     if (!userEmail) return;
     listPrompts({ agencyEmail: userEmail, clientId }).then(setPrompts).catch(() => setPrompts([]));
+  }, [userEmail, clientId]);
+
+  // Reload lists when client changes to ensure we keep only agency-created lists
+  React.useEffect(() => {
+    if (!userEmail) return;
+    listLists(userEmail)
+      .then((ls) => setLists((ls || []).filter((l) => l.type !== 'CLIENT_INTEREST')))
+      .catch(() => setLists([]));
   }, [userEmail, clientId]);
 
   React.useEffect(() => {
