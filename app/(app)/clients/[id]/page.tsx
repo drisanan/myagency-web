@@ -26,7 +26,7 @@ import { getClient } from '@/services/clients';
 import { getMailEntries } from '@/services/mailStatus';
 import { NotesPanel } from '@/features/notes/NotesPanel';
 import { TasksPanel } from '@/features/tasks/TasksPanel';
-import { fetchClientInterests } from '@/services/interests';
+import { listLists } from '@/services/lists';
 import { useSearchParams } from 'next/navigation';
 import { useSession } from '@/features/auth/session';
 
@@ -88,7 +88,8 @@ export default function ClientProfilePage() {
         if (mounted) setError('Unable to load client. Please ensure you are logged in.');
       }
       try {
-        const interests = await fetchClientInterests(id);
+        const all = await listLists('');
+        const interests = (all || []).filter((l: any) => l.clientId === id && l.type === 'CLIENT_INTEREST');
         if (mounted) setInterestLists(interests);
       } catch (err) {
         console.error('load interests failed', err);

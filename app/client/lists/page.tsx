@@ -167,7 +167,14 @@ export default function ClientListsPage() {
                   onChange={(e) => setName(e.target.value)}
                 />
                 <Box />
-                <TextField select label="Sport" fullWidth value={sport} onChange={(e) => setSport(e.target.value)}>
+                <TextField
+                  select
+                  label="Sport"
+                  fullWidth
+                  value={sport}
+                  disabled
+                  helperText="Sport is set from your profile"
+                >
                   {sports.map((s) => (
                     <MenuItem key={s} value={s}>
                       {s}
@@ -248,6 +255,14 @@ export default function ClientListsPage() {
                       <Typography variant="body2" color="text.secondary">
                         {(l.items || []).length} universities
                       </Typography>
+                      {(l.items || []).length > 0 && (
+                        <Typography variant="body2" sx={{ mt: 0.5 }}>
+                          {(l.items || [])
+                            .map((it: any) => it.school || it.university || it.name || '')
+                            .filter(Boolean)
+                            .join(', ')}
+                        </Typography>
+                      )}
                     </Box>
                   ))}
                   {!lists.length ? <Typography>No lists yet.</Typography> : null}
