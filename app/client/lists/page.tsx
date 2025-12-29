@@ -3,6 +3,22 @@ import React from 'react';
 import { listLists, saveList } from '@/services/lists';
 import { listUniversities } from '@/services/recruiter';
 import { useSession } from '@/features/auth/session';
+import {
+  Box,
+  Button,
+  Card,
+  CardContent,
+  CardHeader,
+  Checkbox,
+  CircularProgress,
+  Container,
+  Divider,
+  FormControlLabel,
+  Stack,
+  TextField,
+  Typography,
+} from '@mui/material';
+import Grid from '@mui/material/Grid';
 
 type Uni = { name: string };
 
@@ -83,63 +99,94 @@ export default function ClientListsPage() {
   };
 
   return (
-    <div style={{ display: 'grid', gap: 16 }}>
-      <section style={{ padding: 12, border: '1px solid #eee', borderRadius: 6 }}>
-        <h3>Create Interest List</h3>
-        <div style={{ display: 'grid', gap: 8, maxWidth: 360 }}>
-          <label>
-            List Name
-            <input value={name} onChange={(e) => setName(e.target.value)} style={{ width: '100%' }} />
-          </label>
-          <label>
-            Sport
-            <input value={sport} onChange={(e) => setSport(e.target.value)} style={{ width: '100%' }} />
-          </label>
-          <label>
-            Division
-            <input value={division} onChange={(e) => setDivision(e.target.value)} style={{ width: '100%' }} />
-          </label>
-          <label>
-            State
-            <input value={state} onChange={(e) => setState(e.target.value)} style={{ width: '100%' }} />
-          </label>
-          <button onClick={loadUniversities} disabled={loadingUnis}>
-            {loadingUnis ? 'Loading…' : 'Load Universities'}
-          </button>
-        </div>
-        {universities.length > 0 && (
-          <div style={{ marginTop: 12 }}>
-            <strong>Select universities</strong>
-            <div style={{ maxHeight: 240, overflow: 'auto', border: '1px solid #eee', padding: 8 }}>
-              {universities.map((u) => (
-                <label key={u.name} style={{ display: 'block' }}>
-                  <input type="checkbox" checked={!!selected[u.name]} onChange={() => toggleUni(u.name)} /> {u.name}
-                </label>
-              ))}
-            </div>
-            <button onClick={doSave} disabled={saving} style={{ marginTop: 8 }}>
-              {saving ? 'Saving…' : 'Save List'}
-            </button>
-          </div>
-        )}
-        {error ? <div style={{ color: 'red', marginTop: 8 }}>{error}</div> : null}
-      </section>
-      <section style={{ padding: 12, border: '1px solid #eee', borderRadius: 6 }}>
-        <h3>Your Interest Lists</h3>
-        {loading ? (
-          <div>Loading…</div>
-        ) : (
-          <ul>
-            {lists.map((l) => (
-              <li key={l.id}>
-                <strong>{l.name}</strong> ({(l.items || []).length} universities)
-              </li>
-            ))}
-            {!lists.length ? <li>No lists yet.</li> : null}
-          </ul>
-        )}
-      </section>
-    </div>
+    <Box sx={{ bgcolor: '#121212', minHeight: '100vh', py: 6 }}>
+      <Container maxWidth="md">
+        <Stack spacing={3}>
+          <Card>
+            <CardHeader title="Create Interest List" subheader="Select universities and save your list" />
+            <Divider />
+            <CardContent>
+              <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 2 }}>
+                <TextField
+                  label="List Name"
+                  fullWidth
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                />
+                <Box />
+                <TextField label="Sport" fullWidth value={sport} onChange={(e) => setSport(e.target.value)} />
+                <TextField label="Division" fullWidth value={division} onChange={(e) => setDivision(e.target.value)} />
+                <TextField label="State" fullWidth value={state} onChange={(e) => setState(e.target.value)} />
+              </Box>
+              <Box sx={{ mt: 2 }}>
+                <Button variant="contained" onClick={loadUniversities} disabled={loadingUnis}>
+                  {loadingUnis ? <CircularProgress size={18} /> : 'Load Universities'}
+                </Button>
+              </Box>
+              {universities.length > 0 && (
+                <Box sx={{ mt: 2 }}>
+                  <Typography variant="subtitle1" gutterBottom>
+                    Select universities
+                  </Typography>
+                  <Box sx={{ maxHeight: 280, overflow: 'auto', border: '1px solid #eee', p: 1, borderRadius: 1 }}>
+                    <Stack spacing={1}>
+                      {universities.map((u) => (
+                        <FormControlLabel
+                          key={u.name}
+                          control={
+                            <Checkbox
+                              checked={!!selected[u.name]}
+                              onChange={() => toggleUni(u.name)}
+                            />
+                          }
+                          label={u.name}
+                        />
+                      ))}
+                    </Stack>
+                  </Box>
+                  <Box sx={{ mt: 2, display: 'flex', gap: 1, alignItems: 'center' }}>
+                    <Button variant="contained" onClick={doSave} disabled={saving}>
+                      {saving ? <CircularProgress size={18} /> : 'Save List'}
+                    </Button>
+                    {error ? <Typography color="error">{error}</Typography> : null}
+                  </Box>
+                </Box>
+              )}
+              {!universities.length && error ? (
+                <Typography color="error" sx={{ mt: 2 }}>
+                  {error}
+                </Typography>
+              ) : null}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader title="Your Interest Lists" />
+            <Divider />
+            <CardContent>
+              {loading ? (
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <CircularProgress size={18} />
+                  <Typography>Loading…</Typography>
+                </Box>
+              ) : (
+                <Stack spacing={1}>
+                  {lists.map((l) => (
+                    <Box key={l.id} sx={{ border: '1px solid #eee', borderRadius: 1, p: 1.5 }}>
+                      <Typography variant="subtitle1">{l.name}</Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        {(l.items || []).length} universities
+                      </Typography>
+                    </Box>
+                  ))}
+                  {!lists.length ? <Typography>No lists yet.</Typography> : null}
+                </Stack>
+              )}
+            </CardContent>
+          </Card>
+        </Stack>
+      </Container>
+    </Box>
   );
 }
 
