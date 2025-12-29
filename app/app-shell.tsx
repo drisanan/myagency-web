@@ -45,7 +45,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     justifyContent: 'flex-start',
   };
 
-  const navItems = [
+  const allNavItems = [
     { href: '/dashboard', label: 'Dashboard', icon: <IoAppsOutline /> },
     ...(session?.role === 'parent' && !session?.impersonatedBy ? [{ href: '/agencies', label: 'Agencies', icon: <IoAppsOutline /> }] : []),
     { href: '/clients', label: 'Athletes', icon: <IoBarbellOutline /> },
@@ -54,6 +54,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     { href: '/tasks', label: 'Tasks', icon: <IoClipboardOutline /> },
     { href: '/recruiter', label: 'Recruiter', icon: <IoSchoolOutline /> },
   ];
+
+  const navItems = session?.role === 'client'
+    ? allNavItems.filter((item) => item.href === '/lists')
+    : allNavItems;
 
   const tasksQuery = useQuery({
     queryKey: ['nav-tasks', session?.email],
@@ -195,6 +199,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         sx={{
           flexGrow: 1,
           p: 3,
+          bgcolor: '#fff',
         }}
       >
         <Toolbar />
