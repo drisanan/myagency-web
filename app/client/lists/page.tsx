@@ -3,6 +3,7 @@ import React from 'react';
 import { listLists, saveList } from '@/services/lists';
 import { listUniversities } from '@/services/recruiter';
 import { useSession } from '@/features/auth/session';
+import AppLayout from '@/app/(app)/layout';
 import {
   Box,
   Button,
@@ -99,10 +100,11 @@ export default function ClientListsPage() {
   };
 
   return (
-    <Box sx={{ bgcolor: '#121212', minHeight: '100vh', py: 6 }}>
-      <Container maxWidth="md">
-        <Stack spacing={3}>
-          <Card>
+    <AppLayout>
+      <Box sx={{ bgcolor: '#121212', minHeight: '100vh', py: 6 }}>
+        <Container maxWidth="md">
+          <Stack spacing={3}>
+            <Card>
             <CardHeader title="Create Interest List" subheader="Select universities and save your list" />
             <Divider />
             <CardContent>
@@ -160,7 +162,7 @@ export default function ClientListsPage() {
             </CardContent>
           </Card>
 
-          <Card>
+            <Card>
             <CardHeader title="Your Interest Lists" />
             <Divider />
             <CardContent>
@@ -183,10 +185,11 @@ export default function ClientListsPage() {
                 </Stack>
               )}
             </CardContent>
-          </Card>
-        </Stack>
-      </Container>
-    </Box>
+            </Card>
+          </Stack>
+        </Container>
+      </Box>
+    </AppLayout>
   );
 }
 
