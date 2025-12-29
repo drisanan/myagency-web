@@ -1,9 +1,11 @@
 'use client';
 import React from 'react';
 import { listLists, saveList } from '@/services/lists';
-import { listUniversities } from '@/services/recruiter';
+import { listUniversities, DIVISION_API_MAPPING } from '@/services/recruiter';
 import { useSession } from '@/features/auth/session';
 import AppLayout from '@/app/(app)/layout';
+import { getDivisions, getStates } from '@/services/recruiterMeta';
+import { getSports } from '@/features/recruiter/divisionMapping';
 import {
   Box,
   Button,
@@ -18,6 +20,7 @@ import {
   Stack,
   TextField,
   Typography,
+  MenuItem,
 } from '@mui/material';
 import Grid from '@mui/material/Grid';
 
@@ -30,9 +33,12 @@ export default function ClientListsPage() {
   const [error, setError] = React.useState<string | null>(null);
 
   const [name, setName] = React.useState('');
-  const [sport, setSport] = React.useState('Football');
-  const [division, setDivision] = React.useState('D1');
-  const [state, setState] = React.useState('California');
+  const [sport, setSport] = React.useState('');
+  const [division, setDivision] = React.useState('');
+  const [state, setState] = React.useState('');
+  const [sports, setSports] = React.useState<string[]>([]);
+  const [divisions, setDivisions] = React.useState<string[]>([]);
+  const [states, setStates] = React.useState<Array<{ code: string; name: string }>>([]);
   const [universities, setUniversities] = React.useState<Uni[]>([]);
   const [selected, setSelected] = React.useState<Record<string, boolean>>({});
   const [loadingUnis, setLoadingUnis] = React.useState(false);
@@ -52,11 +58,41 @@ export default function ClientListsPage() {
     })();
   }, []);
 
+  React.useEffect(() => {
+    const sportsList = getSports();
+    if (Array.isArray(sportsList)) setSports(sportsList);
+    Promise.resolve(getDivisions())
+      .then((divs) => {
+        if (Array.isArray(divs)) {
+          setDivisions(divs);
+          if (divs.length) setDivision(divs[0]);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  React.useEffect(() => {
+    if (!division) {
+      setStates([]);
+      setState('');
+      return;
+    }
+    Promise.resolve(getStates(division) || [])
+      .then((s) => {
+        if (Array.isArray(s)) {
+          setStates(s);
+          if (s.length) setState(s[0].code);
+        }
+      })
+      .catch(() => {});
+  }, [division]);
+
   const loadUniversities = async () => {
     try {
       setError(null);
       setLoadingUnis(true);
-      const data = await listUniversities({ sport, division, state });
+      const divisionSlug = DIVISION_API_MAPPING[division] || division;
+      const data = await listUniversities({ sport, division: divisionSlug, state });
       setUniversities(data);
       setSelected({});
     } catch (e: any) {
@@ -116,9 +152,27 @@ export default function ClientListsPage() {
                   onChange={(e) => setName(e.target.value)}
                 />
                 <Box />
-                <TextField label="Sport" fullWidth value={sport} onChange={(e) => setSport(e.target.value)} />
-                <TextField label="Division" fullWidth value={division} onChange={(e) => setDivision(e.target.value)} />
-                <TextField label="State" fullWidth value={state} onChange={(e) => setState(e.target.value)} />
+                <TextField select label="Sport" fullWidth value={sport} onChange={(e) => setSport(e.target.value)}>
+                  {sports.map((s) => (
+                    <MenuItem key={s} value={s}>
+                      {s}
+                    </MenuItem>
+                  ))}
+                </TextField>
+                <TextField select label="Division" fullWidth value={division} onChange={(e) => setDivision(e.target.value)}>
+                  {divisions.map((d) => (
+                    <MenuItem key={d} value={d}>
+                      {d}
+                    </MenuItem>
+                  ))}
+                </TextField>
+                <TextField select label="State" fullWidth value={state} onChange={(e) => setState(e.target.value)}>
+                  {states.map((s) => (
+                    <MenuItem key={s.code} value={s.code}>
+                      {s.name}
+                    </MenuItem>
+                  ))}
+                </TextField>
               </Box>
               <Box sx={{ mt: 2 }}>
                 <Button variant="contained" onClick={loadUniversities} disabled={loadingUnis}>
