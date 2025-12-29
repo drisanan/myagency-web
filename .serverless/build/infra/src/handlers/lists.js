@@ -181,13 +181,19 @@ var handler = async (event) => {
       return response(200, { ok: true, list: item ?? null }, origin);
     }
     const items = await queryByPK(`AGENCY#${session.agencyId}`, "LIST#");
-    return response(200, { ok: true, lists: items }, origin);
+    const filtered = session.role === "client" ? items.filter((i) => i.clientId === session.clientId && i.type === "CLIENT_INTEREST") : items;
+    return response(200, { ok: true, lists: filtered }, origin);
   }
   if (method === "POST") {
     if (!event.body) return badRequest(origin, "Missing body");
     const payload = JSON.parse(event.body);
     if (!payload.name) return badRequest(origin, "name is required");
     if (payload.items && !Array.isArray(payload.items)) return badRequest(origin, "items must be an array");
+    if (session.role === "client") {
+      payload.type = "CLIENT_INTEREST";
+      payload.clientId = session.clientId;
+      payload.items = Array.isArray(payload.items) ? payload.items.filter((i) => i && i.university) : [];
+    }
     const id = payload.id || newId("list");
     const now = Date.now();
     const rec = {
@@ -198,6 +204,8 @@ var handler = async (event) => {
       items: payload.items ?? [],
       agencyId: session.agencyId,
       agencyEmail: session.agencyEmail,
+      clientId: payload.clientId,
+      type: payload.type,
       createdAt: now,
       updatedAt: now
     };

@@ -177,6 +177,7 @@ var handler = async (event) => {
   if (method === "OPTIONS") return response(200, { ok: true }, origin);
   const session = requireSession(event);
   if (!session) return response(401, { ok: false, error: "Missing session" }, origin);
+  if (session.role === "client") return response(403, { ok: false, error: "Forbidden" }, origin);
   const taskId = getTaskId(event);
   if (method === "GET") {
     if (taskId) {
