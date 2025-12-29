@@ -1,9 +1,24 @@
 import { APIGatewayProxyEventV2 } from 'aws-lambda';
 import { Handler } from './common';
 import { response } from './cors';
-import { queryGSI1 } from '../lib/dynamo';
-import { verifyAccessCode } from '../lib/auth';
+import { queryGSI1, scanByGSI1PK } from '../lib/dynamo';
 import { encodeSession, buildSessionCookie } from '../lib/session';
+import { verifyAccessCode } from '../lib/auth';
+
+function mask(value?: string) {
+  if (!value) return '';
+  const s = String(value);
+  if (s.length <= 4) return '****';
+  return `${'*'.repeat(Math.max(0, s.length - 4))}${s.slice(-4)}`;
+}
+
+function normalizeEmail(email: string) {
+  return String(email || '').trim().toLowerCase();
+}
+
+function normalizePhone(phone: string) {
+  return String(phone || '').trim();
+}
 
 export const handler: Handler = async (event: APIGatewayProxyEventV2) => {
   const origin = event.headers?.origin || event.headers?.Origin || event.headers?.['origin'] || '';
@@ -13,15 +28,46 @@ export const handler: Handler = async (event: APIGatewayProxyEventV2) => {
   if (!event.body) return response(400, { ok: false, error: 'Missing body' }, origin);
 
   const { email, accessCode, phone } = JSON.parse(event.body || '{}');
+  // NOTE: Full phone and access length logged for debugging (test data). Remove/mask in production hardening.
+  console.log('[auth-client-login] request', {
+    email,
+    phone: String(phone),
+    accessLen: accessCode ? String(accessCode).length : 0,
+  });
   if (!email || !accessCode || !phone) return response(400, { ok: false, error: 'email, accessCode, phone are required' }, origin);
 
-  // Query by email via GSI1 (GSI1PK = EMAIL#email)
-  const matches = await queryGSI1(`EMAIL#${email}`, 'CLIENT#');
-  const client = (matches || []).find((i: any) => i.email === email && i.accessCodeHash);
-  if (!client) return response(401, { ok: false, error: 'Invalid credentials' }, origin);
+  const normalizedEmail = normalizeEmail(email);
+  const accessString = String(accessCode).trim();
+  const phoneString = normalizePhone(phone);
 
-  const phoneMatch = (client.phone || '').trim() === String(phone).trim();
-  const codeOk = client.accessCodeHash ? await verifyAccessCode(accessCode, client.accessCodeHash) : false;
+  // Query by email via GSI1 (GSI1PK = EMAIL#email)
+  let matches = await queryGSI1(`EMAIL#${normalizedEmail}`, 'CLIENT#');
+  console.log('[auth-client-login] matches (GSI1)', matches?.length || 0);
+  if (!matches || matches.length === 0) {
+    // Fallback: scan by GSI1PK in case the index is missing/misconfigured
+    matches = await scanByGSI1PK(`EMAIL#${normalizedEmail}`, 'CLIENT#');
+    console.log('[auth-client-login] matches (fallback scan)', matches?.length || 0);
+  }
+  const client = (matches || []).find((i: any) => normalizeEmail(i.email) === normalizedEmail && (i.accessCodeHash || i.accessCode));
+  if (!client) {
+    console.warn('[auth-client-login] no client/accessCodeHash', { email: normalizedEmail });
+    return response(401, { ok: false, error: 'Invalid credentials' }, origin);
+  }
+
+  const phoneMatch = normalizePhone(client.phone) === phoneString;
+  let codeOk = false;
+  if ((client as any).accessCodeHash) {
+    codeOk = await verifyAccessCode(accessString, (client as any).accessCodeHash);
+  } else if ((client as any).accessCode) {
+    codeOk = accessString === String((client as any).accessCode).trim();
+  }
+  console.log('[auth-client-login] validation', {
+    email: normalizedEmail,
+    phoneMatch,
+    codeOk,
+    hasHash: Boolean((client as any).accessCodeHash),
+    hasAccess: Boolean((client as any).accessCode),
+  });
   if (!phoneMatch || !codeOk) return response(401, { ok: false, error: 'Invalid credentials' }, origin);
 
   const token = encodeSession({

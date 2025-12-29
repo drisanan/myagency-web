@@ -1934,6 +1934,15 @@ async function queryGSI1(GSI1PK, beginsWith) {
   );
   return res.Items ?? [];
 }
+async function scanByGSI1PK(GSI1PK, beginsWith) {
+  const params = {
+    TableName: TABLE_NAME,
+    FilterExpression: beginsWith ? "GSI1PK = :g1pk AND begins_with(GSI1SK, :g1sk)" : "GSI1PK = :g1pk",
+    ExpressionAttributeValues: beginsWith ? { ":g1pk": GSI1PK, ":g1sk": beginsWith } : { ":g1pk": GSI1PK }
+  };
+  const res = await docClient.send(new import_lib_dynamodb2.ScanCommand(params));
+  return res.Items ?? [];
+}
 
 // infra/src/lib/auth.ts
 var import_bcryptjs = __toESM(require_bcryptjs());
@@ -1942,6 +1951,12 @@ async function verifyAccessCode(code, hash) {
 }
 
 // infra/src/handlers/auth-client-login.ts
+function normalizeEmail(email) {
+  return String(email || "").trim().toLowerCase();
+}
+function normalizePhone(phone) {
+  return String(phone || "").trim();
+}
 var handler = async (event) => {
   const origin = event.headers?.origin || event.headers?.Origin || event.headers?.["origin"] || "";
   const method = (event.requestContext.http?.method || "").toUpperCase();
@@ -1949,12 +1964,40 @@ var handler = async (event) => {
   if (method !== "POST") return response(405, { ok: false, error: "Method not allowed" }, origin);
   if (!event.body) return response(400, { ok: false, error: "Missing body" }, origin);
   const { email, accessCode, phone } = JSON.parse(event.body || "{}");
+  console.log("[auth-client-login] request", {
+    email,
+    phone: String(phone),
+    accessLen: accessCode ? String(accessCode).length : 0
+  });
   if (!email || !accessCode || !phone) return response(400, { ok: false, error: "email, accessCode, phone are required" }, origin);
-  const matches = await queryGSI1(`EMAIL#${email}`, "CLIENT#");
-  const client2 = (matches || []).find((i) => i.email === email && i.accessCodeHash);
-  if (!client2) return response(401, { ok: false, error: "Invalid credentials" }, origin);
-  const phoneMatch = (client2.phone || "").trim() === String(phone).trim();
-  const codeOk = client2.accessCodeHash ? await verifyAccessCode(accessCode, client2.accessCodeHash) : false;
+  const normalizedEmail = normalizeEmail(email);
+  const accessString = String(accessCode).trim();
+  const phoneString = normalizePhone(phone);
+  let matches = await queryGSI1(`EMAIL#${normalizedEmail}`, "CLIENT#");
+  console.log("[auth-client-login] matches (GSI1)", matches?.length || 0);
+  if (!matches || matches.length === 0) {
+    matches = await scanByGSI1PK(`EMAIL#${normalizedEmail}`, "CLIENT#");
+    console.log("[auth-client-login] matches (fallback scan)", matches?.length || 0);
+  }
+  const client2 = (matches || []).find((i) => normalizeEmail(i.email) === normalizedEmail && (i.accessCodeHash || i.accessCode));
+  if (!client2) {
+    console.warn("[auth-client-login] no client/accessCodeHash", { email: normalizedEmail });
+    return response(401, { ok: false, error: "Invalid credentials" }, origin);
+  }
+  const phoneMatch = normalizePhone(client2.phone) === phoneString;
+  let codeOk = false;
+  if (client2.accessCodeHash) {
+    codeOk = await verifyAccessCode(accessString, client2.accessCodeHash);
+  } else if (client2.accessCode) {
+    codeOk = accessString === String(client2.accessCode).trim();
+  }
+  console.log("[auth-client-login] validation", {
+    email: normalizedEmail,
+    phoneMatch,
+    codeOk,
+    hasHash: Boolean(client2.accessCodeHash),
+    hasAccess: Boolean(client2.accessCode)
+  });
   if (!phoneMatch || !codeOk) return response(401, { ok: false, error: "Invalid credentials" }, origin);
   const token = encodeSession({
     agencyId: client2.agencyId,

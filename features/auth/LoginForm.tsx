@@ -72,7 +72,7 @@ export function LoginForm({ onSubmit }: Props) {
         />
         <TextField
           label="Access Code"
-          type="text"
+        type="text"
           value={accessCode}
           onChange={(e) => setAccessCode(e.target.value)}
           error={Boolean(errors.accessCode)}

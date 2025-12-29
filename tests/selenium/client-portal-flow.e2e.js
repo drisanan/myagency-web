@@ -27,7 +27,13 @@ async function run() {
     await findAndType(driver, 'Phone', LOGIN_PHONE);
     await findAndType(driver, 'Access Code', LOGIN_CODE);
     await driver.findElement(By.xpath(`//button[normalize-space(.)="Sign in"]`)).click();
-    await driver.wait(until.elementLocated(By.xpath(`//*[contains(text(),"Dashboard")]`)), 20000);
+    try {
+      await driver.wait(until.elementLocated(By.xpath(`//*[contains(text(),"Dashboard")] | //h1[contains(.,"Dashboard")]`)), 20000);
+    } catch (e) {
+      const url = await driver.getCurrentUrl();
+      const txt = await driver.executeScript('return document.body ? document.body.innerText.slice(0, 500) : ""');
+      throw new Error(`Agent dashboard not visible. URL=${url}. Snippet=${txt}`);
+    }
 
     // Try to create a new client; if it fails, fall back to patching first existing client
     const clientInfo = await driver.executeAsyncScript(

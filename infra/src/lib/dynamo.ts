@@ -1,4 +1,4 @@
-import { GetCommand, PutCommand, QueryCommand, UpdateCommand, DeleteCommand } from '@aws-sdk/lib-dynamodb';
+import { GetCommand, PutCommand, QueryCommand, UpdateCommand, DeleteCommand, ScanCommand } from '@aws-sdk/lib-dynamodb';
 import { docClient } from '../handlers/common';
 
 const TABLE_NAME = process.env.TABLE_NAME || 'agency-narrative-crm';
@@ -44,6 +44,20 @@ export async function queryGSI1(GSI1PK: string, beginsWith?: string) {
       ExpressionAttributeValues: beginsWith ? { ':g1pk': GSI1PK, ':g1sk': beginsWith } : { ':g1pk': GSI1PK },
     }),
   );
+  return res.Items ?? [];
+}
+
+// Fallback query without specifying IndexName (only works if GSI1PK exists on base table projection)
+// Fallback scan when GSI1 is misconfigured or absent; use sparingly (costly)
+export async function scanByGSI1PK(GSI1PK: string, beginsWith?: string) {
+  const params: any = {
+    TableName: TABLE_NAME,
+    FilterExpression: beginsWith ? 'GSI1PK = :g1pk AND begins_with(GSI1SK, :g1sk)' : 'GSI1PK = :g1pk',
+    ExpressionAttributeValues: beginsWith
+      ? { ':g1pk': GSI1PK, ':g1sk': beginsWith }
+      : { ':g1pk': GSI1PK },
+  };
+  const res = await docClient.send(new ScanCommand(params));
   return res.Items ?? [];
 }
 
