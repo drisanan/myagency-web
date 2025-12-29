@@ -273,7 +273,19 @@ export default function ClientProfilePage() {
                 <ListItem key={l.id} divider>
                   <ListItemText
                     primary={l.name}
-                    secondary={`${(l.items || []).length} universities`}
+                    secondary={
+                      <>
+                        {(l.items || []).length} universities
+                        {(l.items || []).length > 0 && (
+                          <Typography variant="body2" component="div" color="text.secondary">
+                            {(l.items || [])
+                              .map((it: any) => it.school || it.university || it.name || '')
+                              .filter(Boolean)
+                              .join(', ')}
+                          </Typography>
+                        )}
+                      </>
+                    }
                   />
                 </ListItem>
               ))}
