@@ -200,9 +200,22 @@ function BasicInfoStep({
         helperText={errors?.email || ''}
         inputProps={{ 'data-testid': 'athlete-email' }}
       />
-      <TextField label="Athlete Password" type="password" value={value.password ?? ''} onChange={(e)=>onChange({ ...value, password: e.target.value })} />
+      <TextField
+        label="Access Code"
+        type="number"
+        inputProps={{ inputMode: 'numeric', pattern: '[0-9]*', maxLength: 6 }}
+        value={value.accessCode ?? ''}
+        onChange={(e)=>onChange({ ...value, accessCode: e.target.value.slice(0, 6).replace(/\D/g, '') })}
+        helperText="6-digit numeric code"
+      />
       <TextField label="First name" value={value.firstName ?? ''} onChange={(e)=>onChange({ ...value, firstName: e.target.value })} error={Boolean(errors?.firstName)} helperText={errors?.firstName || ''} />
       <TextField label="Last name" value={value.lastName ?? ''} onChange={(e)=>onChange({ ...value, lastName: e.target.value })} error={Boolean(errors?.lastName)} helperText={errors?.lastName || ''} />
+      <TextField
+        label="Phone"
+        value={value.phone ?? ''}
+        onChange={(e)=>onChange({ ...value, phone: e.target.value })}
+        inputProps={{ inputMode: 'tel' }}
+      />
 
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
         <Box

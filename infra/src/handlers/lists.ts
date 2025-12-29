@@ -85,7 +85,15 @@ export const handler: Handler = async (event: APIGatewayProxyEventV2) => {
     if (!existing) return response(404, { ok: false, message: 'Not found' }, origin);
     
     const now = Date.now();
-    const merged = { ...existing, ...payload, updatedAt: now };
+    const merged = {
+      ...existing,
+      ...payload,
+      createdAt:
+        typeof existing.createdAt === 'string'
+          ? Number(existing.createdAt) || now
+          : existing.createdAt ?? now,
+      updatedAt: now,
+    };
     await putItem(merged);
     return response(200, { ok: true, list: merged }, origin);
   }

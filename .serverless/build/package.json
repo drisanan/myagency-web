@@ -1,6 +1,5 @@
 {
   "name": "web-app",
-  "packageManager": "yarn@4.9.1",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -24,5 +23,6 @@
     "test:selenium:intake-negative": "node tests/selenium/intake-negative.e2e.js",
     "test:selenium:all": "npm-run-all --sequential test:selenium:intake test:selenium:intake-negative test:selenium:client-create test:selenium:agency-wizard test:selenium:recruiter-wizard test:selenium:ai-prompts test:selenium:lists test:selenium:athlete-profile test:selenium:login-ghl test:selenium:login-ghl-negative",
     "infra:seed": "node scripts/seed-dynamo.mjs"
-  }
+  },
+  "dependencies": {}
 }

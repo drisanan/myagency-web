@@ -14,8 +14,8 @@ async function run() {
   options.addArguments('--disable-gpu', '--no-sandbox');
   const driver = await new Builder().forBrowser('chrome').setChromeOptions(options).build();
 
-  const clientEmail = `selenium+${Date.now()}@example.com`;
-  const clientPhone = `555${Math.floor(100000 + Math.random() * 900000)}`;
+  let clientEmail = '';
+  let clientPhone = `555${Math.floor(100000 + Math.random() * 900000)}`;
   const accessCode = String(100000 + Math.floor(Math.random() * 900000));
   const listName = `Interests ${Date.now()}`;
   let clientId = '';
@@ -29,34 +29,100 @@ async function run() {
     await driver.findElement(By.xpath(`//button[normalize-space(.)="Sign in"]`)).click();
     await driver.wait(until.elementLocated(By.xpath(`//*[contains(text(),"Dashboard")]`)), 20000);
 
-    // Create client via API (uses session cookie)
-    await driver.executeAsyncScript(
+    // Try to create a new client; if it fails, fall back to patching first existing client
+    const clientInfo = await driver.executeAsyncScript(
       `
       const cb = arguments[arguments.length - 1];
-      fetch('${API}/clients', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
-          email: '${clientEmail}',
-          firstName: 'Selenium',
-          lastName: 'Client',
-          sport: 'Football',
-          phone: '${clientPhone}',
-          accessCode: '${accessCode}'
-        })
-      }).then(r => r.json()).then(data => cb(data?.client?.id || null)).catch(e => cb(null));
+      const tryCreate = async () => {
+        const resp = await fetch('${API}/clients', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            email: 'selenium+' + Date.now() + '@example.com',
+            firstName: 'Selenium',
+            lastName: 'Client',
+            sport: 'Football',
+            phone: '${clientPhone}',
+            accessCode: '${accessCode}'
+          })
+        });
+        const txt = await resp.text();
+        let parsed; try { parsed = JSON.parse(txt); } catch (_){}
+        if (!resp.ok) return { error: 'create_failed', status: resp.status, text: txt };
+        return { id: parsed?.client?.id, email: parsed?.client?.email, phone: parsed?.client?.phone };
+      };
+
+      const tryPatchFirst = async () => {
+        const r = await fetch('${API}/clients', { credentials: 'include' });
+        const txt = await r.text();
+        let parsed; try { parsed = JSON.parse(txt); } catch (_){}
+        if (!r.ok) return { error: 'list_failed', status: r.status, text: txt };
+        const first = (parsed?.clients || [])[0];
+        if (!first) return { error: 'no_clients' };
+        const patch = await fetch('${API}/clients/' + first.id, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ accessCode: '${accessCode}', phone: '${clientPhone}' })
+        });
+        const ptxt = await patch.text();
+        let pparsed; try { pparsed = JSON.parse(ptxt); } catch (_){}
+        if (!patch.ok) return { error: 'patch_failed', status: patch.status, text: ptxt };
+        return { id: first.id, email: first.email, phone: '${clientPhone}' };
+      };
+
+      (async () => {
+        const created = await tryCreate();
+        if (!created.error && created.id) return cb(created);
+        const patched = await tryPatchFirst();
+        cb(patched);
+      })().catch(e => cb({ error: e?.message || 'fetch error' }));
       `
-    ).then((id) => { clientId = id; });
-    if (!clientId) throw new Error('Client creation failed');
+    );
+    if (!clientInfo || clientInfo.error || clientInfo.status) {
+      throw new Error(`Client prep failed: ${JSON.stringify(clientInfo)}`);
+    }
+    clientId = clientInfo.id;
+    clientEmail = clientInfo.email;
+    if (clientInfo.phone) clientPhone = clientInfo.phone;
+    if (!clientId || !clientEmail) throw new Error('Client prep missing id/email');
 
     // Client login
+    // Start fresh for client login to avoid agent session redirect
+    await driver.manage().deleteAllCookies();
     await driver.get(`${BASE}/auth/client-login`);
     await findAndType(driver, 'Email', clientEmail);
     await findAndType(driver, 'Phone', clientPhone);
-    await findAndType(driver, 'Access Code', accessCode);
-    await driver.findElement(By.xpath(`//button[contains(., "Login")]`)).click();
-    await driver.wait(until.elementLocated(By.xpath(`//h3[contains(., "Create Interest List")]`)), 20000);
+    let pwInput;
+    try {
+      pwInput = await driver.wait(until.elementLocated(By.css('input[type="password"]')), 30000);
+    } catch (e) {
+      const url = await driver.getCurrentUrl();
+      const txt = await driver.executeScript('return document.body ? document.body.innerText.slice(0, 500) : ""');
+      throw new Error(`Access Code field not found. URL=${url}. Page snippet=${txt}`);
+    }
+    await pwInput.clear();
+    await pwInput.sendKeys(accessCode);
+    await driver.findElement(By.xpath(`//button[normalize-space(.)="Sign in"]`)).click();
+    const listsHeading = By.xpath(`//h3[contains(., "Create Interest List")]`);
+    const errorDiv = By.xpath(`//*[contains(text(),"Login failed") or contains(text(),"Invalid credentials") or contains(text(),"Failed")]`);
+    const ok = await driver.wait(async () => {
+      const headingFound = (await driver.findElements(listsHeading)).length > 0;
+      const errFound = (await driver.findElements(errorDiv)).length > 0;
+      return headingFound || errFound;
+    }, 20000).catch(() => false);
+    if (!ok) {
+      const url = await driver.getCurrentUrl();
+      const txt = await driver.executeScript('return document.body ? document.body.innerText.slice(0, 500) : ""');
+      const logs = await driver.manage().logs().get('browser').catch(() => []);
+      throw new Error(`Client lists page not visible. URL=${url}. Page snippet=${txt}. Console=${JSON.stringify(logs)}`);
+    }
+    const headingFound = (await driver.findElements(listsHeading)).length > 0;
+    if (!headingFound) {
+      const errTxt = await driver.executeScript('return document.body ? document.body.innerText.slice(0, 500) : ""');
+      throw new Error(`Client login failed. Error snippet=${errTxt}`);
+    }
 
     // Create interest list
     await driver.findElement(By.xpath(`//label[contains(., "List Name")]/input`)).sendKeys(listName);

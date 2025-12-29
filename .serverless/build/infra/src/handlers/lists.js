@@ -114,7 +114,17 @@ function newId(prefix) {
 // infra/src/lib/dynamo.ts
 var import_lib_dynamodb2 = require("@aws-sdk/lib-dynamodb");
 var TABLE_NAME = process.env.TABLE_NAME || "agency-narrative-crm";
+function normalizeCreatedAt(item) {
+  if (!item) return item;
+  const ca = item.createdAt;
+  if (typeof ca === "string") {
+    const num = Number(ca) || Date.parse(ca) || Date.now();
+    item.createdAt = num;
+  }
+  return item;
+}
 async function putItem(item) {
+  normalizeCreatedAt(item);
   await docClient.send(new import_lib_dynamodb2.PutCommand({ TableName: TABLE_NAME, Item: item }));
   return item;
 }
@@ -219,7 +229,12 @@ var handler = async (event) => {
     const existing = await getItem({ PK: `AGENCY#${session.agencyId}`, SK: `LIST#${listId}` });
     if (!existing) return response(404, { ok: false, message: "Not found" }, origin);
     const now = Date.now();
-    const merged = { ...existing, ...payload, updatedAt: now };
+    const merged = {
+      ...existing,
+      ...payload,
+      createdAt: typeof existing.createdAt === "string" ? Number(existing.createdAt) || now : existing.createdAt ?? now,
+      updatedAt: now
+    };
     await putItem(merged);
     return response(200, { ok: true, list: merged }, origin);
   }

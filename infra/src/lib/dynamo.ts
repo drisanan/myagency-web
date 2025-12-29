@@ -3,7 +3,18 @@ import { docClient } from '../handlers/common';
 
 const TABLE_NAME = process.env.TABLE_NAME || 'agency-narrative-crm';
 
+function normalizeCreatedAt(item: Record<string, unknown>) {
+  if (!item) return item;
+  const ca = (item as any).createdAt;
+  if (typeof ca === 'string') {
+    const num = Number(ca) || Date.parse(ca) || Date.now();
+    (item as any).createdAt = num;
+  }
+  return item;
+}
+
 export async function putItem(item: Record<string, unknown>) {
+  normalizeCreatedAt(item);
   await docClient.send(new PutCommand({ TableName: TABLE_NAME, Item: item }));
   return item;
 }
