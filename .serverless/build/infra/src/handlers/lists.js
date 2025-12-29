@@ -202,7 +202,19 @@ var handler = async (event) => {
     if (session.role === "client") {
       payload.type = "CLIENT_INTEREST";
       payload.clientId = session.clientId;
-      payload.items = Array.isArray(payload.items) ? payload.items.filter((i) => i && i.university) : [];
+      if (Array.isArray(payload.items)) {
+        payload.items = payload.items.map((i) => {
+          if (!i) return null;
+          const uni = i.university || i.school || i.name || "";
+          return {
+            ...i,
+            university: uni,
+            school: i.school || uni
+          };
+        }).filter((i) => i && (i.university || i.school));
+      } else {
+        payload.items = [];
+      }
     }
     const id = payload.id || newId("list");
     const now = Date.now();

@@ -50,10 +50,22 @@ export const handler: Handler = async (event: APIGatewayProxyEventV2) => {
       // Enforce client restrictions
       payload.type = 'CLIENT_INTEREST';
       payload.clientId = session.clientId;
-      // Only universities allowed; drop coaches if present
-      payload.items = Array.isArray(payload.items)
-        ? payload.items.filter((i: any) => i && i.university)
-        : [];
+      // Normalize university/school; drop empty entries
+      if (Array.isArray(payload.items)) {
+        payload.items = payload.items
+          .map((i: any) => {
+            if (!i) return null;
+            const uni = i.university || i.school || i.name || '';
+            return {
+              ...i,
+              university: uni,
+              school: i.school || uni,
+            };
+          })
+          .filter((i: any) => i && (i.university || i.school));
+      } else {
+        payload.items = [];
+      }
     }
     
     const id = payload.id || newId('list');

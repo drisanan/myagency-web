@@ -10,6 +10,7 @@ import { listUniversities, getUniversityDetails, DIVISION_API_MAPPING } from '@/
 import { EmailTemplate, listTemplates, saveTemplate, toTemplateHtml, applyTemplate } from '@/services/templates';
 import { listLists, CoachList } from '@/services/lists';
 import { hasMailed, markMailed } from '@/services/mailStatus';
+import { listPrompts, PromptRecord } from '@/services/prompts';
 
 type ClientRow = { id: string; email: string; firstName?: string; lastName?: string; sport?: string };
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.API_BASE_URL || '';
@@ -68,6 +69,8 @@ export function RecruiterWizard() {
   const [gmailConnected, setGmailConnected] = React.useState(false);
   const popupRef = React.useRef<Window | null>(null);
   const lastConnectedClientIdRef = React.useRef<string>('');
+  const [prompts, setPrompts] = React.useState<PromptRecord[]>([]);
+  const [selectedPromptId, setSelectedPromptId] = React.useState<string>('');
 
   const currentClient = React.useMemo(() => clients.find(c => c.id === clientId) || null, [clients, clientId]);
   const contact = React.useMemo(() => {
@@ -521,7 +524,16 @@ export function RecruiterWizard() {
     
     // Load Lists
     listLists(userEmail).then(setLists).catch(() => setLists([]));
+
+    // Load Prompts
+    listPrompts({ agencyEmail: userEmail, clientId }).then(setPrompts).catch(() => setPrompts([]));
   }, [userEmail]); // Dependencies correct now
+
+  // Reload prompts when client changes to surface client-specific templates
+  React.useEffect(() => {
+    if (!userEmail) return;
+    listPrompts({ agencyEmail: userEmail, clientId }).then(setPrompts).catch(() => setPrompts([]));
+  }, [userEmail, clientId]);
 
   React.useEffect(() => {
     if (!division) {
@@ -671,6 +683,32 @@ export function RecruiterWizard() {
           <Typography color="error" sx={{ mb: 2 }}>
             {error}
           </Typography>
+        )}
+        {prompts.length > 0 && (
+          <Box sx={{ mb: 2, display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 2 }}>
+            <TextField
+              select
+              label="Saved Prompts"
+              value={selectedPromptId}
+              onChange={(e) => {
+                const id = String(e.target.value);
+                setSelectedPromptId(id);
+                const p = prompts.find((x) => x.id === id);
+                if (p?.text) {
+                  setAiHtml(p.text);
+                  setDraft(p.text);
+                }
+              }}
+              SelectProps={{ MenuProps: { disablePortal: true } }}
+            >
+              <MenuItem value="">(Select a prompt)</MenuItem>
+              {prompts.map((p) => (
+                <MenuItem key={p.id} value={p.id}>
+                  {p.name}
+                </MenuItem>
+              ))}
+            </TextField>
+          </Box>
         )}
         {activeStep === 0 && (
           <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 2, maxWidth: 700 }}>
