@@ -1,8 +1,9 @@
 export type SessionContext = {
   agencyId: string;
   agencyEmail?: string;
-  role: 'agency' | 'athlete' | 'admin';
+  role: 'agency' | 'athlete' | 'admin' | 'client';
   userId?: string;
+  clientId?: string;
 };
 
 export type ClientRecord = {
@@ -17,6 +18,9 @@ export type ClientRecord = {
   sport: string;
   agencyId: string;
   agencyEmail?: string;
+  phone?: string;
+  accessCodeHash?: string;
+  authEnabled?: boolean;
   createdAt: string;
   updatedAt: string;
 };
@@ -28,6 +32,8 @@ export type CoachListRecord = {
   name: string;
   agencyId: string;
   agencyEmail?: string;
+  clientId?: string;
+  type?: 'CLIENT_INTEREST' | 'AGENCY_LIST';
   items: any[];
   createdAt: number;
   updatedAt: number;

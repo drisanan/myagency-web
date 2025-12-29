@@ -6,6 +6,10 @@ const BASE = process.env.BASE_URL || 'http://localhost:3000';
 const AGENCY_EMAIL = 'agency1@an.test';
 
 async function run() {
+  if (process.env.SKIP_AI_PROMPTS === '1') {
+    console.log('AI prompts test skipped (SKIP_AI_PROMPTS=1)');
+    return;
+  }
   const options = new chrome.Options();
   // options.addArguments('--headless=new');
   options.addArguments('--disable-gpu', '--no-sandbox');

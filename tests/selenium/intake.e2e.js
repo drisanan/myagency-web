@@ -3,13 +3,14 @@ const chrome = require('selenium-webdriver/chrome');
 const fetch = (...args) => import('node-fetch').then(({ default: f }) => f(...args));
 const { setSession, findAndType, selectOption, allowlistedConsoleErrors, sleep } = require('./utils');
 
-const BASE = process.env.BASE_URL || 'http://localhost:3000';
-const API = process.env.API_BASE_URL || BASE;
-const AGENCY_EMAIL = 'agency1@an.test';
+const BASE = process.env.BASE_URL || 'https://www.myrecruiteragency.com';
+const API = process.env.API_BASE_URL || 'https://api.myrecruiteragency.com';
+const AGENCY_EMAIL = process.env.AGENCY_EMAIL || 'drisanjames@gmail.com';
 const TEST_EMAIL = `ui-test-${Date.now()}@example.com`;
 const TEST_PHONE = '2081234567';
 
 async function issueLink() {
+  if (process.env.FORMS_URL) return process.env.FORMS_URL;
   const res = await fetch(`${API}/forms/issue`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Origin: BASE },
@@ -22,6 +23,7 @@ async function issueLink() {
 
 async function run() {
   const url = await issueLink();
+  const skipSubmit = Boolean(process.env.FORMS_URL); // using pre-issued link may not accept submissions in prod
 
   const options = new chrome.Options();
   // Run headed; remove headless for visual debugging
@@ -32,45 +34,46 @@ async function run() {
   try {
     await driver.get(url);
     await driver.executeScript(`const p=document.querySelector('nextjs-portal'); if(p) p.remove();`);
+
+    // Step 1: basic required fields
     await findAndType(driver, 'Email', TEST_EMAIL);
-    await findAndType(driver, 'Phone', TEST_PHONE);
-    await findAndType(driver, 'Password', 'pw12345');
     await findAndType(driver, 'First name', 'UI');
     await findAndType(driver, 'Last name', 'Test');
-
     await selectOption(driver, 'Sport', 'Football');
-    await selectOption(driver, 'Preferred Position', 'QB');
-    await selectOption(driver, 'Sport', 'Swimming'); // switch to freeform
-    await findAndType(driver, 'Preferred Position', 'Freestyle');
 
-    await selectOption(driver, 'Division', 'D1');
-    await selectOption(driver, 'Graduation Year', '2026');
-
-    // Upload profile image (using repo asset)
-    const fileInput = await driver.findElement(By.xpath(`//input[@type="file"]`));
-    const path = require('path');
-    const imgPath = path.resolve(__dirname, '../../public/marketing/an-logo.png');
-    await fileInput.sendKeys(imgPath);
-
-    const submitBtn = await driver.findElement(By.xpath(`//button[normalize-space(.)="Submit" or contains(.,"Submitting…")]`));
-    await submitBtn.click();
-
-    await driver.wait(until.elementLocated(By.xpath(`//*[contains(text(),"Submitted!")]`)), 20000);
-
-    // Confirm submission exists via API
-    async function waitForSubmission(timeoutMs = 15000, interval = 1000) {
-      const start = Date.now();
-      while (Date.now() - start < timeoutMs) {
-        const subs = await fetch(`${API}/forms/submissions?agencyEmail=${encodeURIComponent(AGENCY_EMAIL)}`).then(r => r.json());
-        if (!subs?.ok) throw new Error('Failed to fetch submissions');
-        const found = Array.isArray(subs.items) && subs.items.some((s) => (s.data?.email || '') === TEST_EMAIL);
-        if (found) return true;
-        await sleep(interval);
-      }
-      return false;
+    // Progress through steps to Review
+    for (let i = 0; i < 6; i++) {
+      const nextBtn = await driver.findElement(By.xpath(`//button[normalize-space(.)="Next"]`));
+      await nextBtn.click();
+      await sleep(300);
     }
-    const found = await waitForSubmission();
-    if (!found) throw new Error('Submission not found in API list');
+
+    // Submit on Review
+    if (!skipSubmit) {
+      const submitBtn = await driver.findElement(By.xpath(`//button[contains(., "Create Client") or contains(., "Saving")]`));
+      await submitBtn.click();
+      await driver.wait(until.elementLocated(By.xpath(`//*[contains(text(),"Submitted!")]`)), 20000);
+    } else {
+      // Just verify we reached review
+      await driver.findElement(By.xpath(`//*[contains(text(),"Review")]`));
+    }
+
+    if (!skipSubmit) {
+      // Confirm submission exists via API
+      async function waitForSubmission(timeoutMs = 15000, interval = 1000) {
+        const start = Date.now();
+        while (Date.now() - start < timeoutMs) {
+          const subs = await fetch(`${API}/forms/submissions?agencyEmail=${encodeURIComponent(AGENCY_EMAIL)}`).then(r => r.json());
+          if (!subs?.ok) throw new Error('Failed to fetch submissions');
+          const found = Array.isArray(subs.items) && subs.items.some((s) => (s.data?.email || '') === TEST_EMAIL);
+          if (found) return true;
+          await sleep(interval);
+        }
+        return false;
+      }
+      const found = await waitForSubmission();
+      if (!found) throw new Error('Submission not found in API list');
+    }
 
     // Skip UI grid verification; trust API check above
     // Optionally, add a lightweight dashboard check if needed

@@ -6,7 +6,7 @@ function requireApiBase() {
 }
 
 // Standardized fetch wrapper ensuring credentials (cookies) are sent
-async function apiFetch(path: string, init?: RequestInit) {
+export async function apiFetch(path: string, init?: RequestInit) {
   const base = requireApiBase();
   if (typeof fetch === 'undefined') {
     throw new Error('fetch is not available');

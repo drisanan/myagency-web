@@ -2,6 +2,7 @@ import { APIGatewayProxyEventV2 } from 'aws-lambda';
 import { Handler, requireSession } from './common';
 import { newId } from '../lib/ids';
 import { ClientRecord } from '../lib/models';
+import { hashAccessCode } from '../lib/auth';
 import { getItem, putItem, queryByPK } from '../lib/dynamo';
 import { response } from './cors';
 
@@ -81,6 +82,11 @@ export const handler: Handler = async (event: APIGatewayProxyEventV2) => {
     const now = new Date().toISOString();
     
     // Use the cleaned ID
+    let accessCodeHash: string | undefined;
+    if (payload.accessCode) {
+      accessCodeHash = await hashAccessCode(payload.accessCode);
+    }
+
     const rec: ClientRecord = {
       PK: `AGENCY#${cleanAgencyId}`,
       SK: `CLIENT#${id}`,
@@ -93,6 +99,9 @@ export const handler: Handler = async (event: APIGatewayProxyEventV2) => {
       sport: payload.sport,
       agencyId: cleanAgencyId,
       agencyEmail: session.agencyEmail,
+      phone: payload.phone,
+      accessCodeHash,
+      authEnabled: Boolean(accessCodeHash),
       createdAt: now,
       updatedAt: now,
     };
@@ -112,6 +121,10 @@ export const handler: Handler = async (event: APIGatewayProxyEventV2) => {
     
     const now = new Date().toISOString();
     const merged = { ...existing, ...payload, updatedAt: now };
+    if (payload.accessCode) {
+      merged.accessCodeHash = await hashAccessCode(payload.accessCode);
+      merged.authEnabled = true;
+    }
     await putItem(merged);
     return response(200, { ok: true, client: merged }, origin);
   }

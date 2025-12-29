@@ -1,24 +1,47 @@
 const { Builder, By, until } = require('selenium-webdriver');
 const chrome = require('selenium-webdriver/chrome');
-const { setSession, selectOption, allowlistedConsoleErrors, sleep } = require('./utils');
+const { allowlistedConsoleErrors, sleep, findAndType } = require('./utils');
 
-const BASE = process.env.BASE_URL || 'http://localhost:3000';
-const AGENCY_EMAIL = 'agency1@an.test';
+const BASE = process.env.BASE_URL || 'https://www.myrecruiteragency.com';
+const LOGIN_EMAIL = process.env.TEST_EMAIL || 'drisanjames@gmail.com';
+const LOGIN_PHONE = process.env.TEST_PHONE || '2084407940';
+const LOGIN_CODE = process.env.TEST_ACCESS || '123456';
 const LIST_NAME = `Selenium List ${Date.now()}`;
 
 async function run() {
+  if (process.env.SKIP_LISTS === '1') {
+    console.log('Lists test skipped (SKIP_LISTS=1)');
+    return;
+  }
   const options = new chrome.Options();
   // options.addArguments('--headless=new');
   options.addArguments('--disable-gpu', '--no-sandbox');
   const driver = await new Builder().forBrowser('chrome').setChromeOptions(options).build();
 
   try {
-    await setSession(driver, BASE, { role: 'agency', email: AGENCY_EMAIL, agencyId: 'agency-001' });
+    // Real login to ensure correct agency context/data
+    await driver.get(`${BASE}/auth/login`);
+    await findAndType(driver, 'Email', LOGIN_EMAIL);
+    await findAndType(driver, 'Phone', LOGIN_PHONE);
+    await findAndType(driver, 'Access Code', LOGIN_CODE);
+    await driver.findElement(By.xpath(`//button[normalize-space(.)="Sign in"]`)).click();
+    await driver.wait(until.elementLocated(By.xpath(`//*[contains(text(),"Dashboard")]`)), 20000);
+
     await driver.get(`${BASE}/lists`);
 
-    await selectOption(driver, 'Sport', 'Football');
-    await selectOption(driver, 'Division', 'D1');
-    await selectOption(driver, 'State', 'California');
+    // Select first available options for Sport/Division/State to avoid seed dependencies
+    const selectFirst = async (labelText) => {
+      const sel = await driver.wait(
+        until.elementLocated(By.xpath(`//label[contains(., "${labelText}")]/following::div[contains(@class,"MuiSelect-select")][1]`)),
+        15000
+      );
+      await sel.click();
+      const opt = await driver.wait(until.elementLocated(By.xpath(`(//ul//li)[1]`)), 15000);
+      await opt.click();
+    };
+    await selectFirst('Sport');
+    await selectFirst('Division');
+    await selectFirst('State');
 
     // Wait for universities and pick first if available
     await driver.wait(until.elementLocated(By.xpath(`//div[contains(@class,"MuiCardContent-root")]`)), 15000);

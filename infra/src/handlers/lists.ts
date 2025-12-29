@@ -32,8 +32,12 @@ export const handler: Handler = async (event: APIGatewayProxyEventV2) => {
       const item = await getItem({ PK: `AGENCY#${session.agencyId}`, SK: `LIST#${listId}` });
       return response(200, { ok: true, list: item ?? null }, origin);
     }
+    // If client, return only their lists (via PK filter + clientId match)
     const items = await queryByPK(`AGENCY#${session.agencyId}`, 'LIST#');
-    return response(200, { ok: true, lists: items }, origin);
+    const filtered = session.role === 'client'
+      ? items.filter((i: any) => i.clientId === session.clientId && i.type === 'CLIENT_INTEREST')
+      : items;
+    return response(200, { ok: true, lists: filtered }, origin);
   }
 
   // --- POST ---
@@ -42,6 +46,15 @@ export const handler: Handler = async (event: APIGatewayProxyEventV2) => {
     const payload = JSON.parse(event.body);
     if (!payload.name) return badRequest(origin, 'name is required');
     if (payload.items && !Array.isArray(payload.items)) return badRequest(origin, 'items must be an array');
+    if (session.role === 'client') {
+      // Enforce client restrictions
+      payload.type = 'CLIENT_INTEREST';
+      payload.clientId = session.clientId;
+      // Only universities allowed; drop coaches if present
+      payload.items = Array.isArray(payload.items)
+        ? payload.items.filter((i: any) => i && i.university)
+        : [];
+    }
     
     const id = payload.id || newId('list');
     const now = Date.now();
@@ -53,6 +66,8 @@ export const handler: Handler = async (event: APIGatewayProxyEventV2) => {
       items: payload.items ?? [],
       agencyId: session.agencyId,
       agencyEmail: session.agencyEmail,
+      clientId: payload.clientId,
+      type: payload.type,
       createdAt: now,
       updatedAt: now,
     };

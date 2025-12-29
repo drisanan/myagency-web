@@ -2,10 +2,10 @@ const { Builder, By, until } = require('selenium-webdriver');
 const chrome = require('selenium-webdriver/chrome');
 const { allowlistedConsoleErrors, sleep } = require('./utils');
 
-const BASE = process.env.BASE_URL || 'http://localhost:3000';
-const EMAIL = 'drisanjames@gmail.com';
-const PHONE = '2084407940';
-const ACCESS = '123456';
+const BASE = process.env.BASE_URL || 'https://www.myrecruiteragency.com';
+const EMAIL = process.env.TEST_EMAIL || 'drisanjames@gmail.com';
+const PHONE = process.env.TEST_PHONE || '2084407940';
+const ACCESS = process.env.TEST_ACCESS || '123456';
 
 async function run() {
   const options = new chrome.Options();

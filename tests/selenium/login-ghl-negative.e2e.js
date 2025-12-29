@@ -2,7 +2,7 @@ const { Builder, By, until } = require('selenium-webdriver');
 const chrome = require('selenium-webdriver/chrome');
 const { allowlistedConsoleErrors } = require('./utils');
 
-const BASE = process.env.BASE_URL || 'http://localhost:3000';
+const BASE = process.env.BASE_URL || 'https://www.myrecruiteragency.com';
 const ERROR_SELECTOR = `//*[contains(text(),"Login failed") or contains(text(),"Invalid access code") or contains(text(),"Invalid phone") or contains(text(),"Access code must be digits only") or contains(text(),"Phone must be digits only") or contains(text(),"Invalid email") or contains(text(),"Required") or contains(text(),"Lookup failed")]`;
 
 async function runCase({ email, phone, access, expectText, selectorOverride }) {

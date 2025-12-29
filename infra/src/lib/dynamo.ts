@@ -36,6 +36,18 @@ export async function queryGSI1(GSI1PK: string, beginsWith?: string) {
   return res.Items ?? [];
 }
 
+export async function queryClientLists(clientId: string) {
+  const res = await docClient.send(
+    new QueryCommand({
+      TableName: TABLE_NAME,
+      IndexName: 'GSI2ClientLists',
+      KeyConditionExpression: 'clientId = :cid',
+      ExpressionAttributeValues: { ':cid': clientId },
+    }),
+  );
+  return res.Items ?? [];
+}
+
 export async function updateItem(params: {
   key: { PK: string; SK: string };
   updateExpression: string;

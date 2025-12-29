@@ -144,6 +144,18 @@ functions:
       - httpApi:
           path: /auth/login
           method: any
+  clientLogin:
+    handler: infra/src/handlers/auth-client-login.handler
+    events:
+      - httpApi:
+          path: /auth/client-login
+          method: any
+  clientInterests:
+    handler: infra/src/handlers/client-interests.handler
+    events:
+      - httpApi:
+          path: /clients/{id}/interests
+          method: get
   tasks:
     handler: infra/src/handlers/tasks.handler
     events:
@@ -182,6 +194,10 @@ resources:
             AttributeType: S
           - AttributeName: GSI1SK
             AttributeType: S
+          - AttributeName: clientId
+            AttributeType: S
+          - AttributeName: createdAt
+            AttributeType: N
         KeySchema:
           - AttributeName: PK
             KeyType: HASH
@@ -193,6 +209,14 @@ resources:
               - AttributeName: GSI1PK
                 KeyType: HASH
               - AttributeName: GSI1SK
+                KeyType: RANGE
+            Projection:
+              ProjectionType: ALL
+          - IndexName: GSI2ClientLists
+            KeySchema:
+              - AttributeName: clientId
+                KeyType: HASH
+              - AttributeName: createdAt
                 KeyType: RANGE
             Projection:
               ProjectionType: ALL

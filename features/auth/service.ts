@@ -11,13 +11,14 @@ function requireApiBase() {
 }
 
 export type Session = {
-  role: 'parent' | 'agency';
+  role: 'parent' | 'agency' | 'client';
   agencyId?: string;
   email: string;
   agencyEmail?: string;
   agencyLogo?: string;
   impersonatedBy?: { email: string; role: 'parent' };
   contactId?: string;
+  clientId?: string;
 };
 
 async function postSession(session: Session) {

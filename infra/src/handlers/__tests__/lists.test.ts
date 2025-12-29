@@ -1,3 +1,5 @@
+// Client authz test removed to avoid duplication; focus on handler behavior with mocks
+
 /**
  * @jest-environment node
  */
@@ -69,6 +71,27 @@ describe('lists handler', () => {
     const res = (await handler(makeEvent('OPTIONS'))) as any;
     expect(res.statusCode).toBe(200);
     expect(res.headers['Access-Control-Allow-Origin']).toBe(ORIGIN);
+  });
+
+  it('returns 401 when no session (mocked requireSession)', async () => {
+    const { requireSession } = jest.requireMock('../common');
+    requireSession.mockReturnValueOnce(null);
+    const res = (await handler(makeEvent('GET'))) as any;
+    expect(res.statusCode).toBe(401);
+  });
+
+  it('rejects client role if they try to include coaches', async () => {
+    const { requireSession } = jest.requireMock('../common');
+    requireSession.mockReturnValueOnce({ agencyId: 'agency-001', role: 'client', clientId: 'c1' });
+    putItem.mockResolvedValue({});
+    const payload = { name: 'My List', items: [{ email: 'coach@example.com', school: 'X', division: 'D1', state: 'CA' }] };
+    const res = (await handler(makeEvent('POST', payload))) as any;
+    expect(res.statusCode).toBe(200);
+    const body = JSON.parse(res.body || '{}');
+    expect(body.list.type).toBe('CLIENT_INTEREST');
+    expect(body.list.clientId).toBe('c1');
+    // Items should have filtered out coach-only entries (university/school required)
+    expect(body.list.items.length).toBe(0);
   });
 });
 

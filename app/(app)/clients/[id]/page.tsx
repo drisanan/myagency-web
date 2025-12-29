@@ -26,6 +26,7 @@ import { getClient } from '@/services/clients';
 import { getMailEntries } from '@/services/mailStatus';
 import { NotesPanel } from '@/features/notes/NotesPanel';
 import { TasksPanel } from '@/features/tasks/TasksPanel';
+import { fetchClientInterests } from '@/services/interests';
 import { useSearchParams } from 'next/navigation';
 import { useSession } from '@/features/auth/session';
 
@@ -58,6 +59,7 @@ export default function ClientProfilePage() {
   const [expandedId, setExpandedId] = React.useState<string | null>(null);
   const [client, setClient] = React.useState<any | null>(null);
   const [error, setError] = React.useState<string | null>(null);
+  const [interestLists, setInterestLists] = React.useState<any[]>([]);
 
   // FIX: Safely grab the email regardless of property name
   const userEmail = session?.agencyEmail || session?.email;
@@ -84,6 +86,12 @@ export default function ClientProfilePage() {
       } catch (err) {
         console.error('getClient failed', err);
         if (mounted) setError('Unable to load client. Please ensure you are logged in.');
+      }
+      try {
+        const interests = await fetchClientInterests(id);
+        if (mounted) setInterestLists(interests);
+      } catch (err) {
+        console.error('load interests failed', err);
       }
     })();
     return () => {
@@ -169,6 +177,7 @@ export default function ClientProfilePage() {
         <Tab label="Emails" />
         <Tab label="Notes" data-testid="notes-tab" />
         <Tab label="Tasks" data-testid="tasks-tab" />
+        <Tab label="Interests" />
       </Tabs>
 
       {tab === 0 && (
@@ -252,6 +261,24 @@ export default function ClientProfilePage() {
         <Box sx={{ mt: 2 }}>
           <TasksPanel athleteId={client.id} />
         </Box>
+      )}
+      {tab === 3 && (
+        <Card variant="outlined" sx={{ borderRadius: 2, mt: 2 }}>
+          <CardContent>
+            <Typography variant="h6" gutterBottom>Interests</Typography>
+            {!interestLists.length && <Typography color="text.secondary">No interests yet.</Typography>}
+            <List>
+              {interestLists.map((l: any) => (
+                <ListItem key={l.id} divider>
+                  <ListItemText
+                    primary={l.name}
+                    secondary={`${(l.items || []).length} universities`}
+                  />
+                </ListItem>
+              ))}
+            </List>
+          </CardContent>
+        </Card>
       )}
     </Box>
   );

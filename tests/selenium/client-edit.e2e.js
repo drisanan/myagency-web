@@ -2,7 +2,7 @@ const { Builder, By, until, Key } = require('selenium-webdriver');
 const chrome = require('selenium-webdriver/chrome');
 const { findAndType, selectOption, allowlistedConsoleErrors, sleep } = require('./utils');
 
-const BASE = process.env.BASE_URL || 'http://localhost:3000';
+const BASE = process.env.BASE_URL || 'https://www.myrecruiteragency.com';
 const LOGIN_EMAIL = 'drisanjames@gmail.com';
 const LOGIN_PHONE = '2084407940';
 const LOGIN_CODE = '123456';
