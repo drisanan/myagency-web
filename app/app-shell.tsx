@@ -81,6 +81,18 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const handleBellOpen = (e: React.MouseEvent<HTMLElement>) => setBellAnchor(e.currentTarget);
   const handleBellClose = () => setBellAnchor(null);
 
+  // User menu state
+  const [userAnchor, setUserAnchor] = React.useState<null | HTMLElement>(null);
+  const openUserMenu = Boolean(userAnchor);
+  const handleUserOpen = (e: React.MouseEvent<HTMLElement>) => setUserAnchor(e.currentTarget);
+  const handleUserClose = () => setUserAnchor(null);
+
+  const handleLogout = () => {
+    setSession(null);
+    document.cookie = 'an_session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+    window.location.href = '/auth/login';
+  };
+
   return (
     <Box
       sx={{
@@ -130,9 +142,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     </Badge>
                   </IconButton>
                 </Badge>
-                <Avatar sx={{ bgcolor: '#5D4AFB', width: 32, height: 32 }}>
-                  {(session.email || '?').charAt(0).toUpperCase()}
-                </Avatar>
+                <IconButton onClick={handleUserOpen} sx={{ p: 0 }}>
+                    <Avatar sx={{ bgcolor: '#5D4AFB', width: 32, height: 32, cursor: 'pointer' }}>
+                      {(session.email || '?').charAt(0).toUpperCase()}
+                    </Avatar>
+                  </IconButton>
               </Stack>
             ) : null}
           </Box>
@@ -164,6 +178,37 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         )}
         {dueSoon.length > 5 ? <MenuItem disabled>+{dueSoon.length - 5} more</MenuItem> : null}
       </Menu>
+
+      {/* User Account Menu */}
+      <Menu
+        anchorEl={userAnchor}
+        open={openUserMenu}
+        onClose={handleUserClose}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+        transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+        PaperProps={{ sx: { minWidth: 180, mt: 1 } }}
+      >
+        <Box sx={{ px: 2, py: 1.5 }}>
+          <Typography variant="subtitle2" noWrap>
+            {session?.email}
+          </Typography>
+          <Typography variant="caption" color="text.secondary">
+            {session?.role === 'agency' ? 'Agency' : session?.role}
+          </Typography>
+        </Box>
+        <Divider />
+        <MenuItem component={Link} href="/settings" onClick={handleUserClose}>
+          Settings
+        </MenuItem>
+        <MenuItem component={Link} href="/profile" onClick={handleUserClose}>
+          Profile
+        </MenuItem>
+        <Divider />
+        <MenuItem onClick={handleLogout} sx={{ color: 'error.main' }}>
+          Logout
+        </MenuItem>
+      </Menu>
+
       <Drawer
         variant="permanent"
         sx={{

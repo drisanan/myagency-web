@@ -12,7 +12,10 @@ const TourContext = createContext<TourContextType | undefined>(undefined);
 
 export function useTour() {
   const ctx = useContext(TourContext);
-  if (!ctx) throw new Error('useTour must be used within a TourProvider');
+  // Return a no-op if used outside provider (defensive - prevents crashes)
+  if (!ctx) {
+    return { startTour: () => {} };
+  }
   return ctx;
 }
 
