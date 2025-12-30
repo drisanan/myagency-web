@@ -59,6 +59,7 @@ export type CoachList = {
   items: CoachEntry[];
   createdAt: number;
   updatedAt: number;
+  type?: 'RECRUITING_LIST' | 'CLIENT_INTEREST';
 };
 
 export async function listLists(_: string): Promise<CoachList[]> {
