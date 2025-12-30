@@ -681,7 +681,7 @@ export function RecruiterWizard() {
 
   return (
     <Box>
-      <Stepper activeStep={activeStep} alternativeLabel sx={{ mb: 3 }}>
+      <Stepper data-tour="wizard-stepper" activeStep={activeStep} alternativeLabel sx={{ mb: 3 }}>
         {['Select Client', 'Universities', 'Details & Coaches', 'Draft'].map((label) => (
           <Step key={label}>
             <StepLabel>{label}</StepLabel>
@@ -702,6 +702,7 @@ export function RecruiterWizard() {
               value={clientId}
               onChange={(e) => setClientId(e.target.value)}
               SelectProps={{ MenuProps: { disablePortal: true } }}
+              data-tour="client-selector"
               inputProps={{ 'data-testid': 'recruiter-client-select' }}
             >
               {clients.map((c) => (

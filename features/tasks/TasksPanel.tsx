@@ -117,7 +117,7 @@ export function TasksPanel({ assigneeClientId }: Props) {
     <Box>
       <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 2 }}>
         <Typography variant="h6">Tasks</Typography>
-        <Button variant="contained" onClick={startNew} startIcon={<FaBell />}>
+        <Button data-tour="create-task-btn" variant="contained" onClick={startNew} startIcon={<FaBell />}>
           Add task
         </Button>
       </Stack>

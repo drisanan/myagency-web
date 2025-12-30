@@ -4,9 +4,16 @@ import React from 'react';
 import { Box, Typography, List, ListItem, ListItemText, Chip, Button, CircularProgress } from '@mui/material';
 import { useSession } from '@/features/auth/session';
 import { listTasks, updateTask, Task } from '@/services/tasks';
+import { useTour } from '@/features/tour/TourProvider';
+import { clientTasksSteps } from '@/features/tour/clientSteps';
 
 export default function ClientTasksPage() {
   const { session, loading } = useSession();
+  const { startTour } = useTour();
+
+  React.useEffect(() => {
+    if (!loading && session?.role === 'client') startTour('client-tasks', clientTasksSteps);
+  }, [loading, session, startTour]);
   const [tasks, setTasks] = React.useState<Task[]>([]);
   const [fetching, setFetching] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -67,7 +74,7 @@ export default function ClientTasksPage() {
       {!fetching && tasks.length === 0 && (
         <Typography color="text.secondary">No tasks assigned to you yet.</Typography>
       )}
-      <List>
+      <List data-tour="client-tasks-list">
         {tasks.map((t) => (
           <ListItem key={t.id} divider alignItems="flex-start">
             <ListItemText

@@ -8,9 +8,16 @@ import { getDivisions } from '@/services/recruiterMeta';
 import { getSports } from '@/features/recruiter/divisionMapping';
 import { listUniversities, getUniversityDetails, DIVISION_API_MAPPING } from '@/services/recruiter';
 import { listLists, saveList, updateList, deleteList, CoachEntry, CoachList } from '@/services/lists';
+import { useTour } from '@/features/tour/TourProvider';
+import { listsSteps } from '@/features/tour/listsSteps';
 
 export default function ListsPage() {
   const { session, loading } = useSession();
+  const { startTour } = useTour();
+
+  React.useEffect(() => {
+    if (!loading && session) startTour('lists', listsSteps);
+  }, [loading, session, startTour]);
 
   // FIX: Safely grab the email regardless of property name
   const userEmail = session?.agencyEmail || session?.email;
@@ -201,7 +208,7 @@ export default function ListsPage() {
 
       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '2fr 1fr' }, gap: 3 }}>
         <Box>
-          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(3, 1fr)' }, gap: 2, mb: 2 }}>
+          <Box data-tour="list-filters" sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(3, 1fr)' }, gap: 2, mb: 2 }}>
             <TextField select label="Sport" value={sport} onChange={(e) => setSport(e.target.value)} SelectProps={{ MenuProps: { disablePortal: true } }}>
               {sports.map(s => <MenuItem key={s} value={s}>{s}</MenuItem>)}
             </TextField>
@@ -214,7 +221,7 @@ export default function ListsPage() {
           </Box>
 
           <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>Universities</Typography>
-          <Stack direction="row" spacing={2} sx={{ flexWrap: 'wrap', mb: 2 }}>
+          <Stack data-tour="school-selector" direction="row" spacing={2} sx={{ flexWrap: 'wrap', mb: 2 }}>
             {schools.map(u => (
               <Card key={u.name} onClick={() => setSelectedSchool(u.name)} sx={{ width: 240, cursor: 'pointer', outline: selectedSchool === u.name ? '2px solid #1976d2' : 'none' }}>
                 <CardContent><Typography>{u.name}</Typography></CardContent>
@@ -294,7 +301,7 @@ export default function ListsPage() {
             )}
           </Paper>
           <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
-            <Button variant="contained" onClick={saveCurrent} disabled={!currentName.trim() || currentItems.length === 0}>{editingId ? 'Update List' : 'Save List'}</Button>
+            <Button data-tour="save-list-btn" variant="contained" onClick={saveCurrent} disabled={!currentName.trim() || currentItems.length === 0}>{editingId ? 'Update List' : 'Save List'}</Button>
             <Button variant="text" onClick={resetCurrent}>New</Button>
           </Stack>
           {saveError && (
@@ -306,7 +313,7 @@ export default function ListsPage() {
           <Divider sx={{ my: 2 }} />
 
           <Typography variant="h6" sx={{ mb: 1 }}>Saved Lists</Typography>
-          <Paper variant="outlined" sx={{ p: 1, maxHeight: 320, overflow: 'auto' }}>
+          <Paper data-tour="saved-lists" variant="outlined" sx={{ p: 1, maxHeight: 320, overflow: 'auto' }}>
             {saved.length === 0 ? (
               <Typography variant="body2" color="text.secondary">No saved lists.</Typography>
             ) : (

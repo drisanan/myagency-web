@@ -7,12 +7,19 @@ import { listClientsByAgencyEmail } from '@/services/clients';
 import { listPrompts, savePrompt, deletePrompt, PromptRecord } from '@/services/prompts';
 import { generateIntro } from '@/services/aiRecruiter';
 import { getAgencyByEmail } from '@/services/agencies';
+import { useTour } from '@/features/tour/TourProvider';
+import { promptsSteps } from '@/features/tour/promptsSteps';
 
 type ClientRow = { id: string; email: string; firstName?: string; lastName?: string; sport?: string };
 
 export default function PromptPlaygroundPage() {
   const { session } = useSession();
+  const { startTour } = useTour();
   const [clients, setClients] = React.useState<ClientRow[]>([]);
+
+  React.useEffect(() => {
+    if (session) startTour('prompts', promptsSteps);
+  }, [session, startTour]);
   const [clientId, setClientId] = React.useState('');
   const [prompt, setPrompt] = React.useState<string>('');
   const [templates, setTemplates] = React.useState<PromptRecord[]>([]);
@@ -132,6 +139,7 @@ export default function PromptPlaygroundPage() {
             value={selectedTemplateId}
             onChange={(e) => handleApplyTemplate(String(e.target.value))}
             SelectProps={{ MenuProps: { disablePortal: true } }}
+            data-tour="prompts-list"
           >
             <MenuItem value="">(Select a prompt)</MenuItem>
             {templates.map(t => (
@@ -197,7 +205,7 @@ export default function PromptPlaygroundPage() {
             onChange={(e) => setTemplateName(e.target.value)}
             sx={{ width: 220 }}
           />
-          <Button variant="outlined" onClick={handleSave} disabled={!userEmail || !prompt}>Save Prompt</Button>
+          <Button data-tour="create-prompt-btn" variant="outlined" onClick={handleSave} disabled={!userEmail || !prompt}>Save Prompt</Button>
           <Button
             variant="outlined"
             color="error"

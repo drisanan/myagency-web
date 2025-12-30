@@ -4,6 +4,8 @@ import { listLists, saveList } from '@/services/lists';
 import { listUniversities, DIVISION_API_MAPPING } from '@/services/recruiter';
 import { useSession } from '@/features/auth/session';
 import AppLayout from '@/app/(app)/layout';
+import { useTour } from '@/features/tour/TourProvider';
+import { clientListsSteps } from '@/features/tour/clientSteps';
 import { getDivisions, getStates } from '@/services/recruiterMeta';
 import { getSports } from '@/features/recruiter/divisionMapping';
 import { getClient } from '@/services/clients';
@@ -29,7 +31,12 @@ type Uni = { name: string };
 
 export default function ClientListsPage() {
   const { session } = useSession();
+  const { startTour } = useTour();
   const [lists, setLists] = React.useState<any[]>([]);
+
+  React.useEffect(() => {
+    if (session?.role === 'client') startTour('client-lists', clientListsSteps);
+  }, [session, startTour]);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
 
@@ -238,7 +245,7 @@ export default function ClientListsPage() {
             </CardContent>
           </Card>
 
-            <Card>
+            <Card data-tour="client-lists">
             <CardHeader title="Your Interest Lists" />
             <Divider />
             <CardContent>

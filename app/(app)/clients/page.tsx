@@ -3,11 +3,13 @@
 import React from 'react';
 import Link from 'next/link';
 import { useQueryClient } from '@tanstack/react-query';
-import { Typography, Button, Stack, TextField, CircularProgress } from '@mui/material';
+import { Typography, Button, Stack, TextField, CircularProgress, Box } from '@mui/material';
 
 import { ClientsList } from '@/features/clients/ClientsList';
 import { useSession } from '@/features/auth/session';
 import { upsertClient } from '@/services/clients';
+import { useTour } from '@/features/tour/TourProvider';
+import { athletesSteps } from '@/features/tour/athletesSteps';
 
 // FIX: Hardcode the fallback to your actual API domain to prevent localhost issues
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://api.myrecruiteragency.com';
@@ -15,6 +17,11 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://api.myrecr
 export default function ClientsPage() {
   const { session, loading } = useSession();
   const queryClient = useQueryClient();
+  const { startTour } = useTour();
+
+  React.useEffect(() => {
+    if (!loading && session) startTour('athletes', athletesSteps);
+  }, [loading, session, startTour]);
   
   const [inviteUrl, setInviteUrl] = React.useState<string>('');
   const [issuing, setIssuing] = React.useState<boolean>(false);
@@ -165,7 +172,7 @@ export default function ClientsPage() {
       <Stack direction="row" justifyContent="space-between" alignItems="center">
         <Typography variant="h4">Athletes</Typography>
         <Stack direction="row" spacing={1}>
-          <Button LinkComponent={Link} href="/clients/new" variant="contained">
+          <Button data-tour="add-athlete-btn" LinkComponent={Link} href="/clients/new" variant="contained">
             New
           </Button>
           <Button variant="outlined" onClick={handleGenerateLink} disabled={issuing}>
@@ -175,7 +182,7 @@ export default function ClientsPage() {
       </Stack>
 
       {inviteUrl && (
-        <Stack direction={{ xs: 'column', md: 'row' }} spacing={1} alignItems="center" sx={{ p: 2, bgcolor: '#f5f5f5', borderRadius: 1 }}>
+        <Stack data-tour="invite-section" direction={{ xs: 'column', md: 'row' }} spacing={1} alignItems="center" sx={{ p: 2, bgcolor: '#f5f5f5', borderRadius: 1 }}>
           <TextField 
             label="Intake Link" 
             value={inviteUrl} 
@@ -194,7 +201,9 @@ export default function ClientsPage() {
         </Stack>
       )}
 
-      <ClientsList />
+      <Box data-tour="athletes-list">
+        <ClientsList />
+      </Box>
     </Stack>
   );
 }
