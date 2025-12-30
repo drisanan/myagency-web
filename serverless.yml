@@ -177,6 +177,12 @@ functions:
       - httpApi:
           path: /ai/intro
           method: post
+  profile:
+    handler: infra/src/handlers/profile.handler
+    events:
+      - httpApi:
+          path: /profile
+          method: any
 
 resources:
   Resources:
