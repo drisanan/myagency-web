@@ -13,11 +13,14 @@ import { MetricCard } from './MetricCard';
 import { RecruitingCalendarCard } from '@/features/recruiter/RecruitingCalendarCard';
 import { CommitsSection } from '@/features/commits/CommitsSection';
 import { computeEmailMetrics, computeOpenRateMetrics, countAddedThisMonth, formatDelta, type MetricsResponse } from './metrics';
+import { useTour } from '@/features/tour/TourProvider';
+import { dashboardSteps } from '@/features/tour/dashboardSteps';
 
 type MailEntry = { clientId?: string };
 
 export default function DashboardPage() {
   const { session } = useSession();
+  const { startTour } = useTour();
   const isParent = session?.role === 'parent';
   const q = useQuery<any[]>({
     queryKey: ['dashboard', session?.role, session?.agencyId],
@@ -42,6 +45,11 @@ export default function DashboardPage() {
       .catch(() => {});
     setSchInput(String(getScholarships(session.email)));
   }, [session?.email, isParent]);
+  React.useEffect(() => {
+    if (!isParent) {
+      startTour('dashboard', dashboardSteps);
+    }
+  }, [isParent, startTour]);
   if (!session) return null;
 
   if (isParent) {
@@ -100,7 +108,9 @@ export default function DashboardPage() {
       {isLoading ? (
         <Skeleton variant="rectangular" height={260} sx={{ mb: 3, borderRadius: 2 }} />
       ) : (
-      <RecruitingCalendarCard />
+      <Box data-tour="calendar-widget">
+        <RecruitingCalendarCard />
+      </Box>
       )}
 
       {isLoading ? (
@@ -110,7 +120,10 @@ export default function DashboardPage() {
           ))}
         </Box>
       ) : (
-      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(3, 1fr)' }, gap: 2, mb: 3 }}>
+      <Box
+        id="metrics-cards"
+        sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(3, 1fr)' }, gap: 2, mb: 3 }}
+      >
         <MetricCard
           title="Emails Sent"
           value={emailsSent}
@@ -175,7 +188,7 @@ export default function DashboardPage() {
       </Box>
       )}
 
-      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 3, mb: 4 }}>
+      <Box data-tour="commits-section" sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 3, mb: 4 }}>
         <CommitsSection sport="Football" />
         <CommitsSection sport="Basketball" />
       </Box>
