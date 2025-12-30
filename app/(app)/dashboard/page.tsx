@@ -79,9 +79,8 @@ export default function DashboardPage() {
   );
   const addedThisMonth = countAddedThisMonth(clients);
 
-  // Grad year breakdown: current year..current+3 (inclusive)
-  const thisYear = new Date().getFullYear();
-  const years = [thisYear, thisYear + 1, thisYear + 2, thisYear + 3];
+  // Grad year breakdown: fixed window 2026-2029 (left-to-right)
+  const years = [2026, 2027, 2028, 2029];
   const byYear: Record<number, number> = { [years[0]]: 0, [years[1]]: 0, [years[2]]: 0, [years[3]]: 0 };
   clients.forEach(c => {
     const gy = Number(c?.radar?.graduationYear || c?.graduationYear || 0);
