@@ -29,7 +29,7 @@ describe('RecruiterWizard', () => {
       division: 'D1',
       coaches: [{ id: 'coach1', firstName: 'Ada', lastName: 'Lovelace', title: 'Head Coach', email: 'ada@caltech.edu' }],
     } as any);
-    jest.spyOn(listsSvc, 'listLists').mockReturnValue([
+    jest.spyOn(listsSvc, 'listLists').mockResolvedValue([
       {
         id: 'list-1',
         name: 'Test List',
@@ -90,7 +90,7 @@ describe('RecruiterWizard loading indicators', () => {
       division: 'D1',
       coaches: [{ id: 'coach1', firstName: 'Ada', lastName: 'Lovelace', title: 'Head Coach', email: 'ada@caltech.edu' }],
     } as any);
-    jest.spyOn(listsSvc, 'listLists').mockReturnValue([
+    jest.spyOn(listsSvc, 'listLists').mockResolvedValue([
       {
         id: 'list-1',
         name: 'Test List',

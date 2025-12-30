@@ -43,7 +43,7 @@ async function apiFetch(path: string, init?: RequestInit) {
   return res.json();
 }
 
-type Client = {
+export type Client = {
   id: string;
   email: string;
   firstName: string;
