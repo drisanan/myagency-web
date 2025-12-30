@@ -22,7 +22,7 @@ import { useQuery } from '@tanstack/react-query';
 import { listClientsByAgencyEmail } from '@/services/clients';
 
 type Props = {
-  athleteId?: string | null;
+  assigneeClientId?: string | null;
 };
 
 const statusOptions: { value: TaskStatus; label: string }[] = [
@@ -31,14 +31,14 @@ const statusOptions: { value: TaskStatus; label: string }[] = [
   { value: 'done', label: 'Done' },
 ];
 
-export function TasksPanel({ athleteId }: Props) {
+export function TasksPanel({ assigneeClientId }: Props) {
   const { session } = useSession();
   const agencyEmail = session?.email || '';
-  const { tasks, query, createTask, updateTask, deleteTask } = useTasks(agencyEmail, athleteId);
+  const { tasks, query, createTask, updateTask, deleteTask } = useTasks(agencyEmail, assigneeClientId);
   const clientsQ = useQuery({
     queryKey: ['tasks-clients', agencyEmail],
     queryFn: () => listClientsByAgencyEmail(agencyEmail),
-    enabled: Boolean(agencyEmail && !athleteId),
+    enabled: Boolean(agencyEmail && !assigneeClientId),
   });
 
   const [dialogOpen, setDialogOpen] = React.useState(false);
@@ -47,7 +47,7 @@ export function TasksPanel({ athleteId }: Props) {
   const [description, setDescription] = React.useState('');
   const [status, setStatus] = React.useState<TaskStatus>('todo');
   const [dueAt, setDueAt] = React.useState<string>('');
-  const [selectedAthleteId, setSelectedAthleteId] = React.useState<string>('');
+  const [selectedAssigneeId, setSelectedAssigneeId] = React.useState<string>('');
   const [error, setError] = React.useState('');
 
   const startNew = () => {
@@ -56,7 +56,7 @@ export function TasksPanel({ athleteId }: Props) {
     setDescription('');
     setStatus('todo');
     setDueAt('');
-    setSelectedAthleteId('');
+    setSelectedAssigneeId('');
     setError('');
     setDialogOpen(true);
   };
@@ -69,7 +69,7 @@ export function TasksPanel({ athleteId }: Props) {
     setDescription(t.description || '');
     setStatus(t.status);
     setDueAt(t.dueAt ? new Date(t.dueAt).toISOString().slice(0, 16) : '');
-    setSelectedAthleteId(t.athleteId || '');
+    setSelectedAssigneeId((t as any).assigneeClientId || t.athleteId || '');
     setError('');
     setDialogOpen(true);
   };
@@ -81,14 +81,21 @@ export function TasksPanel({ athleteId }: Props) {
     }
     const dueMs = dueAt ? new Date(dueAt).getTime() : undefined;
     if (editingId) {
-      await updateTask({ id: editingId, title: title.trim(), description, status, dueAt: dueMs });
+      await updateTask({
+        id: editingId,
+        title: title.trim(),
+        description,
+        status,
+        dueAt: dueMs,
+        assigneeClientId: selectedAssigneeId || assigneeClientId || null,
+      });
     } else {
       await createTask({
         title: title.trim(),
         description,
         status,
         dueAt: dueMs,
-        athleteId: (athleteId ?? selectedAthleteId) || null,
+        assigneeClientId: (assigneeClientId ?? selectedAssigneeId) || null,
       });
     }
     setDialogOpen(false);
@@ -138,8 +145,8 @@ export function TasksPanel({ athleteId }: Props) {
                       label={`Due ${new Date(t.dueAt).toLocaleString()}`}
                     />
                   ) : null}
-                  {t.athleteId && athleteNameById[t.athleteId] ? (
-                    <Chip size="small" label={athleteNameById[t.athleteId]} />
+                  {((t as any).assigneeClientId || t.athleteId) && athleteNameById[(t as any).assigneeClientId || t.athleteId] ? (
+                    <Chip size="small" label={athleteNameById[(t as any).assigneeClientId || t.athleteId]} />
                   ) : null}
                 </Stack>
                 <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
@@ -180,12 +187,12 @@ export function TasksPanel({ athleteId }: Props) {
             multiline
             minRows={3}
           />
-          {!athleteId ? (
+          {!assigneeClientId ? (
             <TextField
               select
               label="Assign athlete (optional)"
-              value={selectedAthleteId}
-              onChange={(e) => setSelectedAthleteId(e.target.value)}
+              value={selectedAssigneeId}
+              onChange={(e) => setSelectedAssigneeId(e.target.value)}
               SelectProps={{ displayEmpty: true }}
             >
               <MenuItem value="">Unassigned</MenuItem>

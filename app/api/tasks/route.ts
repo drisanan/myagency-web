@@ -3,15 +3,15 @@ import { createTask, deleteTask, listTasks, updateTask } from '@/services/tasks'
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
-  const athleteId = searchParams.get('athleteId') || undefined;
+  const assigneeClientId = searchParams.get('assigneeClientId') || searchParams.get('athleteId') || undefined;
   const status = (searchParams.get('status') || undefined) as any;
-  const data = await listTasks({ athleteId, status });
+  const data = await listTasks({ assigneeClientId, status });
   return NextResponse.json({ ok: true, data });
 }
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
-  const { title, description, status, dueAt, athleteId } = body || {};
+  const { title, description, status, dueAt, assigneeClientId, athleteId } = body || {};
   if (!title?.trim()) {
     return NextResponse.json({ ok: false, error: 'title is required' }, { status: 400 });
   }
@@ -20,7 +20,7 @@ export async function POST(req: NextRequest) {
     description: description?.trim(),
     status,
     dueAt: Number.isFinite(dueAt) ? Number(dueAt) : undefined,
-    athleteId: athleteId || null,
+    assigneeClientId: assigneeClientId ?? athleteId ?? null,
   });
   return NextResponse.json({ ok: true, data: created });
 }

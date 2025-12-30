@@ -68,7 +68,7 @@ export type TaskRecord = {
   description?: string;
   status: 'todo' | 'in-progress' | 'done';
   dueAt?: number;
-  athleteId?: string | null;
+  assigneeClientId?: string | null;
   agencyId: string;
   agencyEmail?: string;
   createdAt: number;

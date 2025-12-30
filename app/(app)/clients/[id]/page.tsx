@@ -260,7 +260,7 @@ export default function ClientProfilePage() {
       )}
       {tab === 2 && (
         <Box sx={{ mt: 2 }}>
-          <TasksPanel athleteId={client.id} />
+          <TasksPanel assigneeClientId={client.id} />
         </Box>
       )}
       {tab === 3 && (

@@ -6,7 +6,7 @@ type CreateInput = {
   description?: string;
   status?: TaskStatus;
   dueAt?: number;
-  athleteId?: string | null;
+  assigneeClientId?: string | null;
 };
 
 type UpdateInput = {
@@ -15,15 +15,16 @@ type UpdateInput = {
   description?: string;
   status?: TaskStatus;
   dueAt?: number;
+  assigneeClientId?: string | null;
 };
 
-export function useTasks(_agencyEmail: string, athleteId?: string | null) {
+export function useTasks(_agencyEmail: string, assigneeClientId?: string | null) {
   const qc = useQueryClient();
-  const queryKey = ['tasks', athleteId || 'all'];
+  const queryKey = ['tasks', assigneeClientId || 'all'];
 
   const query = useQuery({
     queryKey,
-    queryFn: () => listTasks({ athleteId }),
+    queryFn: () => listTasks({ assigneeClientId }),
   });
 
   const createMut = useMutation({

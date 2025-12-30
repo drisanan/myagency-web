@@ -4,7 +4,8 @@ export type Task = {
   id: string;
   agencyEmail?: string;
   agencyId?: string;
-  athleteId?: string | null;
+  athleteId?: string | null; // legacy
+  assigneeClientId?: string | null;
   title: string;
   description?: string;
   status: TaskStatus;
@@ -45,9 +46,10 @@ async function apiFetch(path: string, init?: RequestInit) {
   return res.json();
 }
 
-export async function listTasks(input: { athleteId?: string | null; status?: TaskStatus }) {
+export async function listTasks(input: { assigneeClientId?: string | null; status?: TaskStatus; athleteId?: string | null }) {
   const params = new URLSearchParams();
-  if (input.athleteId) params.set('athleteId', input.athleteId);
+  const assignee = input.assigneeClientId || input.athleteId; // support legacy param name
+  if (assignee) params.set('assigneeClientId', assignee);
   if (input.status) params.set('status', input.status);
   const qs = params.toString();
   const data = await apiFetch(`/tasks${qs ? `?${qs}` : ''}`);
@@ -59,14 +61,23 @@ export async function createTask(input: {
   description?: string;
   status?: TaskStatus;
   dueAt?: number;
-  athleteId?: string | null;
+  assigneeClientId?: string | null;
+  athleteId?: string | null; // legacy alias
 }) {
-  const data = await apiFetch('/tasks', { method: 'POST', body: JSON.stringify(input) });
+  const payload = {
+    ...input,
+    assigneeClientId: input.assigneeClientId ?? input.athleteId ?? null,
+  };
+  const data = await apiFetch('/tasks', { method: 'POST', body: JSON.stringify(payload) });
   return data?.task as Task;
 }
 
 export async function updateTask(id: string, patch: Partial<Omit<Task, 'id' | 'createdAt'>>) {
-  const data = await apiFetch(`/tasks/${id}`, { method: 'PATCH', body: JSON.stringify(patch) });
+  const payload = {
+    ...patch,
+    assigneeClientId: (patch as any).assigneeClientId ?? (patch as any).athleteId ?? patch.assigneeClientId,
+  };
+  const data = await apiFetch(`/tasks/${id}`, { method: 'PATCH', body: JSON.stringify(payload) });
   return data?.task as Task;
 }
 

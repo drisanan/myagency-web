@@ -56,7 +56,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   ];
 
   const navItems = session?.role === 'client'
-    ? allNavItems.filter((item) => item.href === '/lists')
+    ? [
+        { href: '/client/lists', label: 'Lists', icon: <IoClipboardOutline /> },
+        { href: '/client/tasks', label: 'Tasks', icon: <IoClipboardOutline /> },
+      ]
     : allNavItems;
 
   const tasksQuery = useQuery({
