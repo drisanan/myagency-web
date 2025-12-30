@@ -1,23 +1,31 @@
-import { Step } from 'react-joyride';
+import { DriveStep } from 'driver.js';
 
-export const dashboardSteps: Step[] = [
+export const dashboardSteps: DriveStep[] = [
   {
-    target: 'body',
-    content: 'Welcome to your Agency Dashboard! Let’s take a quick look around.',
-    placement: 'center',
-    disableBeacon: true,
+    popover: {
+      title: 'Welcome!',
+      description: 'Welcome to your Agency Dashboard! Let\'s take a quick look around.',
+    },
   },
   {
-    target: '#metrics-cards',
-    content: 'Your key metrics at a glance.',
+    element: '#metrics-cards',
+    popover: {
+      title: 'Metrics',
+      description: 'Your key metrics at a glance.',
+    },
   },
   {
-    target: '[data-tour="calendar-widget"]',
-    content: 'Upcoming tasks and reminders appear here.',
+    element: '[data-tour="calendar-widget"]',
+    popover: {
+      title: 'Calendar',
+      description: 'Upcoming tasks and reminders appear here.',
+    },
   },
   {
-    target: '[data-tour="commits-section"]',
-    content: 'Recent commits and activity are surfaced in these sections.',
+    element: '[data-tour="commits-section"]',
+    popover: {
+      title: 'Activity',
+      description: 'Recent commits and activity are surfaced in these sections.',
+    },
   },
 ];
-

@@ -29,28 +29,28 @@ async function run() {
 
     await login(driver);
 
-    // Wait for Joyride overlay (Skip Tour button)
-    const skipBtn = await driver.wait(
-      until.elementLocated(By.xpath(`//button[contains(., "Skip Tour")]`)),
+    // Wait for driver.js popover to appear (look for the close button or popover)
+    const closeBtn = await driver.wait(
+      until.elementLocated(By.css('.driver-popover-close-btn, button.driver-popover-close-btn')),
       15000
     );
 
-    // Advance/skip
-    await skipBtn.click();
+    // Close the tour
+    await closeBtn.click();
     await sleep(500);
 
-    // Verify tour is gone
-    const remainingSkip = await driver.findElements(By.xpath(`//button[contains(., "Skip Tour")]`));
-    if (remainingSkip.length) {
-      throw new Error('Tour did not close after skipping');
+    // Verify tour is gone (no driver.js popover visible)
+    const remainingPopover = await driver.findElements(By.css('.driver-popover'));
+    if (remainingPopover.length) {
+      throw new Error('Tour did not close after clicking close button');
     }
 
     // Ensure completion persists on reload
     await driver.navigate().refresh();
     await driver.wait(until.urlContains('/dashboard'), 15000);
     await sleep(1000);
-    const skipAfterRefresh = await driver.findElements(By.xpath(`//button[contains(., "Skip Tour")]`));
-    if (skipAfterRefresh.length) {
+    const popoverAfterRefresh = await driver.findElements(By.css('.driver-popover'));
+    if (popoverAfterRefresh.length) {
       throw new Error('Tour re-appeared after completion');
     }
 
@@ -71,4 +71,3 @@ run().catch((err) => {
   console.error(err);
   process.exit(1);
 });
-

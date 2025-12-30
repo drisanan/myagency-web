@@ -1,11 +1,11 @@
 'use client';
 
-import React, { createContext, useContext, useState, useCallback } from 'react';
-import Joyride, { CallBackProps, STATUS, Step, Styles } from 'react-joyride';
-import { useTheme } from '@mui/material/styles';
+import React, { createContext, useContext, useCallback, useRef, useEffect } from 'react';
+import { driver, Driver, DriveStep } from 'driver.js';
+import 'driver.js/dist/driver.css';
 
 type TourContextType = {
-  startTour: (tourKey: string, steps: Step[]) => void;
+  startTour: (tourKey: string, steps: DriveStep[]) => void;
 };
 
 const TourContext = createContext<TourContextType | undefined>(undefined);
@@ -17,59 +17,46 @@ export function useTour() {
 }
 
 export const TourProvider = ({ children }: { children: React.ReactNode }) => {
-  const theme = useTheme();
-  const [run, setRun] = useState(false);
-  const [steps, setSteps] = useState<Step[]>([]);
-  const [tourKey, setTourKey] = useState<string>('');
+  const driverRef = useRef<Driver | null>(null);
+  const tourKeyRef = useRef<string>('');
 
-  const tourStyles: Partial<Styles> = {
-    options: {
-      zIndex: 9999,
-      primaryColor: theme.palette.primary.main,
-      backgroundColor: theme.palette.background.paper,
-      textColor: theme.palette.text.primary,
-    },
-    buttonNext: {
-      backgroundColor: theme.palette.primary.main,
-      color: '#fff',
-      fontWeight: 600,
-    },
-  };
-
-  const startTour = useCallback((key: string, tourSteps: Step[]) => {
-    const done = typeof window !== 'undefined' ? localStorage.getItem(`tour_completed_${key}`) : null;
-    if (done) return;
-    setTourKey(key);
-    setSteps(tourSteps);
-    setRun(true);
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      driverRef.current?.destroy();
+    };
   }, []);
 
-  const handleCallback = (data: CallBackProps) => {
-    const finished = [STATUS.FINISHED, STATUS.SKIPPED];
-    if ((finished as string[]).includes(data.status)) {
-      setRun(false);
-      if (tourKey && typeof window !== 'undefined') {
-        localStorage.setItem(`tour_completed_${tourKey}`, 'true');
-        // TODO: persist to user profile via API if desired
-      }
-    }
-  };
+  const startTour = useCallback((key: string, steps: DriveStep[]) => {
+    const done = typeof window !== 'undefined' ? localStorage.getItem(`tour_completed_${key}`) : null;
+    if (done) return;
+
+    // Destroy any existing driver instance
+    driverRef.current?.destroy();
+    tourKeyRef.current = key;
+
+    driverRef.current = driver({
+      showProgress: true,
+      steps,
+      popoverClass: 'tour-popover',
+      allowClose: true,
+      doneBtnText: 'Got it',
+      nextBtnText: 'Next',
+      prevBtnText: 'Previous',
+      onDestroyStarted: () => {
+        if (typeof window !== 'undefined' && tourKeyRef.current) {
+          localStorage.setItem(`tour_completed_${tourKeyRef.current}`, 'true');
+        }
+        driverRef.current?.destroy();
+      },
+    });
+
+    driverRef.current.drive();
+  }, []);
 
   return (
     <TourContext.Provider value={{ startTour }}>
-      <Joyride
-        steps={steps}
-        run={run}
-        continuous
-        showSkipButton
-        showProgress
-        styles={tourStyles}
-        callback={handleCallback}
-        disableOverlayClose
-        locale={{ last: 'Got it', skip: 'Skip Tour' }}
-      />
       {children}
     </TourContext.Provider>
   );
 };
-
