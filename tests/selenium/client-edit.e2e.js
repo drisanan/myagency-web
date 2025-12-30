@@ -33,10 +33,9 @@ async function run() {
   const driver = await new Builder().forBrowser('chrome').setChromeOptions(options).build();
 
   try {
-    console.log('Logging in and creating client...');
+    console.log('Logging in (client-edit test placeholder)...');
     await login(driver);
-
-    console.log('Skipping client-edit e2e (UI flow requires deeper rewrite)');
+    console.log('Client edit flow not exercised; kept as placeholder to avoid regressions.');
   } finally {
     await driver.quit();
   }

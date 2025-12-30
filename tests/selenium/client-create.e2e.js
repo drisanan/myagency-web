@@ -29,16 +29,42 @@ async function run() {
     await driver.get(`${BASE}/clients/new`);
 
     await findAndType(driver, 'Email', TEST_EMAIL);
-    await findAndType(driver, 'Password', 'pw12345');
+    // Access Code is required; use numeric 6-digit
+    await findAndType(driver, 'Access Code', '123456');
     await findAndType(driver, 'First name', 'Client');
     await findAndType(driver, 'Last name', 'Create');
     await selectOption(driver, 'Sport', 'Football');
 
-    for (let i = 0; i < 6; i++) {
+    // Step through wizard, filling new Difference Maker field on Motivation step
+    const clickNext = async () => {
       const nextBtn = await driver.findElement(By.xpath(`//button[normalize-space(.)="Next"]`));
       await nextBtn.click();
       await sleep(200);
-    }
+    };
+
+    // Step 0 -> 1
+    await clickNext();
+    // Step 1 -> 2
+    await clickNext();
+    // Step 2 -> 3
+    await clickNext();
+    // Step 3 -> 4
+    await clickNext();
+    // Step 4 -> 5 (Motivation)
+    await clickNext();
+
+    // Fill the new "What makes you different..." field
+    const diffField = await driver.wait(
+      until.elementLocated(
+        By.xpath(`//label[contains(., "What makes you different from everyone else as a person?")]/following::textarea[1] | //label[contains(., "What makes you different from everyone else as a person?")]/following::input[1]`)
+      ),
+      5000
+    );
+    await diffField.clear();
+    await diffField.sendKeys('I bring relentless curiosity and teamwork to every challenge.');
+
+    // Step 5 -> 6 (Review)
+    await clickNext();
     const createBtn =
       (await driver.findElements(By.xpath(`//button[contains(., "Create Client")]`)))[0] ||
       (await driver.findElements(By.xpath(`//button[contains(., "Save Changes")]`)))[0];

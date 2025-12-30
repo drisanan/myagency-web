@@ -127,6 +127,13 @@ function MotivationStep({ value, onChange }: { value: RadarDraft; onChange: (k: 
       <TextField label="Favorite Motivational Quote" value={value.myMotivator ?? ''} onChange={(e)=>onChange('myMotivator', e.target.value)} />
       <TextField label="Advice" value={value.athleteAdvice ?? ''} onChange={(e)=>onChange('athleteAdvice', e.target.value)} />
       </Box>
+      <TextField
+        label="What makes you different from everyone else as a person?"
+        value={value.differenceMaker ?? ''}
+        onChange={(e)=>onChange('differenceMaker', e.target.value)}
+        multiline
+        rows={3}
+      />
 
       <Box>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
