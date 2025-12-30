@@ -1,13 +1,17 @@
 const { Builder, By, until } = require('selenium-webdriver');
 const chrome = require('selenium-webdriver/chrome');
-const { allowlistedConsoleErrors, findAndType, sleep } = require('./utils');
+const { allowlistedConsoleErrors, findAndType, sleep, getSessionCookie, deleteClientByEmail, deleteListByName, dismissTour } = require('./utils');
 
 const BASE = process.env.BASE_URL || 'https://www.myrecruiteragency.com';
+const API_BASE = process.env.API_BASE_URL || 'https://api.myrecruiteragency.com';
 const LOGIN_EMAIL = process.env.TEST_EMAIL || 'drisanjames@gmail.com';
 const LOGIN_PHONE = process.env.TEST_PHONE || '2084407940';
 const LOGIN_CODE = process.env.TEST_ACCESS || '123456';
 const TEST_CLIENT_EMAIL = `rw-client-${Date.now()}@example.com`;
 const TEST_LIST_NAME = `RW List ${Date.now()}`;
+
+// Track session for cleanup
+let sessionCookie = null;
 
 async function run() {
   if (process.env.SKIP_RECRUITER === '1') {
@@ -27,11 +31,17 @@ async function run() {
     await findAndType(driver, 'Access Code', LOGIN_CODE);
     await driver.findElement(By.xpath(`//button[normalize-space(.)="Sign in"]`)).click();
     await driver.wait(until.elementLocated(By.xpath(`//*[contains(text(),"Dashboard")]`)), 20000);
+    
+    // Capture session cookie for cleanup
+    sessionCookie = await getSessionCookie(driver);
+    
+    // Dismiss any tour overlays
+    await dismissTour(driver);
 
     // Pre-step: create client via UI
     await driver.get(`${BASE}/clients/new`);
     await findAndType(driver, 'Email', TEST_CLIENT_EMAIL);
-    await findAndType(driver, 'Password', 'pw12345');
+    await findAndType(driver, 'Access Code', '123456');
     await findAndType(driver, 'First name', 'RW');
     await findAndType(driver, 'Last name', 'Client');
     await driver.findElement(By.xpath(`//label[contains(., "Sport")]/following::div[contains(@class,"MuiSelect-select")][1]`)).click();
@@ -51,6 +61,8 @@ async function run() {
 
     // Pre-step: create list via UI
     await driver.get(`${BASE}/lists`);
+    await dismissTour(driver);
+    await sleep(300);
     const selectFirstList = async (labelText) => {
       const sel = await driver.wait(
         until.elementLocated(By.xpath(`//label[contains(., "${labelText}")]/following::div[contains(@class,"MuiSelect-select")][1]`)),
@@ -91,11 +103,14 @@ async function run() {
 
     // Navigate to recruiter after data prep
     await driver.get(`${BASE}/recruiter`);
+    await dismissTour(driver);
+    await sleep(300);
     await driver.wait(async () => {
       const has = await driver.executeScript('return document.body && document.body.innerText && document.body.innerText.includes("Recruiter");');
       return Boolean(has);
     }, 40000, 'Recruiter text not rendered');
     await driver.get(`${BASE}/recruiter`);
+    await dismissTour(driver);
     const currentUrl = await driver.getCurrentUrl();
     console.log('Current URL', currentUrl);
     await driver.wait(async () => {
@@ -117,7 +132,8 @@ async function run() {
       throw e;
     }
 
-    async function selectFirst(label) {
+    async function selectFirst(label, skipPlaceholder = false) {
+      console.log(`Selecting first option for "${label}"...`);
       const sel = await driver.wait(
         until.elementLocated(By.xpath(`//label[contains(., "${label}")]/following::div[contains(@class,"MuiSelect-select")][1]`)),
         20000
@@ -127,42 +143,57 @@ async function run() {
         return disabled !== 'true';
       }, 20000);
       await sel.click();
-      let opt;
-      try {
-        opt = await driver.wait(until.elementLocated(By.xpath(`(//ul//li)[1]`)), 15000);
-      } catch {
-        await sel.click();
-        opt = await driver.wait(until.elementLocated(By.xpath(`(//ul//li)[1]`)), 15000);
-      }
-      await opt.click();
       await sleep(300);
+      
+      // Get all options
+      const options = await driver.findElements(By.xpath(`//ul[@role="listbox"]//li`));
+      if (options.length === 0) {
+        throw new Error(`No options found for "${label}"`);
+      }
+      
+      // Pick the right option (skip placeholder if requested)
+      let opt = options[0];
+      if (skipPlaceholder && options.length > 1) {
+        const firstText = await options[0].getText();
+        if (firstText.startsWith('(') || firstText === '') {
+          opt = options[1];
+        }
+      }
+      
+      const optText = await opt.getText();
+      console.log(`Selecting option: "${optText}"`);
+      await opt.click();
+      await sleep(500);
     }
 
-    // Retry block: if list combo not found, refresh once and retry selections
-    const runSelections = async () => {
-      await selectFirst('Client');
-      await selectFirst('List');
-      await selectFirst('Division');
-      await selectFirst('State');
-    };
-    try {
-      await runSelections();
-    } catch (e) {
-      console.warn('Retrying recruiter selections after refresh...', e?.message || e);
-      await driver.navigate().refresh();
+    // Helper to click Next button
+    const clickNext = async () => {
+      console.log('Looking for NEXT button...');
+      const nextBtn = await driver.wait(until.elementLocated(By.xpath(`//button[normalize-space(.)="NEXT" or normalize-space(.)="Next"]`)), 10000);
+      console.log('Waiting for NEXT button to be enabled...');
       await driver.wait(async () => {
-        const has = await driver.executeScript('return document.body && document.body.innerText && document.body.innerText.includes("Recruiter");');
-        return Boolean(has);
-      }, 20000, 'Recruiter text not rendered after refresh');
-      await runSelections();
-    }
+        const disabled = await nextBtn.getAttribute('disabled');
+        return !disabled;
+      }, 10000);
+      console.log('Clicking NEXT button...');
+      await nextBtn.click();
+      await sleep(500);
+    };
 
-    const nextBtn = await driver.wait(until.elementLocated(By.xpath(`//button[normalize-space(.)="Next"]`)), 15000);
-    await driver.wait(async () => !(await nextBtn.getAttribute('disabled')), 8000);
-    await nextBtn.click();
+    // Step 0: Select Client
+    await selectFirst('Client');
+    await clickNext();
+    
+    // Step 1: Universities - Select List (this auto-skips to step 2 with list coaches)
+    await selectFirst('List', true); // Skip placeholder
+    await sleep(500);
+    
+    // After selecting a list, wizard auto-advances to step 2 (Details & Coaches)
+    // Now click Next to go to step 3 (Draft)
+    await clickNext();
 
     // Step 3 (Draft): basic presence check
-    await driver.wait(until.elementLocated(By.xpath(`//h6[contains(., "Draft") or contains(., "Recipients")]`)), 15000);
+    await driver.wait(until.elementLocated(By.xpath(`//*[contains(text(), "Draft") or contains(text(), "Recipients") or contains(text(), "Generate")]`)), 15000);
 
     // Check console errors
     const logs = await driver.manage().logs().get('browser');
@@ -174,6 +205,13 @@ async function run() {
 
     console.log('E2E recruiter wizard smoke passed');
   } finally {
+    // Cleanup: delete created test data by email/name
+    if (sessionCookie) {
+      await deleteListByName(API_BASE, sessionCookie, TEST_LIST_NAME);
+      console.log(`Cleaned up list: ${TEST_LIST_NAME}`);
+      await deleteClientByEmail(API_BASE, sessionCookie, TEST_CLIENT_EMAIL);
+      console.log(`Cleaned up client: ${TEST_CLIENT_EMAIL}`);
+    }
     await driver.quit();
   }
 }

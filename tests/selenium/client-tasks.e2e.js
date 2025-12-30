@@ -1,7 +1,7 @@
 const { Builder, By, until } = require('selenium-webdriver');
 const chrome = require('selenium-webdriver/chrome');
 const fetch = require('node-fetch');
-const { findAndType, allowlistedConsoleErrors, sleep } = require('./utils');
+const { findAndType, allowlistedConsoleErrors, sleep, deleteTaskViaApi } = require('./utils');
 
 const BASE_URL = process.env.BASE_URL || 'https://www.myrecruiteragency.com';
 const API_BASE_URL = process.env.API_BASE_URL || 'https://api.myrecruiteragency.com';
@@ -10,6 +10,9 @@ const AGENT_PHONE = process.env.TEST_PHONE || '2084407940';
 const AGENT_ACCESS = process.env.TEST_ACCESS || '123456';
 const CLIENT_ID = process.env.CLIENT_ID || '';
 const TASK_TITLE = `Client Task ${Date.now()}`;
+
+let createdTaskId = null;
+let agentCookie = null;
 
 async function loginAgent(driver) {
   await driver.get(`${BASE_URL}/auth/login`);
@@ -37,7 +40,10 @@ async function createTaskViaApi(sessionCookie, clientId) {
     const text = await res.text();
     throw new Error(`Task creation failed: ${res.status} ${text}`);
   }
-  return res.json();
+  const data = await res.json();
+  // Store task ID for cleanup
+  createdTaskId = data?.task?.id || data?.data?.id || null;
+  return data;
 }
 
 async function loginClient(driver, clientEmail, clientPhone, clientAccess) {
@@ -67,7 +73,7 @@ async function run() {
   try {
     // 1. Agent login and create task via API
     await loginAgent(driver);
-    const agentCookie = (await driver.manage().getCookie('an_session'))?.value;
+    agentCookie = (await driver.manage().getCookie('an_session'))?.value;
     if (!agentCookie) throw new Error('Agent session cookie not found');
     await createTaskViaApi(agentCookie, CLIENT_ID);
 
@@ -86,6 +92,11 @@ async function run() {
 
     console.log('Client tasks e2e passed.');
   } finally {
+    // Cleanup: delete created test task
+    if (agentCookie && createdTaskId) {
+      await deleteTaskViaApi(API_BASE_URL, agentCookie, createdTaskId);
+      console.log(`Cleaned up task: ${createdTaskId}`);
+    }
     await driver.quit();
   }
 }

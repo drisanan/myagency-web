@@ -1,6 +1,6 @@
 const { Builder, By, until } = require('selenium-webdriver');
 const chrome = require('selenium-webdriver/chrome');
-const { allowlistedConsoleErrors } = require('./utils');
+const { allowlistedConsoleErrors, sleep, findAndType, dismissTour } = require('./utils');
 
 const BASE = process.env.BASE_URL || 'https://www.myrecruiteragency.com';
 const ERROR_SELECTOR = `//*[contains(text(),"Login failed") or contains(text(),"Invalid access code") or contains(text(),"Invalid phone") or contains(text(),"Access code must be digits only") or contains(text(),"Phone must be digits only") or contains(text(),"Invalid email") or contains(text(),"Required") or contains(text(),"Lookup failed")]`;
@@ -12,9 +12,11 @@ async function runCase({ email, phone, access, expectText, selectorOverride }) {
   const driver = await new Builder().forBrowser('chrome').setChromeOptions(options).build();
   try {
     await driver.get(`${BASE}/auth/login`);
-    if (email !== undefined) await driver.findElement(By.xpath(`//label[contains(., "Email")]/following::input[1]`)).sendKeys(email);
-    if (phone !== undefined) await driver.findElement(By.xpath(`//label[contains(., "Phone")]/following::input[1]`)).sendKeys(phone);
-    if (access !== undefined) await driver.findElement(By.xpath(`//label[contains(., "Access Code")]/following::input[1]`)).sendKeys(access);
+    await sleep(500); // Wait for page to stabilize
+    await dismissTour(driver);
+    if (email !== undefined) await findAndType(driver, 'Email', email);
+    if (phone !== undefined) await findAndType(driver, 'Phone', phone);
+    if (access !== undefined) await findAndType(driver, 'Access Code', access);
     await driver.findElement(By.xpath(`//button[normalize-space(.)="Sign in"]`)).click();
     const selector = selectorOverride || `//*[contains(text(),"${expectText}")]`;
     await driver.wait(until.elementLocated(By.xpath(selector)), 15000);

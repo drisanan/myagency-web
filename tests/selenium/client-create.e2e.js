@@ -1,13 +1,16 @@
 const { Builder, By, until } = require('selenium-webdriver');
 const chrome = require('selenium-webdriver/chrome');
 const fetch = (...args) => import('node-fetch').then(({ default: f }) => f(...args));
-const { findAndType, selectOption, allowlistedConsoleErrors, sleep } = require('./utils');
+const { findAndType, selectOption, allowlistedConsoleErrors, sleep, getSessionCookie, deleteClientByEmail, dismissTour } = require('./utils');
 
 const BASE = process.env.BASE_URL || 'https://www.myrecruiteragency.com';
+const API_BASE = process.env.API_BASE_URL || 'https://api.myrecruiteragency.com';
 const TEST_EMAIL = `ui-client-${Date.now()}@example.com`;
 const LOGIN_EMAIL = 'drisanjames@gmail.com';
 const LOGIN_PHONE = '2084407940';
 const LOGIN_CODE = '123456';
+
+let sessionCookie = null;
 
 async function login(driver) {
   await driver.get(`${BASE}/auth/login`);
@@ -16,6 +19,8 @@ async function login(driver) {
   await findAndType(driver, 'Access Code', LOGIN_CODE);
   await driver.findElement(By.xpath(`//button[normalize-space(.)="Sign in"]`)).click();
   await driver.wait(until.elementLocated(By.xpath(`//*[contains(text(),"Dashboard")]`)), 20000);
+  // Capture session for cleanup
+  sessionCookie = await getSessionCookie(driver);
 }
 
 async function run() {
@@ -27,6 +32,7 @@ async function run() {
   try {
     await login(driver);
     await driver.get(`${BASE}/clients/new`);
+    await dismissTour(driver);
 
     await findAndType(driver, 'Email', TEST_EMAIL);
     // Access Code is required; use numeric 6-digit
@@ -87,6 +93,11 @@ async function run() {
 
     console.log('E2E client create passed with email', TEST_EMAIL);
   } finally {
+    // Cleanup: delete created test client
+    if (sessionCookie) {
+      await deleteClientByEmail(API_BASE, sessionCookie, TEST_EMAIL);
+      console.log(`Cleaned up client: ${TEST_EMAIL}`);
+    }
     await driver.quit();
   }
 }

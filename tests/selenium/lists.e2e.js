@@ -1,12 +1,15 @@
 const { Builder, By, until } = require('selenium-webdriver');
 const chrome = require('selenium-webdriver/chrome');
-const { allowlistedConsoleErrors, sleep, findAndType } = require('./utils');
+const { allowlistedConsoleErrors, sleep, findAndType, getSessionCookie, deleteListByName, dismissTour } = require('./utils');
 
 const BASE = process.env.BASE_URL || 'https://www.myrecruiteragency.com';
+const API_BASE = process.env.API_BASE_URL || 'https://api.myrecruiteragency.com';
 const LOGIN_EMAIL = process.env.TEST_EMAIL || 'drisanjames@gmail.com';
 const LOGIN_PHONE = process.env.TEST_PHONE || '2084407940';
 const LOGIN_CODE = process.env.TEST_ACCESS || '123456';
 const LIST_NAME = `Selenium List ${Date.now()}`;
+
+let sessionCookie = null;
 
 async function run() {
   if (process.env.SKIP_LISTS === '1') {
@@ -26,8 +29,15 @@ async function run() {
     await findAndType(driver, 'Access Code', LOGIN_CODE);
     await driver.findElement(By.xpath(`//button[normalize-space(.)="Sign in"]`)).click();
     await driver.wait(until.elementLocated(By.xpath(`//*[contains(text(),"Dashboard")]`)), 20000);
+    
+    // Capture session for cleanup
+    sessionCookie = await getSessionCookie(driver);
 
     await driver.get(`${BASE}/lists`);
+    
+    // Dismiss any tour overlay
+    await dismissTour(driver);
+    await sleep(300);
 
     // Select first available options for Sport/Division/State to avoid seed dependencies
     const selectFirst = async (labelText) => {
@@ -81,6 +91,11 @@ async function run() {
 
     console.log('E2E lists smoke passed');
   } finally {
+    // Cleanup: delete created test list
+    if (sessionCookie) {
+      await deleteListByName(API_BASE, sessionCookie, LIST_NAME);
+      console.log(`Cleaned up list: ${LIST_NAME}`);
+    }
     await driver.quit();
   }
 }
