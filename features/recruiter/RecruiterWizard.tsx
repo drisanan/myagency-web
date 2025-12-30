@@ -985,8 +985,17 @@ export function RecruiterWizard() {
                       setSelectedPromptId(id);
                       const p = prompts.find((x) => x.id === id);
                       if (p?.text) {
-                        setAiHtml(p.text);
-                        setDraft(p.text);
+                        // Get the current email body (sections like accomplishments, academics, etc.)
+                        const base = aiHtml || buildEmailPreview();
+                        // Strip the existing intro (greeting + first paragraph)
+                        const stripped = base.replace(/^<p>Hello Coach[\s\S]*?<\/p>\s*<p>[\s\S]*?<\/p>/, '');
+                        const rest = stripped || base;
+                        // Get coach name for greeting
+                        const coachLast = selectedCoaches[0]?.lastName || selectedCoaches[0]?.LastName || 'Coach';
+                        // Merge: new greeting + prompt text as intro + rest of email body
+                        const merged = `<p>Hello Coach ${coachLast},</p><p>${p.text}</p>${rest}`;
+                        setAiHtml(merged);
+                        setDraft(merged);
                       }
                     }}
                     SelectProps={{ MenuProps: { disablePortal: true } }}
