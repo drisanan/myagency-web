@@ -3,8 +3,9 @@ import React from 'react';
 import { SessionProvider, useSession } from '@/features/auth/session';
 import { TourProvider } from '@/features/tour/TourProvider';
 import { DynamicThemeProvider } from '@/features/theme/DynamicThemeProvider';
-import { useRouter } from 'next/navigation';
-import { Box, AppBar, Toolbar, Typography } from '@mui/material';
+import { useRouter, usePathname } from 'next/navigation';
+import Link from 'next/link';
+import { Box, AppBar, Toolbar, Typography, Button, Stack } from '@mui/material';
 import { colors } from '@/theme/colors';
 
 function Guard({ children }: { children: React.ReactNode }) {
@@ -24,8 +25,15 @@ function Guard({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+const navItems = [
+  { label: 'Lists', href: '/client/lists' },
+  { label: 'Recruiter', href: '/client/recruiter' },
+  { label: 'Tasks', href: '/client/tasks' },
+];
+
 function ClientShell({ children }: { children: React.ReactNode }) {
   const { session } = useSession();
+  const pathname = usePathname();
   
   // Dynamic colors from agency settings (white-label)
   const primaryColor = session?.agencySettings?.primaryColor || colors.sidebarBg;
@@ -49,9 +57,36 @@ function ClientShell({ children }: { children: React.ReactNode }) {
               style={{ height: 32, objectFit: 'contain', marginRight: 16 }} 
             />
           ) : null}
-          <Typography variant="h6" sx={{ flexGrow: 1, color: '#fff' }}>
+          <Typography variant="h6" sx={{ color: '#fff', mr: 4 }}>
             Client Portal
           </Typography>
+          
+          {/* Navigation */}
+          <Stack direction="row" spacing={1} sx={{ flexGrow: 1 }}>
+            {navItems.map((item) => {
+              const isActive = pathname === item.href || pathname?.startsWith(item.href + '/');
+              return (
+                <Button
+                  key={item.href}
+                  component={Link}
+                  href={item.href}
+                  sx={{
+                    color: isActive ? secondaryColor : 'rgba(255,255,255,0.8)',
+                    bgcolor: isActive ? 'rgba(255,255,255,0.1)' : 'transparent',
+                    '&:hover': {
+                      bgcolor: 'rgba(255,255,255,0.15)',
+                    },
+                    fontWeight: isActive ? 600 : 400,
+                    textTransform: 'none',
+                    px: 2,
+                  }}
+                >
+                  {item.label}
+                </Button>
+              );
+            })}
+          </Stack>
+
           {session?.firstName && (
             <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.8)' }}>
               {session.firstName} {session.lastName}

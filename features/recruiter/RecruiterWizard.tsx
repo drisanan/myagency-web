@@ -412,6 +412,7 @@ export function RecruiterWizard() {
   const [aiHtml, setAiHtml] = React.useState<string>('');
   const [isGenerating, setIsGenerating] = React.useState(false);
   const [isCreatingDraft, setIsCreatingDraft] = React.useState(false);
+  const [isEditingPreview, setIsEditingPreview] = React.useState(false);
 
   // Delayed busy indicator to avoid flicker on sub-1s actions
   const useDelayedBusy = (flag: boolean, delayMs = 1000) => {
@@ -1100,16 +1101,42 @@ CRITICAL INSTRUCTIONS:
               )}
 
               <Box sx={{ border: '1px solid #ddd', borderRadius: 1, p: 2, bgcolor: '#fafafa' }}>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
                   <Typography variant="h6">Preview</Typography>
-                  <Button
-                    onClick={() => navigator.clipboard.writeText(aiHtml || buildEmailPreview())}
-                    sx={{ bgcolor: '#000', color: '#b7ff00', '&:hover': { bgcolor: '#111' } }}
-                  >
-                    Copy Rich Text
-                  </Button>
+                  <Stack direction="row" spacing={1}>
+                    <Button
+                      size="small"
+                      variant={isEditingPreview ? 'contained' : 'outlined'}
+                      onClick={() => setIsEditingPreview(!isEditingPreview)}
+                      sx={isEditingPreview ? { bgcolor: '#1976d2' } : {}}
+                    >
+                      {isEditingPreview ? 'Done Editing' : 'Edit'}
+                    </Button>
+                    <Button
+                      size="small"
+                      onClick={() => navigator.clipboard.writeText(aiHtml || buildEmailPreview())}
+                      sx={{ bgcolor: '#000', color: '#b7ff00', '&:hover': { bgcolor: '#111' } }}
+                    >
+                      Copy Rich Text
+                    </Button>
+                  </Stack>
                 </Box>
-                <div dangerouslySetInnerHTML={{ __html: aiHtml || buildEmailPreview() }} />
+                {isEditingPreview ? (
+                  <TextField
+                    multiline
+                    fullWidth
+                    minRows={10}
+                    maxRows={20}
+                    value={aiHtml || buildEmailPreview()}
+                    onChange={(e) => setAiHtml(e.target.value)}
+                    sx={{ bgcolor: '#fff' }}
+                    helperText="Edit the HTML content directly. Use <p>, <ul>, <li>, <a>, etc."
+                  />
+                ) : (
+                  <Box sx={{ bgcolor: '#fff', p: 2, borderRadius: 1, minHeight: 200 }}>
+                    <div dangerouslySetInnerHTML={{ __html: aiHtml || buildEmailPreview() }} />
+                  </Box>
+                )}
                 <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
                   <Button
                     onClick={handleImproveWithAI}
