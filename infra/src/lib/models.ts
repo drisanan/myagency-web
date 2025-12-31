@@ -1,3 +1,23 @@
+export type AgencySettings = {
+  primaryColor?: string;
+  secondaryColor?: string;
+  textPrimary?: string;
+  textSecondary?: string;
+  linkColor?: string;
+  contentBg?: string;
+  cardBg?: string;
+  navText?: string;
+  navActiveText?: string;
+  navHoverBg?: string;
+  successColor?: string;
+  warningColor?: string;
+  errorColor?: string;
+  infoColor?: string;
+  borderColor?: string;
+  dividerColor?: string;
+  logoDataUrl?: string;
+};
+
 export type SessionContext = {
   agencyId: string;
   agencyEmail?: string;
@@ -7,10 +27,7 @@ export type SessionContext = {
   firstName?: string;
   lastName?: string;
   agencyLogo?: string;
-  agencySettings?: {
-    primaryColor?: string;
-    secondaryColor?: string;
-  };
+  agencySettings?: AgencySettings;
 };
 
 export type ClientRecord = {

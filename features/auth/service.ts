@@ -10,6 +10,26 @@ function requireApiBase() {
   return API_BASE_URL;
 }
 
+export type AgencySettings = {
+  primaryColor?: string;
+  secondaryColor?: string;
+  textPrimary?: string;
+  textSecondary?: string;
+  linkColor?: string;
+  contentBg?: string;
+  cardBg?: string;
+  navText?: string;
+  navActiveText?: string;
+  navHoverBg?: string;
+  successColor?: string;
+  warningColor?: string;
+  errorColor?: string;
+  infoColor?: string;
+  borderColor?: string;
+  dividerColor?: string;
+  logoDataUrl?: string;
+};
+
 export type Session = {
   role: 'parent' | 'agency' | 'client';
   agencyId?: string;
@@ -18,10 +38,7 @@ export type Session = {
   agencyLogo?: string;
   firstName?: string;
   lastName?: string;
-  agencySettings?: {
-    primaryColor?: string;
-    secondaryColor?: string;
-  };
+  agencySettings?: AgencySettings;
   impersonatedBy?: { email: string; role: 'parent' };
   contactId?: string;
   clientId?: string;
@@ -102,15 +119,12 @@ console.log('agencyLogo', agencyLogo);
 console.log('agencyId', agencyId);
   console.log('result.contact.email', result.contact.email);
 
-  // Fetch agency settings for theming
-  let agencySettings: Session['agencySettings'] = undefined;
+  // Fetch agency settings for theming (all white-label colors)
+  let agencySettings: AgencySettings | undefined = undefined;
   try {
     const agency = await getAgencyByEmail(result.contact.email);
     if (agency?.settings) {
-      agencySettings = {
-        primaryColor: agency.settings.primaryColor,
-        secondaryColor: agency.settings.secondaryColor,
-      };
+      agencySettings = { ...agency.settings };
     }
   } catch (e) {
     console.error('Failed to fetch agency settings', e);

@@ -8,14 +8,101 @@ import Alert from '@mui/material/Alert';
 import CircularProgress from '@mui/material/CircularProgress';
 import Typography from '@mui/material/Typography';
 import Box from '@mui/material/Box';
+import Accordion from '@mui/material/Accordion';
+import AccordionSummary from '@mui/material/AccordionSummary';
+import AccordionDetails from '@mui/material/AccordionDetails';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import Divider from '@mui/material/Divider';
 import { useSession } from '@/features/auth/session';
 import { updateAgencySettings, getAgencySettings } from '@/services/agencies';
+
+// Default color palette
+const defaults = {
+  // Core
+  primaryColor: '#14151E',
+  secondaryColor: '#AAFB00',
+  // Text
+  textPrimary: '#1A1A2E',
+  textSecondary: '#6B7280',
+  linkColor: '#3B82F6',
+  // Backgrounds
+  contentBg: '#F9FAFB',
+  cardBg: '#FFFFFF',
+  // Navigation
+  navText: '#999DAA',
+  navActiveText: '#14151E',
+  navHoverBg: 'rgba(255,255,255,0.08)',
+  // Status Colors
+  successColor: '#10B981',
+  warningColor: '#F59E0B',
+  errorColor: '#EF4444',
+  infoColor: '#3B82F6',
+  // Borders
+  borderColor: '#E5E7EB',
+  dividerColor: '#E5E7EB',
+};
+
+type ColorKey = keyof typeof defaults;
+
+function ColorPicker({ 
+  label, 
+  value, 
+  onChange, 
+  defaultValue 
+}: { 
+  label: string; 
+  value: string; 
+  onChange: (v: string) => void; 
+  defaultValue: string;
+}) {
+  return (
+    <Box>
+      <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5, display: 'block' }}>
+        {label}
+      </Typography>
+      <Stack direction="row" spacing={1} alignItems="center">
+        <input
+          type="color"
+          value={value || defaultValue}
+          onChange={(e) => onChange(e.target.value)}
+          style={{ width: 36, height: 36, border: 'none', cursor: 'pointer', borderRadius: 4, padding: 0 }}
+        />
+        <TextField
+          size="small"
+          value={value || ''}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={defaultValue}
+          sx={{ width: 100 }}
+          inputProps={{ style: { fontSize: 12 } }}
+        />
+        <Box 
+          sx={{ 
+            width: 36, 
+            height: 36, 
+            bgcolor: value || defaultValue, 
+            borderRadius: 1, 
+            border: '1px solid #ddd',
+            flexShrink: 0,
+          }} 
+        />
+        {value && value !== defaultValue && (
+          <Button 
+            size="small" 
+            onClick={() => onChange('')}
+            sx={{ minWidth: 'auto', fontSize: 11 }}
+          >
+            Reset
+          </Button>
+        )}
+      </Stack>
+    </Box>
+  );
+}
 
 export function SettingsForm() {
   const { session, refreshSession } = useSession();
   
-  const [primaryColor, setPrimaryColor] = React.useState('#14151E');
-  const [secondaryColor, setSecondaryColor] = React.useState('#AAFB00');
+  const [colors, setColors] = React.useState<Record<string, string>>({});
   const [logoFile, setLogoFile] = React.useState<File | null>(null);
   const [logoPreview, setLogoPreview] = React.useState<string | null>(null);
   const [error, setError] = React.useState<string | null>(null);
@@ -23,15 +110,24 @@ export function SettingsForm() {
   const [loading, setLoading] = React.useState(false);
   const [initialLoading, setInitialLoading] = React.useState(true);
 
+  const updateColor = (key: ColorKey, value: string) => {
+    setColors(prev => ({ ...prev, [key]: value }));
+  };
+
   // Load current settings
   React.useEffect(() => {
     if (!session?.agencyEmail) return;
     
     getAgencySettings(session.agencyEmail)
       .then((settings) => {
-        if (settings?.primaryColor) setPrimaryColor(settings.primaryColor);
-        if (settings?.secondaryColor) setSecondaryColor(settings.secondaryColor);
-        if (settings?.logoDataUrl) setLogoPreview(settings.logoDataUrl);
+        if (settings) {
+          const loaded: Record<string, string> = {};
+          Object.keys(defaults).forEach(key => {
+            if (settings[key]) loaded[key] = settings[key];
+          });
+          setColors(loaded);
+          if (settings.logoDataUrl) setLogoPreview(settings.logoDataUrl);
+        }
       })
       .catch(console.error)
       .finally(() => setInitialLoading(false));
@@ -61,7 +157,6 @@ export function SettingsForm() {
     try {
       setLoading(true);
       
-      // Convert logo to base64 if new file selected
       let logoDataUrl = logoPreview;
       if (logoFile) {
         logoDataUrl = await new Promise<string>((resolve) => {
@@ -72,18 +167,21 @@ export function SettingsForm() {
       }
       
       await updateAgencySettings(session.agencyEmail, {
-        primaryColor,
-        secondaryColor,
+        ...colors,
         logoDataUrl: logoDataUrl || undefined,
       });
       
-      setSuccess('Agency settings updated. Refresh the page to see changes.');
+      setSuccess('Settings saved! Changes will apply immediately.');
       await refreshSession();
     } catch (e: any) {
       setError(e?.message || 'Failed to save settings');
     } finally {
       setLoading(false);
     }
+  };
+
+  const resetAllColors = () => {
+    setColors({});
   };
 
   if (initialLoading) {
@@ -95,80 +193,287 @@ export function SettingsForm() {
   }
 
   return (
-    <Stack spacing={3} sx={{ maxWidth: 480 }}>
-      <Typography variant="body2" color="text.secondary">
-        Customize your agency's branding. Primary color is used for the sidebar, secondary color for accents.
-      </Typography>
-      
+    <Stack spacing={3}>
       <Box>
-        <Typography variant="subtitle2" gutterBottom>Primary Color (Sidebar)</Typography>
-        <Stack direction="row" spacing={2} alignItems="center">
-          <input
-            type="color"
-            value={primaryColor}
-            onChange={(e) => setPrimaryColor(e.target.value)}
-            style={{ width: 48, height: 48, border: 'none', cursor: 'pointer', borderRadius: 4 }}
-          />
-          <TextField
-            size="small"
-            value={primaryColor}
-            onChange={(e) => setPrimaryColor(e.target.value)}
-            placeholder="#14151E"
-            sx={{ width: 120 }}
-          />
-          <Box sx={{ width: 60, height: 40, bgcolor: primaryColor, borderRadius: 1, border: '1px solid #ddd' }} />
-        </Stack>
+        <Typography variant="h6" gutterBottom>White-Label Branding</Typography>
+        <Typography variant="body2" color="text.secondary">
+          Customize your agency's appearance. These settings apply to your portal and your clients' portals.
+        </Typography>
       </Box>
-      
-      <Box>
-        <Typography variant="subtitle2" gutterBottom>Secondary Color (Accents)</Typography>
-        <Stack direction="row" spacing={2} alignItems="center">
-          <input
-            type="color"
-            value={secondaryColor}
-            onChange={(e) => setSecondaryColor(e.target.value)}
-            style={{ width: 48, height: 48, border: 'none', cursor: 'pointer', borderRadius: 4 }}
-          />
-          <TextField
-            size="small"
-            value={secondaryColor}
-            onChange={(e) => setSecondaryColor(e.target.value)}
-            placeholder="#AAFB00"
-            sx={{ width: 120 }}
-          />
-          <Box sx={{ width: 60, height: 40, bgcolor: secondaryColor, borderRadius: 1, border: '1px solid #ddd' }} />
-        </Stack>
-      </Box>
-      
-      <Box>
-        <Typography variant="subtitle2" gutterBottom>Agency Logo</Typography>
+
+      {/* Logo Section */}
+      <Box sx={{ p: 2, bgcolor: '#f9f9f9', borderRadius: 2 }}>
+        <Typography variant="subtitle1" fontWeight={600} gutterBottom>Agency Logo</Typography>
         <Stack spacing={2}>
           {logoPreview && (
-            <Box sx={{ p: 2, bgcolor: '#f5f5f5', borderRadius: 1, display: 'inline-block' }}>
-              <img src={logoPreview} alt="Logo preview" style={{ maxHeight: 60, maxWidth: 200 }} />
+            <Box sx={{ p: 2, bgcolor: colors.primaryColor || defaults.primaryColor, borderRadius: 1, display: 'inline-block', maxWidth: 'fit-content' }}>
+              <img src={logoPreview} alt="Logo preview" style={{ maxHeight: 48, maxWidth: 200 }} />
             </Box>
           )}
-          <Button variant="outlined" component="label">
-            {logoPreview ? 'Change Logo' : 'Upload Logo'}
-            <input type="file" hidden accept="image/*" onChange={handleLogoChange} />
-          </Button>
+          <Stack direction="row" spacing={2} alignItems="center">
+            <Button variant="outlined" component="label" size="small">
+              {logoPreview ? 'Change Logo' : 'Upload Logo'}
+              <input type="file" hidden accept="image/*" onChange={handleLogoChange} />
+            </Button>
+            {logoPreview && (
+              <Button size="small" color="error" onClick={() => { setLogoPreview(null); setLogoFile(null); }}>
+                Remove
+              </Button>
+            )}
+          </Stack>
           <Typography variant="caption" color="text.secondary">
-            Recommended: PNG or SVG, max 500KB
+            PNG or SVG recommended, max 500KB. Will appear on sidebar and client portals.
           </Typography>
         </Stack>
       </Box>
+
+      {/* Core Colors */}
+      <Accordion defaultExpanded>
+        <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+          <Typography fontWeight={600}>Core Colors</Typography>
+        </AccordionSummary>
+        <AccordionDetails>
+          <Stack spacing={2}>
+            <ColorPicker 
+              label="Primary Color (Sidebar / Header)" 
+              value={colors.primaryColor || ''} 
+              onChange={(v) => updateColor('primaryColor', v)}
+              defaultValue={defaults.primaryColor}
+            />
+            <ColorPicker 
+              label="Secondary Color (Buttons / Accents)" 
+              value={colors.secondaryColor || ''} 
+              onChange={(v) => updateColor('secondaryColor', v)}
+              defaultValue={defaults.secondaryColor}
+            />
+          </Stack>
+        </AccordionDetails>
+      </Accordion>
+
+      {/* Text Colors */}
+      <Accordion>
+        <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+          <Typography fontWeight={600}>Text Colors</Typography>
+        </AccordionSummary>
+        <AccordionDetails>
+          <Stack spacing={2}>
+            <ColorPicker 
+              label="Primary Text" 
+              value={colors.textPrimary || ''} 
+              onChange={(v) => updateColor('textPrimary', v)}
+              defaultValue={defaults.textPrimary}
+            />
+            <ColorPicker 
+              label="Secondary Text (Muted)" 
+              value={colors.textSecondary || ''} 
+              onChange={(v) => updateColor('textSecondary', v)}
+              defaultValue={defaults.textSecondary}
+            />
+            <ColorPicker 
+              label="Link Color" 
+              value={colors.linkColor || ''} 
+              onChange={(v) => updateColor('linkColor', v)}
+              defaultValue={defaults.linkColor}
+            />
+          </Stack>
+        </AccordionDetails>
+      </Accordion>
+
+      {/* Background Colors */}
+      <Accordion>
+        <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+          <Typography fontWeight={600}>Background Colors</Typography>
+        </AccordionSummary>
+        <AccordionDetails>
+          <Stack spacing={2}>
+            <ColorPicker 
+              label="Content Background" 
+              value={colors.contentBg || ''} 
+              onChange={(v) => updateColor('contentBg', v)}
+              defaultValue={defaults.contentBg}
+            />
+            <ColorPicker 
+              label="Card / Panel Background" 
+              value={colors.cardBg || ''} 
+              onChange={(v) => updateColor('cardBg', v)}
+              defaultValue={defaults.cardBg}
+            />
+          </Stack>
+        </AccordionDetails>
+      </Accordion>
+
+      {/* Navigation Colors */}
+      <Accordion>
+        <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+          <Typography fontWeight={600}>Navigation Colors</Typography>
+        </AccordionSummary>
+        <AccordionDetails>
+          <Stack spacing={2}>
+            <ColorPicker 
+              label="Nav Item Text" 
+              value={colors.navText || ''} 
+              onChange={(v) => updateColor('navText', v)}
+              defaultValue={defaults.navText}
+            />
+            <ColorPicker 
+              label="Nav Active Item Text" 
+              value={colors.navActiveText || ''} 
+              onChange={(v) => updateColor('navActiveText', v)}
+              defaultValue={defaults.navActiveText}
+            />
+          </Stack>
+        </AccordionDetails>
+      </Accordion>
+
+      {/* Status Colors */}
+      <Accordion>
+        <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+          <Typography fontWeight={600}>Status Colors</Typography>
+        </AccordionSummary>
+        <AccordionDetails>
+          <Stack spacing={2}>
+            <ColorPicker 
+              label="Success (Green)" 
+              value={colors.successColor || ''} 
+              onChange={(v) => updateColor('successColor', v)}
+              defaultValue={defaults.successColor}
+            />
+            <ColorPicker 
+              label="Warning (Orange)" 
+              value={colors.warningColor || ''} 
+              onChange={(v) => updateColor('warningColor', v)}
+              defaultValue={defaults.warningColor}
+            />
+            <ColorPicker 
+              label="Error (Red)" 
+              value={colors.errorColor || ''} 
+              onChange={(v) => updateColor('errorColor', v)}
+              defaultValue={defaults.errorColor}
+            />
+            <ColorPicker 
+              label="Info (Blue)" 
+              value={colors.infoColor || ''} 
+              onChange={(v) => updateColor('infoColor', v)}
+              defaultValue={defaults.infoColor}
+            />
+          </Stack>
+        </AccordionDetails>
+      </Accordion>
+
+      {/* Borders */}
+      <Accordion>
+        <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+          <Typography fontWeight={600}>Borders & Dividers</Typography>
+        </AccordionSummary>
+        <AccordionDetails>
+          <Stack spacing={2}>
+            <ColorPicker 
+              label="Border Color" 
+              value={colors.borderColor || ''} 
+              onChange={(v) => updateColor('borderColor', v)}
+              defaultValue={defaults.borderColor}
+            />
+            <ColorPicker 
+              label="Divider Color" 
+              value={colors.dividerColor || ''} 
+              onChange={(v) => updateColor('dividerColor', v)}
+              defaultValue={defaults.dividerColor}
+            />
+          </Stack>
+        </AccordionDetails>
+      </Accordion>
+
+      <Divider />
       
       {error && <Alert severity="error">{error}</Alert>}
       {success && <Alert severity="success">{success}</Alert>}
       
-      <Button
-        variant="contained"
-        onClick={onSave}
-        disabled={loading}
-        startIcon={loading ? <CircularProgress size={18} color="inherit" /> : null}
-      >
-        {loading ? 'Saving...' : 'Save Settings'}
+      <Stack direction="row" spacing={2}>
+        <Button
+          variant="contained"
+          onClick={onSave}
+          disabled={loading}
+          startIcon={loading ? <CircularProgress size={18} color="inherit" /> : null}
+        >
+          {loading ? 'Saving...' : 'Save Settings'}
+        </Button>
+        <Button variant="outlined" onClick={resetAllColors} disabled={loading}>
+          Reset to Defaults
+        </Button>
+      </Stack>
+
+      {/* Live Preview */}
+      <Box sx={{ mt: 3 }}>
+        <Typography variant="subtitle2" gutterBottom>Live Preview</Typography>
+        <Box 
+          sx={{ 
+            p: 2, 
+            borderRadius: 2, 
+            border: `1px solid ${colors.borderColor || defaults.borderColor}`,
+            bgcolor: colors.contentBg || defaults.contentBg,
+          }}
+        >
+          <Stack spacing={2}>
+            <Box 
+              sx={{ 
+                p: 2, 
+                bgcolor: colors.primaryColor || defaults.primaryColor, 
+                borderRadius: 1,
+                color: '#fff',
+              }}
+            >
+              <Typography variant="body2">Sidebar / Header Preview</Typography>
+            </Box>
+            <Box 
+              sx={{ 
+                p: 2, 
+                bgcolor: colors.cardBg || defaults.cardBg, 
+                borderRadius: 1,
+                border: `1px solid ${colors.borderColor || defaults.borderColor}`,
+              }}
+            >
+              <Typography sx={{ color: colors.textPrimary || defaults.textPrimary }}>
+                Primary Text Example
+              </Typography>
+              <Typography sx={{ color: colors.textSecondary || defaults.textSecondary }}>
+                Secondary text example
+              </Typography>
+              <Typography 
+                component="a" 
+                href="#" 
+                sx={{ color: colors.linkColor || defaults.linkColor, textDecoration: 'underline' }}
+              >
+                Link example
+              </Typography>
+            </Box>
+            <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+              <Button 
+                variant="contained" 
+                size="small"
+                sx={{ 
+                  bgcolor: colors.secondaryColor || defaults.secondaryColor,
+                  color: colors.navActiveText || defaults.navActiveText,
+                  '&:hover': { bgcolor: colors.secondaryColor || defaults.secondaryColor },
+                }}
+              >
+                Action Button
       </Button>
+              <Box sx={{ px: 1, py: 0.5, bgcolor: colors.successColor || defaults.successColor, borderRadius: 1, color: '#fff', fontSize: 12 }}>
+                Success
+              </Box>
+              <Box sx={{ px: 1, py: 0.5, bgcolor: colors.warningColor || defaults.warningColor, borderRadius: 1, color: '#fff', fontSize: 12 }}>
+                Warning
+              </Box>
+              <Box sx={{ px: 1, py: 0.5, bgcolor: colors.errorColor || defaults.errorColor, borderRadius: 1, color: '#fff', fontSize: 12 }}>
+                Error
+              </Box>
+              <Box sx={{ px: 1, py: 0.5, bgcolor: colors.infoColor || defaults.infoColor, borderRadius: 1, color: '#fff', fontSize: 12 }}>
+                Info
+              </Box>
+            </Stack>
+          </Stack>
+        </Box>
+      </Box>
     </Stack>
   );
 }

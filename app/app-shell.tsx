@@ -17,9 +17,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const { session, setSession } = useSession();
   const pathname = usePathname();
 
-  // Dynamic colors from agency settings
-  const primaryColor = session?.agencySettings?.primaryColor || colors.sidebarBg;
-  const secondaryColor = session?.agencySettings?.secondaryColor || colors.navActiveBg;
+  // Dynamic colors from agency settings (white-label)
+  const s = session?.agencySettings || {};
+  const primaryColor = s.primaryColor || colors.sidebarBg;
+  const secondaryColor = s.secondaryColor || colors.navActiveBg;
+  const navText = s.navText || colors.sidebarText;
+  const navActiveText = s.navActiveText || colors.navActiveText;
+  const contentBg = s.contentBg || '#fff';
+  const cardBg = s.cardBg || '#fff';
 
   const stopImpersonation = React.useCallback(() => {
     if (typeof window === 'undefined') return;
@@ -36,15 +41,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     width: 'calc(100% - 20px)', // leave 10px inset on each side
     mx: '10px',
     px: 1.25, // ~10px horizontal padding inside
-    color: colors.sidebarText,
+    color: navText,
     borderRadius: '5px',
     py: 0.5,
     '&:hover': {
-      bgcolor: 'rgba(255, 255, 255, 0.04)',
+      bgcolor: 'rgba(255, 255, 255, 0.08)',
     },
     '&.Mui-selected, &.Mui-selected:hover': {
       bgcolor: secondaryColor,
-      color: colors.navActiveText,
+      color: navActiveText,
     },
     justifyContent: 'flex-start',
   };
@@ -221,7 +226,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             width: drawerWidth,
             boxSizing: 'border-box',
             bgcolor: primaryColor,
-            color: colors.sidebarText,
+            color: navText,
           },
         }}
       >
@@ -251,7 +256,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         sx={{
           flexGrow: 1,
           p: 3,
-          bgcolor: '#fff',
+          bgcolor: contentBg,
         }}
       >
         <Toolbar />
