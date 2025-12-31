@@ -36,6 +36,8 @@ export type ClientRecord = {
   SK: string;
   GSI1PK: string;
   GSI1SK: string;
+  GSI3PK?: string;  // USERNAME#<username> for vanity URL lookups
+  GSI3SK?: string;  // CLIENT#<id>
   id: string;
   email: string;
   firstName: string;
@@ -44,6 +46,9 @@ export type ClientRecord = {
   agencyId: string;
   agencyEmail?: string;
   phone?: string;
+  username?: string;        // Vanity URL slug (e.g., "drisanjames")
+  galleryImages?: string[]; // Array of image URLs for profile gallery
+  radar?: Record<string, unknown>; // Extended profile data
   accessCodeHash?: string;
   authEnabled?: boolean;
   createdAt: string;

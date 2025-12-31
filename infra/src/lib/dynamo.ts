@@ -96,3 +96,27 @@ export async function deleteItem(key: { PK: string; SK: string }) {
   await docClient.send(new DeleteCommand({ TableName: TABLE_NAME, Key: key }));
 }
 
+// Query GSI3 for username lookups (vanity URLs)
+export async function queryGSI3(GSI3PK: string, beginsWith?: string) {
+  const res = await docClient.send(
+    new QueryCommand({
+      TableName: TABLE_NAME,
+      IndexName: 'GSI3',
+      KeyConditionExpression: beginsWith ? 'GSI3PK = :g3pk AND begins_with(GSI3SK, :g3sk)' : 'GSI3PK = :g3pk',
+      ExpressionAttributeValues: beginsWith ? { ':g3pk': GSI3PK, ':g3sk': beginsWith } : { ':g3pk': GSI3PK },
+    }),
+  );
+  return res.Items ?? [];
+}
+
+// Scan fallback for GSI3 if index doesn't exist yet
+export async function scanByGSI3PK(GSI3PK: string) {
+  const params: any = {
+    TableName: TABLE_NAME,
+    FilterExpression: 'GSI3PK = :g3pk',
+    ExpressionAttributeValues: { ':g3pk': GSI3PK },
+  };
+  const res = await docClient.send(new ScanCommand(params));
+  return res.Items ?? [];
+}
+

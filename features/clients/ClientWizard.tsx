@@ -1,12 +1,13 @@
 'use client';
 import React from 'react';
-import { Box, Button, Step, StepLabel, Stepper, Typography, CircularProgress, Stack, StepButton, Alert, Chip } from '@mui/material';
+import { Box, Button, Step, StepLabel, Stepper, Typography, CircularProgress, Stack, StepButton, Alert, Chip, InputAdornment, IconButton } from '@mui/material';
 import { useSession } from '@/features/auth/session';
 import { upsertClient, setClientGmailTokens } from '@/services/clients';
 import { MenuItem, TextField } from '@mui/material';
 import { getSports, formatSportLabel } from '@/features/recruiter/divisionMapping';
 import { useRouter } from 'next/navigation';
-import { FaGoogle } from 'react-icons/fa';
+import { FaGoogle, FaCheck, FaTimes, FaTrash, FaPlus } from 'react-icons/fa';
+import { checkUsernameAvailability } from '@/services/profilePublic';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || '';
 
@@ -24,6 +25,7 @@ const steps = [
   'Personal Info',
   'Social Media',
   'Content Links',
+  'Gallery',
   'Events & Metrics',
   'Motivation & References',
   'Review',
@@ -64,6 +66,166 @@ function ContentLinksStep({ value, onChange }: { value: RadarDraft; onChange: (k
       <TextField size="small" label="Hudl Link" value={value.hudlLink ?? ''} onChange={(e)=>onChange('hudlLink', e.target.value)} />
       <TextField size="small" label="Jungo Link" value={value.jungoLink ?? ''} onChange={(e)=>onChange('jungoLink', e.target.value)} />
       <TextField size="small" label="Additional Stats Link" value={value.additionalStatsLink ?? ''} onChange={(e)=>onChange('additionalStatsLink', e.target.value)} />
+    </Box>
+  );
+}
+
+function GalleryStep({ value, onChange }: { value: string[]; onChange: (images: string[]) => void }) {
+  const fileInputRef = React.useRef<HTMLInputElement | null>(null);
+  const [error, setError] = React.useState<string | null>(null);
+  const [showUrlInput, setShowUrlInput] = React.useState(false);
+  const [urlValue, setUrlValue] = React.useState('');
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    
+    const MAX_IMAGE_BYTES = 1_000_000; // 1MB
+    const MAX_IMAGES = 10;
+    
+    if (value.length + files.length > MAX_IMAGES) {
+      setError(`Maximum ${MAX_IMAGES} images allowed`);
+      return;
+    }
+
+    Array.from(files).forEach(file => {
+      if (file.size > MAX_IMAGE_BYTES) {
+        setError('Each image must be 1MB or smaller');
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = () => {
+        onChange([...value, reader.result as string]);
+        setError(null);
+      };
+      reader.readAsDataURL(file);
+    });
+    
+    // Reset input
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const handleAddUrl = () => {
+    if (!urlValue.trim()) return;
+    if (value.length >= 10) {
+      setError('Maximum 10 images allowed');
+      return;
+    }
+    onChange([...value, urlValue.trim()]);
+    setUrlValue('');
+    setError(null);
+  };
+
+  const handleRemove = (index: number) => {
+    onChange(value.filter((_, i) => i !== index));
+  };
+
+  return (
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+      <Typography variant="subtitle1" fontWeight={600}>Profile Gallery</Typography>
+      <Typography variant="body2" color="text.secondary">
+        Add up to 10 images to showcase on your public athlete profile. These could be action shots, team photos, or awards.
+      </Typography>
+      
+      {error && <Alert severity="error">{error}</Alert>}
+      
+      <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+        {value.map((img, idx) => (
+          <Box
+            key={idx}
+            sx={{
+              position: 'relative',
+              width: 120,
+              height: 120,
+              borderRadius: 2,
+              overflow: 'hidden',
+              border: '1px solid #e5e7eb',
+            }}
+          >
+            <Box
+              component="img"
+              src={img}
+              alt={`Gallery ${idx + 1}`}
+              sx={{ width: '100%', height: '100%', objectFit: 'cover' }}
+            />
+            <IconButton
+              size="small"
+              onClick={() => handleRemove(idx)}
+              sx={{
+                position: 'absolute',
+                top: 4,
+                right: 4,
+                bgcolor: 'rgba(0,0,0,0.6)',
+                color: '#fff',
+                '&:hover': { bgcolor: 'rgba(0,0,0,0.8)' },
+              }}
+            >
+              <FaTrash size={12} />
+            </IconButton>
+          </Box>
+        ))}
+        
+        {value.length < 10 && (
+          <Box
+            onClick={() => fileInputRef.current?.click()}
+            sx={{
+              width: 120,
+              height: 120,
+              borderRadius: 2,
+              border: '2px dashed #ccc',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              '&:hover': { borderColor: '#888', bgcolor: '#f9fafb' },
+            }}
+          >
+            <FaPlus size={24} color="#888" />
+            <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5 }}>
+              Add Image
+            </Typography>
+          </Box>
+        )}
+      </Box>
+      
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        multiple
+        hidden
+        onChange={handleFileUpload}
+        data-testid="gallery-upload"
+      />
+      
+      <Button
+        variant="text"
+        size="small"
+        onClick={() => setShowUrlInput(!showUrlInput)}
+        sx={{ alignSelf: 'flex-start', textTransform: 'none' }}
+      >
+        {showUrlInput ? 'Hide URL input' : 'Add image via URL'}
+      </Button>
+      
+      {showUrlInput && (
+        <Box sx={{ display: 'flex', gap: 1 }}>
+          <TextField
+            size="small"
+            label="Image URL"
+            value={urlValue}
+            onChange={(e) => setUrlValue(e.target.value)}
+            sx={{ flex: 1 }}
+          />
+          <Button variant="outlined" onClick={handleAddUrl}>
+            Add
+          </Button>
+        </Box>
+      )}
+      
+      <Typography variant="caption" color="text.secondary">
+        {value.length}/10 images added
+      </Typography>
     </Box>
   );
 }
@@ -172,7 +334,7 @@ function BasicInfoStep({
 }: {
   value: Record<string, any>;
   onChange: (v: Record<string, any>) => void;
-  errors?: { email?: string; firstName?: string; lastName?: string; sport?: string; gmail?: string };
+  errors?: { email?: string; firstName?: string; lastName?: string; sport?: string; gmail?: string; username?: string };
   gmailConnected: boolean;
   gmailConnecting: boolean;
   onConnectGmail: () => void;
@@ -182,6 +344,33 @@ function BasicInfoStep({
   const [showUrlInput, setShowUrlInput] = React.useState(false);
   const fileInputRef = React.useRef<HTMLInputElement | null>(null);
   const [photoError, setPhotoError] = React.useState<string | null>(null);
+  const [usernameStatus, setUsernameStatus] = React.useState<'idle' | 'checking' | 'available' | 'taken'>('idle');
+  const usernameCheckTimeout = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Check username availability with debounce
+  const handleUsernameChange = (newUsername: string) => {
+    const cleaned = newUsername.toLowerCase().replace(/[^a-z0-9-]/g, '');
+    onChange({ ...value, username: cleaned });
+    
+    if (usernameCheckTimeout.current) {
+      clearTimeout(usernameCheckTimeout.current);
+    }
+    
+    if (cleaned.length < 3) {
+      setUsernameStatus('idle');
+      return;
+    }
+    
+    setUsernameStatus('checking');
+    usernameCheckTimeout.current = setTimeout(async () => {
+      try {
+        const result = await checkUsernameAvailability(cleaned);
+        setUsernameStatus(result.available ? 'available' : 'taken');
+      } catch {
+        setUsernameStatus('idle');
+      }
+    }, 500);
+  };
   const handlePhotoFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -304,6 +493,33 @@ function BasicInfoStep({
           </MenuItem>
         ))}
       </TextField>
+
+      {/* Username / Vanity URL */}
+      <TextField
+        size="small"
+        label="Profile URL (Username)"
+        value={value.username ?? ''}
+        onChange={(e) => handleUsernameChange(e.target.value)}
+        error={Boolean(errors?.username) || usernameStatus === 'taken'}
+        helperText={
+          errors?.username ||
+          (usernameStatus === 'taken' ? 'Username is already taken' :
+           usernameStatus === 'available' ? 'Username is available!' :
+           `Your public profile: athletenarrative.com/athlete/${value.username || 'yourname'}`)
+        }
+        inputProps={{ 'data-testid': 'athlete-username' }}
+        InputProps={{
+          startAdornment: <InputAdornment position="start">@</InputAdornment>,
+          endAdornment: (
+            <InputAdornment position="end">
+              {usernameStatus === 'checking' && <CircularProgress size={16} />}
+              {usernameStatus === 'available' && <FaCheck color="green" />}
+              {usernameStatus === 'taken' && <FaTimes color="red" />}
+            </InputAdornment>
+          ),
+        }}
+        sx={{ gridColumn: '1 / -1' }}
+      />
 
       {/* Gmail Connection Section */}
       <Box sx={{ gridColumn: '1 / -1', mt: 2, p: 2, bgcolor: '#f9fafb', borderRadius: 2, border: errors?.gmail ? '1px solid #d32f2f' : '1px solid #e5e7eb' }}>
@@ -642,12 +858,18 @@ export function ClientWizard({
           <ContentLinksStep value={radar} onChange={(k,v)=>setRadar((p)=>({ ...p, [k]: v }))} />
         )}
         {activeStep === 4 && (
-          <EventsMetricsStep value={radar} onChange={(k,v)=>setRadar((p)=>({ ...p, [k]: v }))} />
+          <GalleryStep 
+            value={basic.galleryImages || []} 
+            onChange={(images) => setBasic((prev) => ({ ...prev, galleryImages: images }))} 
+          />
         )}
         {activeStep === 5 && (
-          <MotivationStep value={radar} onChange={(k,v)=>setRadar((p)=>({ ...p, [k]: v }))} />
+          <EventsMetricsStep value={radar} onChange={(k,v)=>setRadar((p)=>({ ...p, [k]: v }))} />
         )}
         {activeStep === 6 && (
+          <MotivationStep value={radar} onChange={(k,v)=>setRadar((p)=>({ ...p, [k]: v }))} />
+        )}
+        {activeStep === 7 && (
           <Box>
             <Typography variant="h6" gutterBottom>Review</Typography>
             <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '320px 1fr' }, gap: 3, alignItems: 'start' }}>
@@ -672,6 +894,11 @@ export function ClientWizard({
                 <Typography variant="h6">{[basic.firstName, basic.lastName].filter(Boolean).join(' ') || 'Athlete'}</Typography>
                 <Typography variant="body2" color="text.secondary">{basic.email || 'No email'}</Typography>
                 <Typography variant="body2" color="text.secondary">{basic.sport ? formatSportLabel(basic.sport) : 'No sport'}</Typography>
+                {basic.username && (
+                  <Typography variant="body2" color="primary" sx={{ mt: 0.5, fontWeight: 500 }}>
+                    @{basic.username}
+                  </Typography>
+                )}
                 {gmailConnected && (
                   <Chip
                     icon={<FaGoogle size={12} />}
@@ -744,6 +971,32 @@ export function ClientWizard({
                       ))
                     : <Typography color="text.secondary">No references</Typography>}
                 </Box>
+                {(basic.galleryImages?.length ?? 0) > 0 && (
+                  <Box sx={{ gridColumn: '1 / -1' }}>
+                    <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>Gallery ({basic.galleryImages.length} images)</Typography>
+                    <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                      {basic.galleryImages.map((img: string, i: number) => (
+                        <Box
+                          key={i}
+                          component="img"
+                          src={img}
+                          alt={`Gallery ${i + 1}`}
+                          sx={{ width: 80, height: 80, objectFit: 'cover', borderRadius: 1 }}
+                        />
+                      ))}
+                    </Box>
+                  </Box>
+                )}
+                {basic.username && (
+                  <Box sx={{ gridColumn: '1 / -1', p: 2, bgcolor: '#f0f9ff', borderRadius: 2, border: '1px solid #0ea5e9' }}>
+                    <Typography variant="subtitle2" color="primary" sx={{ fontWeight: 600 }}>
+                      Public Profile URL
+                    </Typography>
+                    <Typography variant="body2" sx={{ fontFamily: 'monospace' }}>
+                      athletenarrative.com/athlete/{basic.username}
+                    </Typography>
+                  </Box>
+                )}
               </Box>
             </Box>
           </Box>

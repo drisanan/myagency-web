@@ -3,7 +3,7 @@ import { Handler, requireSession } from './common';
 import { newId } from '../lib/ids';
 import { ClientRecord } from '../lib/models';
 import { hashAccessCode } from '../lib/auth';
-import { getItem, putItem, queryByPK } from '../lib/dynamo';
+import { getItem, putItem, queryByPK, queryGSI3 } from '../lib/dynamo';
 import { response } from './cors';
 
 function badRequest(origin: string, msg: string) {
@@ -87,11 +87,21 @@ export const handler: Handler = async (event: APIGatewayProxyEventV2) => {
       accessCodeHash = await hashAccessCode(payload.accessCode);
     }
 
+    // Validate username uniqueness if provided
+    let username = payload.username?.toLowerCase().replace(/[^a-z0-9-]/g, '');
+    if (username) {
+      const existing = await queryGSI3(`USERNAME#${username}`);
+      if (existing.length > 0) {
+        return badRequest(origin, 'Username is already taken');
+      }
+    }
+
     const rec: ClientRecord = {
       PK: `AGENCY#${cleanAgencyId}`,
       SK: `CLIENT#${id}`,
       GSI1PK: `EMAIL#${payload.email}`,
       GSI1SK: `CLIENT#${id}`,
+      ...(username ? { GSI3PK: `USERNAME#${username}`, GSI3SK: `CLIENT#${id}` } : {}),
       id,
       email: payload.email,
       firstName: payload.firstName,
@@ -100,6 +110,9 @@ export const handler: Handler = async (event: APIGatewayProxyEventV2) => {
       agencyId: cleanAgencyId,
       agencyEmail: session.agencyEmail,
       phone: payload.phone,
+      username,
+      galleryImages: payload.galleryImages || [],
+      radar: payload.radar || {},
       accessCodeHash,
       authEnabled: Boolean(accessCodeHash),
       createdAt: now,
@@ -116,11 +129,31 @@ export const handler: Handler = async (event: APIGatewayProxyEventV2) => {
     if (!event.body) return badRequest(origin, 'Missing body');
     const payload = JSON.parse(event.body);
     
-    const existing = await getItem({ PK: `AGENCY#${cleanAgencyId}`, SK: `CLIENT#${clientId}` });
+    const existing = await getItem({ PK: `AGENCY#${cleanAgencyId}`, SK: `CLIENT#${clientId}` }) as ClientRecord | undefined;
     if (!existing) return response(404, { ok: false, message: 'Not found' }, origin);
     
     const now = new Date().toISOString();
-    const merged = { ...existing, ...payload, updatedAt: now };
+    
+    // Handle username update with uniqueness check
+    let username = payload.username?.toLowerCase().replace(/[^a-z0-9-]/g, '');
+    if (username && username !== existing.username) {
+      const usernameCheck = await queryGSI3(`USERNAME#${username}`);
+      if (usernameCheck.length > 0) {
+        return badRequest(origin, 'Username is already taken');
+      }
+    }
+    
+    const merged: ClientRecord = { 
+      ...existing, 
+      ...payload, 
+      updatedAt: now,
+      ...(username ? { 
+        username,
+        GSI3PK: `USERNAME#${username}`, 
+        GSI3SK: `CLIENT#${clientId}` 
+      } : {}),
+    };
+    
     if (payload.accessCode) {
       merged.accessCodeHash = await hashAccessCode(payload.accessCode);
       merged.authEnabled = true;

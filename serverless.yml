@@ -201,6 +201,15 @@ functions:
       - httpApi:
           path: /profile
           method: any
+  profilePublic:
+    handler: infra/src/handlers/profile-public.handler
+    events:
+      - httpApi:
+          path: /athlete/{username}
+          method: get
+      - httpApi:
+          path: /athlete/check-username
+          method: get
 
 resources:
   Resources:
@@ -217,6 +226,10 @@ resources:
           - AttributeName: GSI1PK
             AttributeType: S
           - AttributeName: GSI1SK
+            AttributeType: S
+          - AttributeName: GSI3PK
+            AttributeType: S
+          - AttributeName: GSI3SK
             AttributeType: S
           - AttributeName: clientId
             AttributeType: S
@@ -241,6 +254,14 @@ resources:
               - AttributeName: clientId
                 KeyType: HASH
               - AttributeName: createdAt
+                KeyType: RANGE
+            Projection:
+              ProjectionType: ALL
+          - IndexName: GSI3
+            KeySchema:
+              - AttributeName: GSI3PK
+                KeyType: HASH
+              - AttributeName: GSI3SK
                 KeyType: RANGE
             Projection:
               ProjectionType: ALL
