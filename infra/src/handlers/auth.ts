@@ -34,6 +34,10 @@ export const handler = async (event: APIGatewayProxyEventV2) => {
       agencyEmail: payload.email,
       role: payload.role,
       userId: payload.userId,
+      firstName: payload.firstName,
+      lastName: payload.lastName,
+      agencyLogo: payload.agencyLogo,
+      agencySettings: payload.agencySettings,
     });
     const cookie = buildSessionCookie(token, secureCookie);
     return response(200, { ok: true, session: payload }, origin, { 'set-cookie': cookie });

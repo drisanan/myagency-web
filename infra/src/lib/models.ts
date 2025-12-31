@@ -4,6 +4,13 @@ export type SessionContext = {
   role: 'agency' | 'athlete' | 'admin' | 'client';
   userId?: string;
   clientId?: string;
+  firstName?: string;
+  lastName?: string;
+  agencyLogo?: string;
+  agencySettings?: {
+    primaryColor?: string;
+    secondaryColor?: string;
+  };
 };
 
 export type ClientRecord = {

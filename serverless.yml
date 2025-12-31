@@ -20,7 +20,22 @@ provider:
     GOOGLE_REDIRECT_URI: ${env:GOOGLE_REDIRECT_URI, 'https://api.myrecruiteragency.com/google/oauth/callback'}
     FRONTEND_URL: ${env:FRONTEND_URL, 'https://www.myrecruiteragency.com'}
   httpApi:
-    id: ${env:HTTP_API_ID, 'pv8zcu3aa9'}
+    cors:
+      allowedOrigins:
+        - https://www.myrecruiteragency.com
+        - http://localhost:3000
+      allowedHeaders:
+        - Content-Type
+        - Authorization
+        - Cookie
+      allowedMethods:
+        - GET
+        - POST
+        - PUT
+        - PATCH
+        - DELETE
+        - OPTIONS
+      allowCredentials: true
   iam:
     role:
       statements:

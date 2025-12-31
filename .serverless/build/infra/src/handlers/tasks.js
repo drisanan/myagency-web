@@ -187,17 +187,24 @@ var handler = async (event) => {
   if (method === "OPTIONS") return response(200, { ok: true }, origin);
   const session = requireSession(event);
   if (!session) return response(401, { ok: false, error: "Missing session" }, origin);
-  if (session.role === "client") return response(403, { ok: false, error: "Forbidden" }, origin);
   const taskId = getTaskId(event);
   if (method === "GET") {
     if (taskId) {
       const item = await getItem({ PK: `AGENCY#${session.agencyId}`, SK: `TASK#${taskId}` });
+      if (session.role === "client" && item?.assigneeClientId !== session.clientId) {
+        return response(403, { ok: false, error: "Forbidden" }, origin);
+      }
       return response(200, { ok: true, task: item ?? null }, origin);
     }
     const items = await queryByPK(`AGENCY#${session.agencyId}`, "TASK#");
+    if (session.role === "client") {
+      const mine = (items || []).filter((t) => t.assigneeClientId === session.clientId);
+      return response(200, { ok: true, tasks: mine }, origin);
+    }
     return response(200, { ok: true, tasks: items }, origin);
   }
   if (method === "POST") {
+    if (session.role !== "agency") return response(403, { ok: false, error: "Forbidden" }, origin);
     if (!event.body) return badRequest(origin, "Missing body");
     const payload = JSON.parse(event.body);
     if (!payload.title || typeof payload.title !== "string") {
@@ -216,7 +223,7 @@ var handler = async (event) => {
       description: payload.description,
       status: payload.status ?? "todo",
       dueAt: Number.isFinite(payload.dueAt) ? Number(payload.dueAt) : void 0,
-      athleteId: payload.athleteId ?? null,
+      assigneeClientId: payload.assigneeClientId ?? null,
       agencyId: session.agencyId,
       agencyEmail: session.agencyEmail,
       createdAt: now,
@@ -226,6 +233,7 @@ var handler = async (event) => {
     return response(200, { ok: true, task: rec }, origin);
   }
   if (method === "PUT" || method === "PATCH") {
+    if (session.role !== "agency") return response(403, { ok: false, error: "Forbidden" }, origin);
     if (!taskId) return badRequest(origin, "Missing task id");
     if (!event.body) return badRequest(origin, "Missing body");
     const payload = JSON.parse(event.body);
@@ -239,12 +247,14 @@ var handler = async (event) => {
       ...existing,
       ...payload,
       dueAt: payload.dueAt === null ? void 0 : payload.dueAt ?? existing.dueAt,
+      assigneeClientId: payload.assigneeClientId === void 0 ? existing.assigneeClientId : payload.assigneeClientId ?? null,
       updatedAt: now
     };
     await putItem(merged);
     return response(200, { ok: true, task: merged }, origin);
   }
   if (method === "DELETE") {
+    if (session.role !== "agency") return response(403, { ok: false, error: "Forbidden" }, origin);
     if (!taskId) return badRequest(origin, "Missing task id");
     const existing = await getItem({ PK: `AGENCY#${session.agencyId}`, SK: `TASK#${taskId}` });
     if (!existing) return response(404, { ok: false, error: "Not found" }, origin);

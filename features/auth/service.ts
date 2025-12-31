@@ -16,6 +16,12 @@ export type Session = {
   email: string;
   agencyEmail?: string;
   agencyLogo?: string;
+  firstName?: string;
+  lastName?: string;
+  agencySettings?: {
+    primaryColor?: string;
+    secondaryColor?: string;
+  };
   impersonatedBy?: { email: string; role: 'parent' };
   contactId?: string;
   clientId?: string;
@@ -33,6 +39,10 @@ async function postSession(session: Session) {
       email: session.email,
       role: session.role,
       userId: session.contactId,
+      firstName: session.firstName,
+      lastName: session.lastName,
+      agencyLogo: session.agencyLogo,
+      agencySettings: session.agencySettings,
     }),
   });
   if (!res.ok) {
@@ -91,12 +101,31 @@ console.log('agencyLogo', agencyLogo);
   agencyId = agencyId || result.contact.email;
 console.log('agencyId', agencyId);
   console.log('result.contact.email', result.contact.email);
+
+  // Fetch agency settings for theming
+  let agencySettings: Session['agencySettings'] = undefined;
+  try {
+    const agency = await getAgencyByEmail(result.contact.email);
+    if (agency?.settings) {
+      agencySettings = {
+        primaryColor: agency.settings.primaryColor,
+        secondaryColor: agency.settings.secondaryColor,
+      };
+    }
+  } catch (e) {
+    console.error('Failed to fetch agency settings', e);
+  }
+
   const session: Session = {
     role: 'agency',
     email: result.contact.email,
     agencyEmail: result.contact.email,
     agencyId,
     contactId: result.contact.id,
+    firstName: result.contact.firstName,
+    lastName: result.contact.lastName,
+    agencyLogo: agencyLogo,
+    agencySettings,
   };
   // Issue session cookie via API if available
   await postSession(session).catch(() => null);

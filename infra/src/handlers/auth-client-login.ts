@@ -1,7 +1,7 @@
 import { APIGatewayProxyEventV2 } from 'aws-lambda';
 import { Handler } from './common';
 import { response } from './cors';
-import { queryGSI1, scanByGSI1PK } from '../lib/dynamo';
+import { queryGSI1, scanByGSI1PK, getItem } from '../lib/dynamo';
 import { encodeSession, buildSessionCookie } from '../lib/session';
 import { verifyAccessCode } from '../lib/auth';
 
@@ -70,11 +70,34 @@ export const handler: Handler = async (event: APIGatewayProxyEventV2) => {
   });
   if (!phoneMatch || !codeOk) return response(401, { ok: false, error: 'Invalid credentials' }, origin);
 
+  // Fetch agency settings for white-label branding
+  let agencyLogo: string | undefined;
+  let agencySettings: { primaryColor?: string; secondaryColor?: string } | undefined;
+  
+  if (client.agencyId) {
+    try {
+      const agency = await getItem({ PK: `AGENCY#${client.agencyId}`, SK: 'PROFILE' });
+      if (agency) {
+        agencyLogo = (agency as any).settings?.logoDataUrl || (agency as any).logoUrl;
+        agencySettings = {
+          primaryColor: (agency as any).settings?.primaryColor,
+          secondaryColor: (agency as any).settings?.secondaryColor,
+        };
+      }
+    } catch (e) {
+      console.warn('[auth-client-login] Failed to fetch agency settings', e);
+    }
+  }
+
   const token = encodeSession({
     agencyId: client.agencyId,
     agencyEmail: client.agencyEmail,
     role: 'client',
     clientId: client.id,
+    firstName: client.firstName,
+    lastName: client.lastName,
+    agencyLogo,
+    agencySettings,
   });
 
   const headers = {

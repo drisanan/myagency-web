@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { Box, Typography, Paper } from '@mui/material';
+import { ProfileForm } from '@/features/settings/ProfileForm';
 
 export default function ProfilePage() {
   return (
@@ -10,11 +11,8 @@ export default function ProfilePage() {
         Profile
       </Typography>
       <Paper variant="outlined" sx={{ p: 3, borderRadius: 2 }}>
-        <Typography color="text.secondary">
-          Profile management coming soon.
-        </Typography>
+        <ProfileForm />
       </Paper>
     </Box>
   );
 }
-

@@ -17,6 +17,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const { session, setSession } = useSession();
   const pathname = usePathname();
 
+  // Dynamic colors from agency settings
+  const primaryColor = session?.agencySettings?.primaryColor || colors.sidebarBg;
+  const secondaryColor = session?.agencySettings?.secondaryColor || colors.navActiveBg;
+
   const stopImpersonation = React.useCallback(() => {
     if (typeof window === 'undefined') return;
     const baseRaw = null;
@@ -39,7 +43,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       bgcolor: 'rgba(255, 255, 255, 0.04)',
     },
     '&.Mui-selected, &.Mui-selected:hover': {
-      bgcolor: colors.navActiveBg,
+      bgcolor: secondaryColor,
       color: colors.navActiveText,
     },
     justifyContent: 'flex-start',
@@ -216,7 +220,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           '& .MuiDrawer-paper': {
             width: drawerWidth,
             boxSizing: 'border-box',
-            bgcolor: colors.sidebarBg,
+            bgcolor: primaryColor,
             color: colors.sidebarText,
           },
         }}

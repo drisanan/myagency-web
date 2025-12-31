@@ -1923,6 +1923,10 @@ var DEBUG_SESSION = process.env.DEBUG_SESSION === "true";
 
 // infra/src/lib/dynamo.ts
 var TABLE_NAME = process.env.TABLE_NAME || "agency-narrative-crm";
+async function getItem(key) {
+  const res = await docClient.send(new import_lib_dynamodb2.GetCommand({ TableName: TABLE_NAME, Key: key }));
+  return res.Item;
+}
 async function queryGSI1(GSI1PK, beginsWith) {
   const res = await docClient.send(
     new import_lib_dynamodb2.QueryCommand({
@@ -1999,11 +2003,31 @@ var handler = async (event) => {
     hasAccess: Boolean(client2.accessCode)
   });
   if (!phoneMatch || !codeOk) return response(401, { ok: false, error: "Invalid credentials" }, origin);
+  let agencyLogo;
+  let agencySettings;
+  if (client2.agencyId) {
+    try {
+      const agency = await getItem({ PK: `AGENCY#${client2.agencyId}`, SK: "PROFILE" });
+      if (agency) {
+        agencyLogo = agency.settings?.logoDataUrl || agency.logoUrl;
+        agencySettings = {
+          primaryColor: agency.settings?.primaryColor,
+          secondaryColor: agency.settings?.secondaryColor
+        };
+      }
+    } catch (e) {
+      console.warn("[auth-client-login] Failed to fetch agency settings", e);
+    }
+  }
   const token = encodeSession({
     agencyId: client2.agencyId,
     agencyEmail: client2.agencyEmail,
     role: "client",
-    clientId: client2.id
+    clientId: client2.id,
+    firstName: client2.firstName,
+    lastName: client2.lastName,
+    agencyLogo,
+    agencySettings
   });
   const headers = {
     "Set-Cookie": buildSessionCookie(token)
