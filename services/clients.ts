@@ -114,3 +114,28 @@ export function getClientGmailTokens(clientId: string): any | null {
   // No-op on client; tokens handled server-side.
   return null;
 }
+
+export type GmailStatus = {
+  connected: boolean;
+  expired: boolean;
+  canRefresh: boolean;
+  expiryDate?: number;
+};
+
+export async function getGmailStatus(clientId: string): Promise<GmailStatus> {
+  const data = await apiFetch(`/google/status?clientId=${encodeURIComponent(clientId)}`);
+  return {
+    connected: data?.connected ?? false,
+    expired: data?.expired ?? false,
+    canRefresh: data?.canRefresh ?? false,
+    expiryDate: data?.expiryDate,
+  };
+}
+
+export async function refreshGmailToken(clientId: string): Promise<{ ok: boolean; error?: string }> {
+  const data = await apiFetch('/google/refresh', {
+    method: 'POST',
+    body: JSON.stringify({ clientId }),
+  });
+  return data;
+}

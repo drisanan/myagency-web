@@ -1,10 +1,58 @@
 'use client';
 import React from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { listClientsByAgencyEmail, deleteClient } from '@/services/clients';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { listClientsByAgencyEmail, deleteClient, getGmailStatus, refreshGmailToken } from '@/services/clients';
 import { DataGrid, GridColDef } from '@mui/x-data-grid';
-import { Button, Stack, Box, Typography, Avatar, Paper } from '@mui/material';
+import { Button, Stack, Box, Typography, Avatar, Paper, Chip, CircularProgress } from '@mui/material';
 import { useSession } from '@/features/auth/session';
+
+function GmailStatusCell({ clientId }: { clientId: string }) {
+  const [refreshing, setRefreshing] = React.useState(false);
+  const queryClient = useQueryClient();
+  
+  const { data: status, isLoading } = useQuery({
+    queryKey: ['gmail-status', clientId],
+    queryFn: () => getGmailStatus(clientId),
+    staleTime: 60_000,
+  });
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    try {
+      await refreshGmailToken(clientId);
+      queryClient.invalidateQueries({ queryKey: ['gmail-status', clientId] });
+    } catch (e) {
+      console.error('Refresh failed', e);
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  if (isLoading) return <CircularProgress size={16} />;
+
+  if (!status?.connected) {
+    return <Chip label="Not Connected" size="small" color="default" />;
+  }
+
+  if (status.expired && status.canRefresh) {
+    return (
+      <Stack direction="row" spacing={1} alignItems="center">
+        <Chip label="Expired" size="small" color="warning" />
+        <Button 
+          size="small" 
+          variant="outlined" 
+          onClick={handleRefresh}
+          disabled={refreshing}
+          sx={{ minWidth: 'auto', px: 1 }}
+        >
+          {refreshing ? '...' : 'Refresh'}
+        </Button>
+      </Stack>
+    );
+  }
+
+  return <Chip label="Connected" size="small" color="success" />;
+}
 
 export function ClientsList() {
   const { session } = useSession();
@@ -50,6 +98,13 @@ export function ClientsList() {
     },
     { field: 'email', headerName: 'Email', flex: 0.5 },
     { field: 'sport', headerName: 'Sport', width: 120 },
+    {
+      field: 'gmail',
+      headerName: 'Gmail',
+      width: 160,
+      sortable: false,
+      renderCell: (params) => <GmailStatusCell clientId={params.row.id} />,
+    },
     {
       field: 'actions',
       headerName: 'Actions',

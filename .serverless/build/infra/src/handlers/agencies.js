@@ -199,7 +199,14 @@ var handler = async (event) => {
       if (!session) {
         return response(401, { ok: false, error: "Missing session" }, origin);
       }
-      const found = await queryGSI1(`EMAIL#${session.agencyEmail}`, "AGENCY#");
+      let found = await queryGSI1(`EMAIL#${session.agencyEmail}`, "AGENCY#");
+      if ((!found || found.length === 0) && session.agencyId) {
+        console.log("GSI1 lookup failed, trying PK lookup", { agencyId: session.agencyId });
+        const agency = await getItem({ PK: `AGENCY#${session.agencyId}`, SK: "PROFILE" });
+        if (agency) {
+          found = [agency];
+        }
+      }
       return response(200, { ok: true, agencies: found || [] }, origin);
     }
     if (method === "PUT" && event.rawPath?.endsWith("/agencies/settings")) {
@@ -207,8 +214,16 @@ var handler = async (event) => {
       if (!event.body) return response(400, { ok: false, error: "Missing body" }, origin);
       const parsed = JSON.parse(event.body || "{}");
       const email = session.agencyEmail;
-      const existing = await queryGSI1(`EMAIL#${email}`, "AGENCY#");
-      const agency = existing?.[0];
+      let existing = await queryGSI1(`EMAIL#${email}`, "AGENCY#");
+      let agency = existing?.[0];
+      if (!agency && session.agencyId) {
+        console.log("GSI1 lookup failed, trying PK lookup", { agencyId: session.agencyId });
+        agency = await getItem({ PK: `AGENCY#${session.agencyId}`, SK: "PROFILE" });
+        if (agency && !agency.GSI1PK) {
+          agency.GSI1PK = `EMAIL#${email}`;
+          agency.GSI1SK = `AGENCY#${session.agencyId}`;
+        }
+      }
       if (!agency) return response(404, { ok: false, error: "Agency not found" }, origin);
       const updated = { ...agency, settings: parsed.settings || {} };
       await putItem(updated);

@@ -184,12 +184,55 @@ export const handler = async (event: APIGatewayProxyEventV2) => {
       if (!clientId) return response(400, { ok: false, error: 'Missing clientId' }, origin);
 
       const item = await getItem({ PK: `AGENCY#${session.agencyId}`, SK: `GMAIL_TOKEN#${clientId}` });
-      const connected = Boolean(item?.tokens?.refresh_token);
+      
+      const hasTokens = Boolean(item?.tokens);
+      const hasRefreshToken = Boolean(item?.tokens?.refresh_token);
+      const expiryDate = item?.tokens?.expiry_date;
+      const isExpired = expiryDate ? Date.now() > expiryDate : !hasTokens;
 
-      return response(200, { ok: true, connected }, origin);
+      return response(200, {
+        ok: true,
+        connected: hasTokens && hasRefreshToken,
+        expired: hasTokens && isExpired,
+        canRefresh: hasRefreshToken,
+        expiryDate,
+      }, origin);
     } catch (e: any) {
       console.error('google-status error', e);
       return response(500, { ok: false, error: 'Status lookup failed' }, origin);
+    }
+  }
+
+  // =========================================================================
+  // ROUTE: Force Token Refresh
+  // POST /google/refresh
+  // =========================================================================
+  if (method === 'POST' && path.endsWith('/google/refresh')) {
+    const body = JSON.parse(event.body || '{}');
+    const clientId = body.clientId;
+    if (!clientId) return response(400, { ok: false, error: 'Missing clientId' }, origin);
+
+    const item = await getItem({ PK: `AGENCY#${session.agencyId}`, SK: `GMAIL_TOKEN#${clientId}` });
+    if (!item?.tokens?.refresh_token) {
+      return response(400, { ok: false, error: 'No refresh token available - reconnection required' }, origin);
+    }
+
+    try {
+      oauth2Client.setCredentials(item.tokens);
+      const { credentials } = await oauth2Client.refreshAccessToken();
+      
+      // Save updated tokens
+      await putItem({
+        ...item,
+        tokens: credentials,
+        updatedAt: Date.now(),
+      });
+
+      console.log('Token refreshed for client:', clientId);
+      return response(200, { ok: true, expiryDate: credentials.expiry_date }, origin);
+    } catch (e: any) {
+      console.error('Token refresh failed', e);
+      return response(400, { ok: false, error: 'Refresh failed - reconnection required' }, origin);
     }
   }
 

@@ -129,20 +129,26 @@ export const handler = async (event: APIGatewayProxyEventV2): Promise<APIGateway
       // A. Generate new ID
       const newAgencyId = `agency-${randomUUID()}`;
       
-      // B. Save to DynamoDB (PK/SK schema)
+      // B. Save to DynamoDB (PK/SK schema with GSI1 for email lookup)
       try {
         await docClient.send(new PutCommand({
           TableName: TABLE_NAME,
           Item: {
             PK: `AGENCY#${newAgencyId}`,
             SK: 'PROFILE',
+            GSI1PK: `EMAIL#${contact.email}`,
+            GSI1SK: `AGENCY#${newAgencyId}`,
             id: newAgencyId,
             name: agencyName || 'New Agency',
             email: contact.email,
             contactId: contact.id,
             color: agencyColor,
             logoUrl: agencyLogo,
-            createdAt: new Date().toISOString(),
+            settings: {
+              primaryColor: agencyColor || undefined,
+              logoDataUrl: agencyLogo || undefined,
+            },
+            createdAt: Date.now(),
           }
         }));
         console.log(`Created agency ${newAgencyId} in DynamoDB`);

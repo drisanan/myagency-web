@@ -6473,13 +6473,19 @@ var handler = async (event) => {
           Item: {
             PK: `AGENCY#${newAgencyId}`,
             SK: "PROFILE",
+            GSI1PK: `EMAIL#${contact.email}`,
+            GSI1SK: `AGENCY#${newAgencyId}`,
             id: newAgencyId,
             name: agencyName || "New Agency",
             email: contact.email,
             contactId: contact.id,
             color: agencyColor,
             logoUrl: agencyLogo,
-            createdAt: (/* @__PURE__ */ new Date()).toISOString()
+            settings: {
+              primaryColor: agencyColor || void 0,
+              logoDataUrl: agencyLogo || void 0
+            },
+            createdAt: Date.now()
           }
         }));
         console.log(`Created agency ${newAgencyId} in DynamoDB`);

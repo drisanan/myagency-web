@@ -55,7 +55,17 @@ export const handler = async (event: APIGatewayProxyEventV2) => {
       }
 
       // Secure: Return ONLY the logged-in agency's profile
-      const found = await queryGSI1(`EMAIL#${session.agencyEmail}`, 'AGENCY#');
+      let found = await queryGSI1(`EMAIL#${session.agencyEmail}`, 'AGENCY#');
+      
+      // Fallback: Query by PK using agencyId from session
+      if ((!found || found.length === 0) && session.agencyId) {
+        console.log('GSI1 lookup failed, trying PK lookup', { agencyId: session.agencyId });
+        const agency = await getItem({ PK: `AGENCY#${session.agencyId}`, SK: 'PROFILE' });
+        if (agency) {
+          found = [agency];
+        }
+      }
+      
       return response(200, { ok: true, agencies: found || [] }, origin);
     }
 
@@ -69,8 +79,21 @@ export const handler = async (event: APIGatewayProxyEventV2) => {
       // Secure: Force use of session email, ignore body email
       const email = session.agencyEmail; 
       
-      const existing = await queryGSI1(`EMAIL#${email}`, 'AGENCY#');
-      const agency = existing?.[0];
+      // Try GSI1 lookup first
+      let existing = await queryGSI1(`EMAIL#${email}`, 'AGENCY#');
+      let agency = existing?.[0];
+      
+      // Fallback: Query by PK using agencyId from session
+      if (!agency && session.agencyId) {
+        console.log('GSI1 lookup failed, trying PK lookup', { agencyId: session.agencyId });
+        agency = await getItem({ PK: `AGENCY#${session.agencyId}`, SK: 'PROFILE' });
+        
+        // If found by PK but missing GSI1 attrs, add them
+        if (agency && !agency.GSI1PK) {
+          agency.GSI1PK = `EMAIL#${email}`;
+          agency.GSI1SK = `AGENCY#${session.agencyId}`;
+        }
+      }
       
       if (!agency) return response(404, { ok: false, error: 'Agency not found' }, origin);
       

@@ -147,6 +147,9 @@ functions:
       - httpApi:
           path: /google/status
           method: get
+      - httpApi:
+          path: /google/refresh
+          method: post
   ghlLogin:
     handler: infra/src/handlers/ghl-login.handler
     events:
