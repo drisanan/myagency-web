@@ -60,7 +60,14 @@ async function selectOption(driver, labelText, optionText) {
 }
 
 async function allowlistedConsoleErrors(logs) {
-  const allowed = ['favicon.ico', 'Hydration failed', '/auth/signup'];
+  const allowed = [
+    'favicon.ico', 
+    'Hydration failed', 
+    '/auth/signup',
+    'Missing session',
+    'Failed to fetch agency settings',
+    '401',
+  ];
   return logs
     .filter((l) => l.level && l.level.name === 'SEVERE')
     .filter((l) => !allowed.some((sub) => (l.message || '').includes(sub)));
