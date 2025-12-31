@@ -29,6 +29,7 @@ export type AgencySettings = {
   borderColor?: string;
   dividerColor?: string;
   logoDataUrl?: string;
+  preferredSport?: string;
 };
 
 export type Session = {

@@ -3,6 +3,7 @@ import React from 'react';
 import { Box, Paper, Typography, Stack, Chip, Select, MenuItem, SelectChangeEvent } from '@mui/material';
 import { useQuery } from '@tanstack/react-query';
 import { getSports, formatSportLabel } from '@/features/recruiter/divisionMapping';
+import { useSession } from '@/features/auth/session';
 
 type RecruitingPeriod = {
   id: string;
@@ -64,8 +65,20 @@ function shortDate(day: Date) {
 }
 
 export function RecruitingCalendarCard() {
+  const { session } = useSession();
   const sports = getSports();
-  const [sport, setSport] = React.useState(sports[0] || 'Football');
+  // Use saved preference from agency settings, fallback to first sport or 'Football'
+  const savedPreference = session?.agencySettings?.preferredSport;
+  const defaultSport = savedPreference && sports.includes(savedPreference) ? savedPreference : (sports[0] || 'Football');
+  const [sport, setSport] = React.useState(defaultSport);
+  
+  // Update sport when session loads with a saved preference
+  React.useEffect(() => {
+    if (savedPreference && sports.includes(savedPreference)) {
+      setSport(savedPreference);
+    }
+  }, [savedPreference, sports]);
+  
   const { data = [], isLoading } = useRecruitingPeriods(sport);
   const today = new Date();
   const weekDays = getWeekDays(today);

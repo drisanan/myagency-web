@@ -45,6 +45,7 @@ export type AgencySettings = {
   primaryColor?: string;
   secondaryColor?: string;
   logoDataUrl?: string;
+  preferredSport?: string;
 };
 
 export type Agency = {
