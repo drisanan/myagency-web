@@ -1990,6 +1990,15 @@ async function queryGSI3(GSI3PK, beginsWith) {
   );
   return res.Items ?? [];
 }
+async function scanByGSI3PK(GSI3PK) {
+  const params = {
+    TableName: TABLE_NAME,
+    FilterExpression: "GSI3PK = :g3pk",
+    ExpressionAttributeValues: { ":g3pk": GSI3PK }
+  };
+  const res = await docClient.send(new import_lib_dynamodb2.ScanCommand(params));
+  return res.Items ?? [];
+}
 
 // infra/src/handlers/cors.ts
 var ALLOWED_ORIGINS = [
@@ -2071,9 +2080,22 @@ var handler = async (event) => {
     }
     let username = payload.username?.toLowerCase().replace(/[^a-z0-9-]/g, "");
     if (username) {
-      const existing = await queryGSI3(`USERNAME#${username}`);
-      if (existing.length > 0) {
-        return badRequest(origin, "Username is already taken");
+      try {
+        let existing = [];
+        try {
+          existing = await queryGSI3(`USERNAME#${username}`);
+        } catch (e) {
+          if (e.name === "ValidationException" || e.message?.includes("GSI3")) {
+            existing = await scanByGSI3PK(`USERNAME#${username}`);
+          } else {
+            console.error("[clients] GSI3 query error:", e);
+          }
+        }
+        if (existing.length > 0) {
+          return badRequest(origin, "Username is already taken");
+        }
+      } catch (e) {
+        console.error("[clients] Username uniqueness check failed:", e);
       }
     }
     const rec = {
@@ -2105,14 +2127,28 @@ var handler = async (event) => {
     if (!clientId) return badRequest(origin, "Missing client id");
     if (!event.body) return badRequest(origin, "Missing body");
     const payload = JSON.parse(event.body);
+    console.log("[clients PUT] Received payload username:", payload.username);
     const existing = await getItem({ PK: `AGENCY#${cleanAgencyId}`, SK: `CLIENT#${clientId}` });
     if (!existing) return response(404, { ok: false, message: "Not found" }, origin);
     const now = (/* @__PURE__ */ new Date()).toISOString();
     let username = payload.username?.toLowerCase().replace(/[^a-z0-9-]/g, "");
     if (username && username !== existing.username) {
-      const usernameCheck = await queryGSI3(`USERNAME#${username}`);
-      if (usernameCheck.length > 0) {
-        return badRequest(origin, "Username is already taken");
+      try {
+        let usernameCheck = [];
+        try {
+          usernameCheck = await queryGSI3(`USERNAME#${username}`);
+        } catch (e) {
+          if (e.name === "ValidationException" || e.message?.includes("GSI3")) {
+            usernameCheck = await scanByGSI3PK(`USERNAME#${username}`);
+          } else {
+            console.error("[clients] GSI3 query error:", e);
+          }
+        }
+        if (usernameCheck.length > 0) {
+          return badRequest(origin, "Username is already taken");
+        }
+      } catch (e) {
+        console.error("[clients] Username uniqueness check failed:", e);
       }
     }
     const merged = {
@@ -2125,6 +2161,7 @@ var handler = async (event) => {
         GSI3SK: `CLIENT#${clientId}`
       } : {}
     };
+    console.log("[clients PUT] Saving with GSI3PK:", merged.GSI3PK, "username:", merged.username);
     if (payload.accessCode) {
       merged.accessCodeHash = await hashAccessCode(payload.accessCode);
       merged.authEnabled = true;
