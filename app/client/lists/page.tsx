@@ -168,6 +168,7 @@ export default function ClientListsPage() {
             <CardContent>
               <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 2 }}>
                 <TextField
+                  size="small"
                   label="List Name"
                   fullWidth
                   value={name}
@@ -175,6 +176,7 @@ export default function ClientListsPage() {
                 />
                 <Box />
                 <TextField
+                  size="small"
                   select
                   label="Sport"
                   fullWidth
@@ -188,14 +190,14 @@ export default function ClientListsPage() {
                     </MenuItem>
                   ))}
                 </TextField>
-                <TextField select label="Division" fullWidth value={division} onChange={(e) => setDivision(e.target.value)}>
+                <TextField size="small" select label="Division" fullWidth value={division} onChange={(e) => setDivision(e.target.value)}>
                   {divisions.map((d) => (
                     <MenuItem key={d} value={d}>
                       {d}
                     </MenuItem>
                   ))}
                 </TextField>
-                <TextField select label="State" fullWidth value={state} onChange={(e) => setState(e.target.value)}>
+                <TextField size="small" select label="State" fullWidth value={state} onChange={(e) => setState(e.target.value)}>
                   {states.map((s) => (
                     <MenuItem key={s.code} value={s.code}>
                       {s.name}

@@ -732,6 +732,7 @@ CRITICAL INSTRUCTIONS:
         {activeStep === 0 && (
           <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 2, maxWidth: 700 }}>
             <TextField
+              size="small"
               select
               label="Client"
               value={clientId}
@@ -754,6 +755,7 @@ CRITICAL INSTRUCTIONS:
               Choose either Division + State or a saved List (not both). Selecting a list will skip Division/State.
             </Typography>
             <TextField
+              size="small"
               select
               label="Division"
               value={division}
@@ -769,6 +771,7 @@ CRITICAL INSTRUCTIONS:
               ))}
             </TextField>
             <TextField
+              size="small"
               select
               label="State"
               value={state}
@@ -784,10 +787,11 @@ CRITICAL INSTRUCTIONS:
               ))}
             </TextField>
             <TextField
+              size="small"
               select
               label="List"
               value={selectedListId}
-              helperText="Picking a list skips Division/State and uses that list’s coaches."
+              helperText="Picking a list skips Division/State and uses that list's coaches."
               onChange={(e) => {
                 const id = String(e.target.value);
                 setSelectedListId(id);

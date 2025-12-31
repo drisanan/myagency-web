@@ -175,12 +175,14 @@ export function TasksPanel({ assigneeClientId }: Props) {
         <DialogTitle>{editingId ? 'Edit task' : 'Add task'}</DialogTitle>
         <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
           <TextField
+            size="small"
             label="Title"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             required
           />
           <TextField
+            size="small"
             label="Description"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
@@ -189,6 +191,7 @@ export function TasksPanel({ assigneeClientId }: Props) {
           />
           {!assigneeClientId ? (
             <TextField
+              size="small"
               select
               label="Assign athlete (optional)"
               value={selectedAssigneeId}
@@ -204,6 +207,7 @@ export function TasksPanel({ assigneeClientId }: Props) {
             </TextField>
           ) : null}
           <TextField
+            size="small"
             select
             label="Status"
             value={status}
@@ -216,6 +220,7 @@ export function TasksPanel({ assigneeClientId }: Props) {
             ))}
           </TextField>
           <TextField
+            size="small"
             label="Due date/time"
             type="datetime-local"
             value={dueAt}

@@ -17,11 +17,11 @@ export function ClientForm({ initial }: { initial?: any }) {
   const onSave = async () => { Schema.parse(value); await upsertClient(value); };
   return (
     <Stack spacing={2} sx={{ maxWidth: 600 }}>
-      <TextField label="Email" value={value.email ?? ''} onChange={e=>setValue({...value, email: e.target.value})}/>
-      <TextField label="Password" type="password" value={value.password ?? ''} onChange={e=>setValue({...value, password: e.target.value})}/>
-      <TextField label="First name" value={value.firstName ?? ''} onChange={e=>setValue({...value, firstName: e.target.value})}/>
-      <TextField label="Last name" value={value.lastName ?? ''} onChange={e=>setValue({...value, lastName: e.target.value})}/>
-      <TextField select label="Sport" value={value.sport ?? ''} onChange={e=>setValue({...value, sport: e.target.value})}>
+      <TextField size="small" label="Email" value={value.email ?? ''} onChange={e=>setValue({...value, email: e.target.value})}/>
+      <TextField size="small" label="Password" type="password" value={value.password ?? ''} onChange={e=>setValue({...value, password: e.target.value})}/>
+      <TextField size="small" label="First name" value={value.firstName ?? ''} onChange={e=>setValue({...value, firstName: e.target.value})}/>
+      <TextField size="small" label="Last name" value={value.lastName ?? ''} onChange={e=>setValue({...value, lastName: e.target.value})}/>
+      <TextField size="small" select label="Sport" value={value.sport ?? ''} onChange={e=>setValue({...value, sport: e.target.value})}>
         {['Football','Basketball','Baseball','Soccer'].map(s => <MenuItem key={s} value={s}>{s}</MenuItem>)}
       </TextField>
       <Button variant="contained" onClick={onSave}>Save</Button>

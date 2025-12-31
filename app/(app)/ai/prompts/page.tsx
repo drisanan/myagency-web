@@ -134,6 +134,7 @@ CRITICAL INSTRUCTIONS:
 
         <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 2 }}>
           <TextField
+            size="small"
             select
             label="Athlete"
             value={clientId}
@@ -149,6 +150,7 @@ CRITICAL INSTRUCTIONS:
           </TextField>
 
           <TextField
+            size="small"
             select
             label="Saved Prompts"
             value={selectedTemplateId}

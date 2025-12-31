@@ -29,15 +29,15 @@ const steps = [
 function PersonalInfoStep({ value, onChange }: { value: RadarDraft; onChange: (k: string, v: any) => void }) {
   return (
     <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 2 }}>
-      <TextField label="Preferred Position" value={value.preferredPosition ?? ''} onChange={(e)=>onChange('preferredPosition', e.target.value)} />
-      <TextField label="Height" value={value.athleteheight ?? ''} onChange={(e)=>onChange('athleteheight', e.target.value)} />
-      <TextField label="Weight (lb)" value={value.athleteWeight ?? ''} onChange={(e)=>onChange('athleteWeight', e.target.value)} />
-      <TextField label="School / Team / Club" value={value.school ?? ''} onChange={(e)=>onChange('school', e.target.value)} />
-      <TextField label="ACT" value={value.act ?? ''} onChange={(e)=>onChange('act', e.target.value)} />
-      <TextField label="SAT" value={value.sat ?? ''} onChange={(e)=>onChange('sat', e.target.value)} />
-      <TextField label="Graduation Year" value={value.graduationYear ?? ''} onChange={(e)=>onChange('graduationYear', e.target.value)} />
-      <TextField label="GPA" value={value.gpa ?? ''} onChange={(e)=>onChange('gpa', e.target.value)} />
-      <TextField label="Short Description" value={value.description ?? ''} onChange={(e)=>onChange('description', e.target.value)} multiline rows={3} sx={{ gridColumn: '1 / -1' }} />
+      <TextField size="small" label="Preferred Position" value={value.preferredPosition ?? ''} onChange={(e)=>onChange('preferredPosition', e.target.value)} />
+      <TextField size="small" label="Height" value={value.athleteheight ?? ''} onChange={(e)=>onChange('athleteheight', e.target.value)} />
+      <TextField size="small" label="Weight (lb)" value={value.athleteWeight ?? ''} onChange={(e)=>onChange('athleteWeight', e.target.value)} />
+      <TextField size="small" label="School / Team / Club" value={value.school ?? ''} onChange={(e)=>onChange('school', e.target.value)} />
+      <TextField size="small" label="ACT" value={value.act ?? ''} onChange={(e)=>onChange('act', e.target.value)} />
+      <TextField size="small" label="SAT" value={value.sat ?? ''} onChange={(e)=>onChange('sat', e.target.value)} />
+      <TextField size="small" label="Graduation Year" value={value.graduationYear ?? ''} onChange={(e)=>onChange('graduationYear', e.target.value)} />
+      <TextField size="small" label="GPA" value={value.gpa ?? ''} onChange={(e)=>onChange('gpa', e.target.value)} />
+      <TextField size="small" label="Short Description" value={value.description ?? ''} onChange={(e)=>onChange('description', e.target.value)} multiline rows={3} sx={{ gridColumn: '1 / -1' }} />
     </Box>
   );
 }
@@ -45,10 +45,10 @@ function PersonalInfoStep({ value, onChange }: { value: RadarDraft; onChange: (k
 function SocialStep({ value, onChange }: { value: RadarDraft; onChange: (k: string, v: any) => void }) {
   return (
     <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 2 }}>
-      <TextField label="Instagram Handle" value={value.instagramProfileUrl ?? ''} onChange={(e)=>onChange('instagramProfileUrl', e.target.value)} />
-      <TextField label="TikTok Handle" value={value.tiktokProfileUrl ?? ''} onChange={(e)=>onChange('tiktokProfileUrl', e.target.value)} />
-      <TextField label="Twitter Handle" value={value.twitterUrl ?? ''} onChange={(e)=>onChange('twitterUrl', e.target.value)} />
-      <TextField label="Facebook Handle" value={value.facebookUrl ?? ''} onChange={(e)=>onChange('facebookUrl', e.target.value)} />
+      <TextField size="small" label="Instagram Handle" value={value.instagramProfileUrl ?? ''} onChange={(e)=>onChange('instagramProfileUrl', e.target.value)} />
+      <TextField size="small" label="TikTok Handle" value={value.tiktokProfileUrl ?? ''} onChange={(e)=>onChange('tiktokProfileUrl', e.target.value)} />
+      <TextField size="small" label="Twitter Handle" value={value.twitterUrl ?? ''} onChange={(e)=>onChange('twitterUrl', e.target.value)} />
+      <TextField size="small" label="Facebook Handle" value={value.facebookUrl ?? ''} onChange={(e)=>onChange('facebookUrl', e.target.value)} />
     </Box>
   );
 }
@@ -56,11 +56,11 @@ function SocialStep({ value, onChange }: { value: RadarDraft; onChange: (k: stri
 function ContentLinksStep({ value, onChange }: { value: RadarDraft; onChange: (k: string, v: any) => void }) {
   return (
     <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 2 }}>
-      <TextField label="YouTube Highlight URL" value={value.youtubeHighlightUrl ?? ''} onChange={(e)=>onChange('youtubeHighlightUrl', e.target.value)} />
-      <TextField label="Spotify Song URL" value={value.spotifySong ?? ''} onChange={(e)=>onChange('spotifySong', e.target.value)} />
-      <TextField label="Hudl Link" value={value.hudlLink ?? ''} onChange={(e)=>onChange('hudlLink', e.target.value)} />
-      <TextField label="Jungo Link" value={value.jungoLink ?? ''} onChange={(e)=>onChange('jungoLink', e.target.value)} />
-      <TextField label="Additional Stats Link" value={value.additionalStatsLink ?? ''} onChange={(e)=>onChange('additionalStatsLink', e.target.value)} />
+      <TextField size="small" label="YouTube Highlight URL" value={value.youtubeHighlightUrl ?? ''} onChange={(e)=>onChange('youtubeHighlightUrl', e.target.value)} />
+      <TextField size="small" label="Spotify Song URL" value={value.spotifySong ?? ''} onChange={(e)=>onChange('spotifySong', e.target.value)} />
+      <TextField size="small" label="Hudl Link" value={value.hudlLink ?? ''} onChange={(e)=>onChange('hudlLink', e.target.value)} />
+      <TextField size="small" label="Jungo Link" value={value.jungoLink ?? ''} onChange={(e)=>onChange('jungoLink', e.target.value)} />
+      <TextField size="small" label="Additional Stats Link" value={value.additionalStatsLink ?? ''} onChange={(e)=>onChange('additionalStatsLink', e.target.value)} />
     </Box>
   );
 }
@@ -83,8 +83,9 @@ function EventsMetricsStep({ value, onChange }: { value: RadarDraft; onChange: (
           {events.length === 0 && <Typography variant="body2" color="text.secondary">No events added</Typography>}
           {events.map((ev, idx) => (
             <Box key={idx} sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr auto' }, gap: 1 }}>
-              <TextField label="Event Name" value={ev.name} onChange={(e)=>updateEvents(events.map((v,i)=>i===idx?{...v,name:e.target.value}:v))} />
+              <TextField size="small" label="Event Name" value={ev.name} onChange={(e)=>updateEvents(events.map((v,i)=>i===idx?{...v,name:e.target.value}:v))} />
               <TextField
+                size="small"
                 label="Start Time"
                 type="datetime-local"
                 InputLabelProps={{ shrink: true }}
@@ -106,8 +107,8 @@ function EventsMetricsStep({ value, onChange }: { value: RadarDraft; onChange: (
           {metrics.length === 0 && <Typography variant="body2" color="text.secondary">No metrics added</Typography>}
           {metrics.map((m, idx) => (
             <Box key={idx} sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr auto' }, gap: 1 }}>
-              <TextField label="Metric Title" value={m.title} onChange={(e)=>updateMetrics(metrics.map((v,i)=>i===idx?{...v,title:e.target.value}:v))} />
-              <TextField label="Metric Value" value={m.value} onChange={(e)=>updateMetrics(metrics.map((v,i)=>i===idx?{...v,value:e.target.value}:v))} />
+              <TextField size="small" label="Metric Title" value={m.title} onChange={(e)=>updateMetrics(metrics.map((v,i)=>i===idx?{...v,title:e.target.value}:v))} />
+              <TextField size="small" label="Metric Value" value={m.value} onChange={(e)=>updateMetrics(metrics.map((v,i)=>i===idx?{...v,value:e.target.value}:v))} />
               <Button color="error" onClick={()=>updateMetrics(metrics.filter((_,i)=>i!==idx))}>Remove</Button>
             </Box>
           ))}
@@ -124,10 +125,11 @@ function MotivationStep({ value, onChange }: { value: RadarDraft; onChange: (k: 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
     <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 2 }}>
-      <TextField label="Favorite Motivational Quote" value={value.myMotivator ?? ''} onChange={(e)=>onChange('myMotivator', e.target.value)} />
-      <TextField label="Advice" value={value.athleteAdvice ?? ''} onChange={(e)=>onChange('athleteAdvice', e.target.value)} />
+      <TextField size="small" label="Favorite Motivational Quote" value={value.myMotivator ?? ''} onChange={(e)=>onChange('myMotivator', e.target.value)} />
+      <TextField size="small" label="Advice" value={value.athleteAdvice ?? ''} onChange={(e)=>onChange('athleteAdvice', e.target.value)} />
       </Box>
       <TextField
+        size="small"
         label="What makes you different from everyone else as a person?"
         value={value.differenceMaker ?? ''}
         onChange={(e)=>onChange('differenceMaker', e.target.value)}
@@ -144,9 +146,9 @@ function MotivationStep({ value, onChange }: { value: RadarDraft; onChange: (k: 
           {references.length === 0 && <Typography variant="body2" color="text.secondary">No references added</Typography>}
           {references.map((ref, idx) => (
             <Box key={idx} sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(3, 1fr) auto' }, gap: 1 }}>
-              <TextField label="Name" value={ref.name} onChange={(e)=>updateReferences(references.map((v,i)=>i===idx?{...v,name:e.target.value}:v))} />
-              <TextField label="Email" value={ref.email} onChange={(e)=>updateReferences(references.map((v,i)=>i===idx?{...v,email:e.target.value}:v))} />
-              <TextField label="Phone" value={ref.phone} onChange={(e)=>updateReferences(references.map((v,i)=>i===idx?{...v,phone:e.target.value}:v))} />
+              <TextField size="small" label="Name" value={ref.name} onChange={(e)=>updateReferences(references.map((v,i)=>i===idx?{...v,name:e.target.value}:v))} />
+              <TextField size="small" label="Email" value={ref.email} onChange={(e)=>updateReferences(references.map((v,i)=>i===idx?{...v,email:e.target.value}:v))} />
+              <TextField size="small" label="Phone" value={ref.phone} onChange={(e)=>updateReferences(references.map((v,i)=>i===idx?{...v,phone:e.target.value}:v))} />
               <Button color="error" onClick={()=>updateReferences(references.filter((_,i)=>i!==idx))}>Remove</Button>
             </Box>
           ))}
@@ -200,6 +202,7 @@ function BasicInfoStep({
   return (
     <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 2, maxWidth: 700 }}>
       <TextField
+        size="small"
         label="Athlete Email"
         value={value.email ?? ''}
         onChange={(e)=>onChange({ ...value, email: e.target.value })}
@@ -208,6 +211,7 @@ function BasicInfoStep({
         inputProps={{ 'data-testid': 'athlete-email' }}
       />
       <TextField
+        size="small"
         label="Access Code"
         type="number"
         inputProps={{ inputMode: 'numeric', pattern: '[0-9]*', maxLength: 6 }}
@@ -215,9 +219,10 @@ function BasicInfoStep({
         onChange={(e)=>onChange({ ...value, accessCode: e.target.value.slice(0, 6).replace(/\D/g, '') })}
         helperText="6-digit numeric code"
       />
-      <TextField label="First name" value={value.firstName ?? ''} onChange={(e)=>onChange({ ...value, firstName: e.target.value })} error={Boolean(errors?.firstName)} helperText={errors?.firstName || ''} />
-      <TextField label="Last name" value={value.lastName ?? ''} onChange={(e)=>onChange({ ...value, lastName: e.target.value })} error={Boolean(errors?.lastName)} helperText={errors?.lastName || ''} />
+      <TextField size="small" label="First name" value={value.firstName ?? ''} onChange={(e)=>onChange({ ...value, firstName: e.target.value })} error={Boolean(errors?.firstName)} helperText={errors?.firstName || ''} />
+      <TextField size="small" label="Last name" value={value.lastName ?? ''} onChange={(e)=>onChange({ ...value, lastName: e.target.value })} error={Boolean(errors?.lastName)} helperText={errors?.lastName || ''} />
       <TextField
+        size="small"
         label="Phone"
         value={value.phone ?? ''}
         onChange={(e)=>onChange({ ...value, phone: e.target.value })}
@@ -266,12 +271,14 @@ function BasicInfoStep({
       )}
       {showUrlInput && (
         <TextField
+          size="small"
           label="Profile Image URL"
           value={value.photoUrl ?? value.profileImageUrl ?? ''}
           onChange={(e)=>onChange({ ...value, photoUrl: e.target.value, profileImageUrl: e.target.value })}
         />
       )}
       <TextField
+        size="small"
         select
         label="Sport"
         value={value.sport ?? ''}
