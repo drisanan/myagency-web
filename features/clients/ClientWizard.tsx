@@ -510,7 +510,7 @@ function BasicInfoStep({
           (usernameStatus === 'taken' ? 'Username is already taken' :
            usernameStatus === 'available' ? 'Username is available!' :
            usernameStatus === 'error' ? 'Unable to verify - will check on save' :
-           `Your public profile: athletenarrative.com/athlete/${value.username || 'yourname'}`)
+           `Your public profile: myrecruiteragency.com/athlete/${value.username || 'yourname'}`)
         }
         inputProps={{ 'data-testid': 'athlete-username' }}
         InputProps={{
@@ -999,7 +999,7 @@ export function ClientWizard({
                       Public Profile URL
                     </Typography>
                     <Typography variant="body2" sx={{ fontFamily: 'monospace' }}>
-                      athletenarrative.com/athlete/{basic.username}
+                      myrecruiteragency.com/athlete/{basic.username}
                     </Typography>
                   </Box>
                 )}
