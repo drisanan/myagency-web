@@ -85,9 +85,10 @@ export default function PromptPlaygroundPage() {
   }
 
   async function handleSave() {
-    if (!userEmail) return;
+    if (!userEmail || !response) return;
     const name = templateName || `Prompt ${new Date().toLocaleString()}`;
-    const rec = await savePrompt({ agencyEmail: userEmail, clientId, name, text: prompt });
+    // Save the AI-generated response, not the user's input prompt
+    const rec = await savePrompt({ agencyEmail: userEmail, clientId, name, text: response });
     setTemplates([rec, ...templates]);
     setTemplateName('');
   }
@@ -205,7 +206,7 @@ export default function PromptPlaygroundPage() {
             onChange={(e) => setTemplateName(e.target.value)}
             sx={{ width: 220 }}
           />
-          <Button data-tour="create-prompt-btn" variant="outlined" onClick={handleSave} disabled={!userEmail || !prompt}>Save Prompt</Button>
+          <Button data-tour="create-prompt-btn" variant="outlined" onClick={handleSave} disabled={!userEmail || !response}>Save Prompt</Button>
           <Button
             variant="outlined"
             color="error"
