@@ -67,13 +67,27 @@ export default function PromptPlaygroundPage() {
       const sport = currentClient?.sport || '';
       const fullName = `${firstName} ${lastName}`.trim();
 
+      // Randomize greeting style
+      const greetings = ['Hey Coach', 'Hello Coach', 'Hi Coach', 'Coach'];
+      const randomGreeting = greetings[Math.floor(Math.random() * greetings.length)];
+
       const intro = await generateIntro({
         sport,
         collegeName: agencyName || '',
-        coachMessage: prompt || 'Write a concise, friendly intro email.',
-        tone: 'A highschool kid who loves sports',
+        coachMessage: prompt || 'Write a concise, friendly introduction.',
+        tone: 'Casual and conversational, like a confident high school athlete',
         qualities: ['Passionate', 'Hardworking', 'Determined'],
-        additionalInsights: `Student full name: ${fullName}. FirstName: ${firstName}. LastName: ${lastName}. Sport: ${sport}. Use the student’s actual name; no placeholders.`,
+        additionalInsights: `
+Student full name: ${fullName}. FirstName: ${firstName}. LastName: ${lastName}. Sport: ${sport}.
+
+CRITICAL INSTRUCTIONS:
+1. Start with "${randomGreeting}," - NEVER use "Dear", "Greetings", or overly formal openings.
+2. Write ONLY a brief greeting and ONE introductory paragraph (2-4 sentences max).
+3. DO NOT include a middle section, bullet points, sign-off, or closing.
+4. DO NOT include placeholders like [Your High School Name] or [Target College Name] - use the actual student name provided.
+5. Keep it casual, genuine, and enthusiastic - like a real high school kid would write.
+6. End the paragraph naturally without any closing remarks or signature.
+`.trim(),
       });
 
       setResponse(String(intro));

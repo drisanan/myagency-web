@@ -453,18 +453,34 @@ export function RecruiterWizard() {
       if (enabledSections.academic && (contact.gpa || (contact as any).preferredAreaOfStudy)) parts.push('key academic details');
       if (enabledSections.athletic) parts.push('athletic metrics and performance');
       if (enabledSections.highlights) parts.push('highlight links for review');
-      const coachMessage = `This is an introduction email for ${fullName}. The student-athlete is introducing themselves with ${parts.join(', ') || 'basic profile details'}. Please use the student's actual name; do not use placeholders.`;
+      const coachMessage = `Write a brief, engaging introduction for ${fullName}, a ${sport} athlete. Mention: ${parts.join(', ') || 'basic profile details'}.`;
 
       const intro = await generateIntro({
         sport,
         collegeName,
         coachMessage,
-        tone: 'A highschool kid who loves sports',
+        tone: 'Casual and conversational, like a confident high school athlete',
         qualities: ['Passionate', 'Hardworking', 'Determined'],
-        additionalInsights: `Student full name: ${fullName}. Use this exact name; do not output placeholders like [StudentName].`,
+        additionalInsights: `
+Student full name: ${fullName}. Target school: ${collegeName}.
+
+CRITICAL INSTRUCTIONS:
+1. Write ONLY a brief introductory paragraph (2-4 sentences max).
+2. DO NOT include any greeting (no "Hey", "Hello", "Dear" - the system adds that).
+3. DO NOT include any closing, sign-off, or signature.
+4. DO NOT include placeholders like [StudentName] or [School Name] - use actual names.
+5. Keep it casual, genuine, and enthusiastic.
+6. End the paragraph naturally without closing remarks.
+`.trim(),
       });
 
-      const introFixed = String(intro).replace(/\[StudentName\]/gi, fullName);
+      // Clean up any greeting/closing the AI might have added
+      let introFixed = String(intro)
+        .replace(/\[StudentName\]/gi, fullName)
+        .replace(/^(Hey|Hello|Hi|Dear|Greetings)[^,]*,?\s*/i, '')
+        .replace(/(Best regards|Sincerely|Thank you|Thanks)[\s\S]*/i, '')
+        .trim();
+
       // Merge AI intro with the rest of the composed email
       const base = buildEmailPreview();
       const stripped = base.replace(/^<p>Hello Coach[\s\S]*?<\/p>\s*<p>[\s\S]*?<\/p>/, '');
@@ -493,23 +509,42 @@ export function RecruiterWizard() {
     if (enabledSections.athletic) parts.push('athletic metrics');
     if (enabledSections.highlights) parts.push('highlights');
 
-    const coachMessage =
-      `This is an introduction email for ${fullName}. The student-athlete is introducing themselves with ${parts.join(', ') || 'basic profile details'}. Please use the student's actual name; do not use placeholders.`;
+    // Randomize greeting style
+    const greetings = ['Hey', 'Hello', 'Hi'];
+    const randomGreeting = greetings[Math.floor(Math.random() * greetings.length)];
+
+    const coachMessage = `Write a brief, engaging introduction for ${fullName}, a ${sport} athlete. Mention: ${parts.join(', ') || 'basic profile details'}.`;
 
     const intro = await generateIntro({
       sport,
       collegeName,
       coachMessage,
-      tone: 'A highschool kid who loves sports',
+      tone: 'Casual and conversational, like a confident high school athlete',
       qualities: ['Passionate', 'Hardworking', 'Determined'],
-      additionalInsights: `Student full name: ${fullName}. Use this exact name; do not output placeholders like [StudentName].`,
+      additionalInsights: `
+Student full name: ${fullName}. Target school: ${collegeName}.
+
+CRITICAL INSTRUCTIONS:
+1. Write ONLY a brief introductory paragraph (2-4 sentences max).
+2. DO NOT include any greeting (no "Hey", "Hello", "Dear" - the system adds that).
+3. DO NOT include any closing, sign-off, or signature.
+4. DO NOT include placeholders like [StudentName] or [School Name] - use actual names.
+5. Keep it casual, genuine, and enthusiastic.
+6. End the paragraph naturally without closing remarks.
+`.trim(),
     });
-    const introFixed = String(intro).replace(/\[StudentName\]/gi, fullName);
+
+    // Clean up any greeting/closing the AI might have added
+    let introFixed = String(intro)
+      .replace(/\[StudentName\]/gi, fullName)
+      .replace(/^(Hey|Hello|Hi|Dear|Greetings)[^,]*,?\s*/i, '')
+      .replace(/(Best regards|Sincerely|Thank you|Thanks)[\s\S]*/i, '')
+      .trim();
 
     const base = buildEmailPreview();
     const stripped = base.replace(/^<[^>]*>Hello\s+Coach[\s\S]*?<\/p>\s*<p>[\s\S]*?<\/p>/i, "");
     const rest = stripped || base;
-    return `<p>Hello Coach ${coachLast},</p><p>${introFixed}</p>${rest}`;
+    return `<p>${randomGreeting} Coach ${coachLast},</p><p>${introFixed}</p>${rest}`;
   }
 
   // FIX: Load Initial Data using safe userEmail
