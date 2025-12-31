@@ -1,11 +1,14 @@
 'use client';
 import React from 'react';
-import { Box, Button, Step, StepLabel, Stepper, Typography, CircularProgress, Stack, StepButton } from '@mui/material';
+import { Box, Button, Step, StepLabel, Stepper, Typography, CircularProgress, Stack, StepButton, Alert, Chip } from '@mui/material';
 import { useSession } from '@/features/auth/session';
-import { upsertClient } from '@/services/clients';
+import { upsertClient, setClientGmailTokens } from '@/services/clients';
 import { MenuItem, TextField } from '@mui/material';
 import { getSports, formatSportLabel } from '@/features/recruiter/divisionMapping';
 import { useRouter } from 'next/navigation';
+import { FaGoogle } from 'react-icons/fa';
+
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || '';
 
 type EventItem = { name: string; startTime?: string };
 type MetricItem = { title: string; value: string };
@@ -162,10 +165,18 @@ function BasicInfoStep({
   value,
   onChange,
   errors,
+  gmailConnected,
+  gmailConnecting,
+  onConnectGmail,
+  gmailError,
 }: {
   value: Record<string, any>;
   onChange: (v: Record<string, any>) => void;
-  errors?: { email?: string; firstName?: string; lastName?: string; sport?: string };
+  errors?: { email?: string; firstName?: string; lastName?: string; sport?: string; gmail?: string };
+  gmailConnected: boolean;
+  gmailConnecting: boolean;
+  onConnectGmail: () => void;
+  gmailError?: string | null;
 }) {
   const sports = getSports();
   const [showUrlInput, setShowUrlInput] = React.useState(false);
@@ -293,6 +304,52 @@ function BasicInfoStep({
           </MenuItem>
         ))}
       </TextField>
+
+      {/* Gmail Connection Section */}
+      <Box sx={{ gridColumn: '1 / -1', mt: 2, p: 2, bgcolor: '#f9fafb', borderRadius: 2, border: errors?.gmail ? '1px solid #d32f2f' : '1px solid #e5e7eb' }}>
+        <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600 }}>
+          Gmail Connection <Typography component="span" color="error">*</Typography>
+        </Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          Connect your Gmail account to allow your agency to send recruiting emails on your behalf.
+        </Typography>
+        
+        {gmailConnected ? (
+          <Chip
+            icon={<FaGoogle size={14} />}
+            label="Gmail Connected"
+            color="success"
+            sx={{ fontWeight: 500 }}
+          />
+        ) : (
+          <Stack spacing={1}>
+            <Button
+              variant="contained"
+              onClick={onConnectGmail}
+              disabled={gmailConnecting}
+              startIcon={gmailConnecting ? <CircularProgress size={16} color="inherit" /> : <FaGoogle />}
+              sx={{ 
+                bgcolor: '#4285f4', 
+                color: '#fff', 
+                '&:hover': { bgcolor: '#3367d6' },
+                alignSelf: 'flex-start',
+              }}
+            >
+              {gmailConnecting ? 'Connecting…' : 'Connect Gmail Account'}
+            </Button>
+            {errors?.gmail && (
+              <Typography variant="caption" color="error">
+                {errors.gmail}
+              </Typography>
+            )}
+          </Stack>
+        )}
+        {gmailError && (
+          <Alert severity="error" sx={{ mt: 1 }}>
+            {gmailError}
+          </Alert>
+        )}
+      </Box>
     </Box>
   );
 }
@@ -328,10 +385,101 @@ export function ClientWizard({
     ...(initialClient?.radar ?? {}),
   });
   const isLast = activeStep === steps.length - 1;
-  const [errors, setErrors] = React.useState<{ email?: string; firstName?: string; lastName?: string; sport?: string }>({});
+  const [errors, setErrors] = React.useState<{ email?: string; firstName?: string; lastName?: string; sport?: string; gmail?: string }>({});
   const [submitting, setSubmitting] = React.useState(false);
   const [submitError, setSubmitError] = React.useState('');
   const [submitSuccess, setSubmitSuccess] = React.useState('');
+
+  // Gmail connection state
+  const [gmailConnecting, setGmailConnecting] = React.useState(false);
+  const [gmailConnected, setGmailConnected] = React.useState(false);
+  const [gmailError, setGmailError] = React.useState<string | null>(null);
+  const [gmailTokens, setGmailTokens] = React.useState<any>(null);
+  const popupRef = React.useRef<Window | null>(null);
+  // Generate a temporary client ID for OAuth flow before the client is created
+  const tempClientIdRef = React.useRef<string>(`temp-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+
+  // Listen for OAuth popup messages
+  React.useEffect(() => {
+    function onMessage(e: MessageEvent) {
+      if (typeof window === 'undefined') return;
+      if (e.origin !== window.location.origin) return;
+      
+      if (e.data?.type === 'google-oauth-success') {
+        const id = e.data?.clientId || tempClientIdRef.current;
+        console.info('[gmail-wizard:oauth-success]', { clientId: id });
+        setGmailConnecting(false);
+        setGmailConnected(true);
+        setGmailError(null);
+        setErrors(prev => ({ ...prev, gmail: undefined }));
+        try { popupRef.current?.close(); } catch {}
+        
+        // Fetch tokens from server and store them
+        (async () => {
+          try {
+            const r = await fetch(`${API_BASE_URL}/google/tokens?clientId=${encodeURIComponent(id)}`, { credentials: 'include' });
+            const j = await r.json();
+            if (j?.ok && j?.tokens) {
+              setGmailTokens(j.tokens);
+              console.info('[gmail-wizard:tokens:stored]', { clientId: id });
+            }
+          } catch { /* ignore */ }
+        })();
+      }
+      
+      if (e.data?.type === 'google-oauth-error') {
+        setGmailConnecting(false);
+        setGmailError('Gmail connection failed. Please try again.');
+        try { popupRef.current?.close(); } catch {}
+      }
+    }
+    
+    window.addEventListener('message', onMessage);
+    return () => window.removeEventListener('message', onMessage);
+  }, []);
+
+  // Check Gmail status if editing existing client
+  React.useEffect(() => {
+    if (!initialClient?.id) return;
+    if (typeof window === 'undefined') return;
+    
+    const statusUrl = `${API_BASE_URL}/google/status?clientId=${encodeURIComponent(initialClient.id)}`;
+    fetch(statusUrl, { credentials: 'include' })
+      .then(r => r.json())
+      .then(d => setGmailConnected(Boolean(d?.connected)))
+      .catch(() => setGmailConnected(false));
+  }, [initialClient?.id]);
+
+  async function handleConnectGmail() {
+    try {
+      setGmailError(null);
+      setGmailConnecting(true);
+      
+      // Use existing client ID if editing, otherwise use temp ID
+      const clientId = initialClient?.id || tempClientIdRef.current;
+      
+      const oauthUrl = `${API_BASE_URL}/google/oauth/url?clientId=${encodeURIComponent(clientId)}`;
+      const res = await fetch(oauthUrl, { credentials: 'include' });
+      const data = await res.json();
+      
+      if (!data?.url) throw new Error('Failed to start Gmail connection flow');
+      
+      const w = 500, h = 700;
+      const y = window.top?.outerHeight ? Math.max(0, (window.top.outerHeight - h) / 2) : 100;
+      const x = window.top?.outerWidth ? Math.max(0, (window.top.outerWidth - w) / 2) : 100;
+      
+      popupRef.current = window.open(
+        data.url,
+        'an-google-oauth',
+        `toolbar=no,location=no,status=no,menubar=no,scrollbars=yes,resizable=yes,width=${w},height=${h},top=${y},left=${x}`
+      );
+      
+      if (!popupRef.current) throw new Error('Popup blocked. Please allow popups and try again.');
+    } catch (e: any) {
+      setGmailConnecting(false);
+      setGmailError(e?.message || 'Failed to start Gmail connection');
+    }
+  }
 
   React.useEffect(() => {
     if (!initialClient) return;
@@ -352,14 +500,18 @@ export function ClientWizard({
     });
   }, [initialClient?.id]);
 
-  const validateBasic = React.useCallback((value: Record<string, any>) => {
-    const next: { email?: string; firstName?: string; lastName?: string; sport?: string } = {};
+  const validateBasic = React.useCallback((value: Record<string, any>, checkGmail = true) => {
+    const next: { email?: string; firstName?: string; lastName?: string; sport?: string; gmail?: string } = {};
     if (!value.email?.trim()) next.email = 'Email is required';
     if (!value.firstName?.trim()) next.firstName = 'First name is required';
     if (!value.lastName?.trim()) next.lastName = 'Last name is required';
     if (!value.sport?.trim()) next.sport = 'Sport is required';
+    // Gmail is required for new clients (not in edit mode)
+    if (checkGmail && !gmailConnected && mode !== 'edit') {
+      next.gmail = 'Please connect your Gmail account to proceed';
+    }
     return next;
-  }, []);
+  }, [gmailConnected, mode]);
 
   const handleNext = async () => {
     // Block advancement from the Basic Info step if required fields are missing.
@@ -376,7 +528,8 @@ export function ClientWizard({
     }
 
     if (isLast) {
-      const validation = validateBasic(basic);
+      // Skip Gmail validation on final submit if we've already validated in step 0
+      const validation = validateBasic(basic, false);
       if (Object.keys(validation).length) {
         setErrors(validation);
         setSubmitError('Please fill all required fields.');
@@ -392,6 +545,9 @@ export function ClientWizard({
         radar,
         agencyEmail: overrideAgencyEmail ?? initialClient?.agencyEmail ?? session?.email,
         id: initialClient?.id,
+        // Include Gmail tokens if connected during this session
+        gmailTokens: gmailTokens || undefined,
+        tempGmailClientId: gmailConnected && !initialClient?.id ? tempClientIdRef.current : undefined,
       };
       if (!payload.password) {
         delete payload.password;
@@ -402,7 +558,15 @@ export function ClientWizard({
         if (publicMode && publicSubmit) {
           await publicSubmit(payload);
         } else {
-          await upsertClient(payload);
+          const result = await upsertClient(payload);
+          // If we have Gmail tokens and a new client ID, associate them
+          if (gmailTokens && result?.id) {
+            try {
+              await setClientGmailTokens(result.id, gmailTokens);
+            } catch (e) {
+              console.error('Failed to save Gmail tokens to client', e);
+            }
+          }
         }
         onSaved?.();
         onSubmitSuccess?.();
@@ -457,10 +621,15 @@ export function ClientWizard({
                   firstName: v.firstName ? undefined : prev.firstName,
                   lastName: v.lastName ? undefined : prev.lastName,
                   sport: v.sport ? undefined : prev.sport,
+                  gmail: prev.gmail, // Keep gmail error until connected
                 }));
               }
             }}
             errors={errors}
+            gmailConnected={gmailConnected}
+            gmailConnecting={gmailConnecting}
+            onConnectGmail={handleConnectGmail}
+            gmailError={gmailError}
           />
         )}
         {activeStep === 1 && (
@@ -503,6 +672,15 @@ export function ClientWizard({
                 <Typography variant="h6">{[basic.firstName, basic.lastName].filter(Boolean).join(' ') || 'Athlete'}</Typography>
                 <Typography variant="body2" color="text.secondary">{basic.email || 'No email'}</Typography>
                 <Typography variant="body2" color="text.secondary">{basic.sport ? formatSportLabel(basic.sport) : 'No sport'}</Typography>
+                {gmailConnected && (
+                  <Chip
+                    icon={<FaGoogle size={12} />}
+                    label="Gmail Connected"
+                    color="success"
+                    size="small"
+                    sx={{ mt: 1 }}
+                  />
+                )}
               </Box>
 
               <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 2 }}>

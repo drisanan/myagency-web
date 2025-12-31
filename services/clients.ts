@@ -106,8 +106,12 @@ export async function getClients() {
   return data?.clients ?? [];
 }
 
-export function setClientGmailTokens(clientId: string, tokens: any) {
-  // No-op; tokens are stored server-side via API.
+export async function setClientGmailTokens(clientId: string, tokens: any) {
+  // Persist tokens to server for the given client
+  await apiFetch('/google/tokens', {
+    method: 'POST',
+    body: JSON.stringify({ clientId, tokens }),
+  });
 }
 
 export function getClientGmailTokens(clientId: string): any | null {
