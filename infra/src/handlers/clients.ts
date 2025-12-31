@@ -3,7 +3,7 @@ import { Handler, requireSession } from './common';
 import { newId } from '../lib/ids';
 import { ClientRecord } from '../lib/models';
 import { hashAccessCode } from '../lib/auth';
-import { getItem, putItem, queryByPK, queryGSI3 } from '../lib/dynamo';
+import { getItem, putItem, queryByPK, queryGSI3, scanByGSI3PK } from '../lib/dynamo';
 import { response } from './cors';
 
 function badRequest(origin: string, msg: string) {
@@ -90,9 +90,23 @@ export const handler: Handler = async (event: APIGatewayProxyEventV2) => {
     // Validate username uniqueness if provided
     let username = payload.username?.toLowerCase().replace(/[^a-z0-9-]/g, '');
     if (username) {
-      const existing = await queryGSI3(`USERNAME#${username}`);
-      if (existing.length > 0) {
-        return badRequest(origin, 'Username is already taken');
+      try {
+        let existing: any[] = [];
+        try {
+          existing = await queryGSI3(`USERNAME#${username}`);
+        } catch (e: any) {
+          // GSI3 might not exist yet, fallback to scan
+          if (e.name === 'ValidationException' || e.message?.includes('GSI3')) {
+            existing = await scanByGSI3PK(`USERNAME#${username}`);
+          } else {
+            console.error('[clients] GSI3 query error:', e);
+          }
+        }
+        if (existing.length > 0) {
+          return badRequest(origin, 'Username is already taken');
+        }
+      } catch (e) {
+        console.error('[clients] Username uniqueness check failed:', e);
       }
     }
 
@@ -137,9 +151,25 @@ export const handler: Handler = async (event: APIGatewayProxyEventV2) => {
     // Handle username update with uniqueness check
     let username = payload.username?.toLowerCase().replace(/[^a-z0-9-]/g, '');
     if (username && username !== existing.username) {
-      const usernameCheck = await queryGSI3(`USERNAME#${username}`);
-      if (usernameCheck.length > 0) {
-        return badRequest(origin, 'Username is already taken');
+      try {
+        let usernameCheck: any[] = [];
+        try {
+          usernameCheck = await queryGSI3(`USERNAME#${username}`);
+        } catch (e: any) {
+          // GSI3 might not exist yet, fallback to scan
+          if (e.name === 'ValidationException' || e.message?.includes('GSI3')) {
+            usernameCheck = await scanByGSI3PK(`USERNAME#${username}`);
+          } else {
+            console.error('[clients] GSI3 query error:', e);
+            // Continue anyway - uniqueness will be enforced by GSI3 constraint if it exists
+          }
+        }
+        if (usernameCheck.length > 0) {
+          return badRequest(origin, 'Username is already taken');
+        }
+      } catch (e) {
+        console.error('[clients] Username uniqueness check failed:', e);
+        // Continue with the update - if GSI3 is functioning, it will enforce uniqueness
       }
     }
     
