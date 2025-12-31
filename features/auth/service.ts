@@ -13,6 +13,7 @@ function requireApiBase() {
 export type AgencySettings = {
   primaryColor?: string;
   secondaryColor?: string;
+  buttonText?: string;
   textPrimary?: string;
   textSecondary?: string;
   linkColor?: string;

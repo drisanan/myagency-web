@@ -21,6 +21,7 @@ const defaults = {
   // Core
   primaryColor: '#14151E',
   secondaryColor: '#AAFB00',
+  buttonText: '#14151E',
   // Text
   textPrimary: '#1A1A2E',
   textSecondary: '#6B7280',
@@ -246,6 +247,12 @@ export function SettingsForm() {
               onChange={(v) => updateColor('secondaryColor', v)}
               defaultValue={defaults.secondaryColor}
             />
+            <ColorPicker 
+              label="Button Text Color" 
+              value={colors.buttonText || ''} 
+              onChange={(v) => updateColor('buttonText', v)}
+              defaultValue={defaults.buttonText}
+            />
           </Stack>
         </AccordionDetails>
       </Accordion>
@@ -452,7 +459,7 @@ export function SettingsForm() {
                 size="small"
                 sx={{ 
                   bgcolor: colors.secondaryColor || defaults.secondaryColor,
-                  color: colors.navActiveText || defaults.navActiveText,
+                  color: colors.buttonText || defaults.buttonText,
                   '&:hover': { bgcolor: colors.secondaryColor || defaults.secondaryColor },
                 }}
               >

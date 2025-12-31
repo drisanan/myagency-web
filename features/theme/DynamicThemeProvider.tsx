@@ -10,6 +10,7 @@ import { typography } from '@/theme/typography';
 const defaults = {
   primaryColor: '#14151E',
   secondaryColor: '#AAFB00',
+  buttonText: '#14151E',
   textPrimary: '#1A1A2E',
   textSecondary: '#6B7280',
   linkColor: '#3B82F6',
@@ -35,7 +36,7 @@ function buildTheme(settings: AgencySettings) {
     palette: {
       primary: { 
         main: s.secondaryColor, 
-        contrastText: s.navActiveText,
+        contrastText: s.buttonText,
       },
       secondary: { 
         main: s.primaryColor,
@@ -76,7 +77,7 @@ function buildTheme(settings: AgencySettings) {
           },
           containedPrimary: {
             backgroundColor: s.secondaryColor,
-            color: s.navActiveText,
+            color: s.buttonText,
             '&:hover': { 
               backgroundColor: adjustBrightness(s.secondaryColor, -10),
             },
@@ -138,7 +139,7 @@ function buildTheme(settings: AgencySettings) {
         styleOverrides: {
           colorPrimary: {
             backgroundColor: s.secondaryColor,
-            color: s.navActiveText,
+            color: s.buttonText,
           },
           colorSuccess: {
             backgroundColor: s.successColor,
@@ -301,7 +302,7 @@ function buildTheme(settings: AgencySettings) {
         styleOverrides: {
           primary: {
             backgroundColor: s.secondaryColor,
-            color: s.navActiveText,
+            color: s.buttonText,
             '&:hover': {
               backgroundColor: adjustBrightness(s.secondaryColor, -10),
             },
@@ -312,7 +313,7 @@ function buildTheme(settings: AgencySettings) {
         styleOverrides: {
           colorPrimary: {
             backgroundColor: s.secondaryColor,
-            color: s.navActiveText,
+            color: s.buttonText,
           },
         },
       },
@@ -355,6 +356,7 @@ export function DynamicThemeProvider({ children }: Props) {
   const theme = React.useMemo(() => buildTheme(agencySettings), [
     agencySettings?.primaryColor,
     agencySettings?.secondaryColor,
+    agencySettings?.buttonText,
     agencySettings?.textPrimary,
     agencySettings?.textSecondary,
     agencySettings?.linkColor,
