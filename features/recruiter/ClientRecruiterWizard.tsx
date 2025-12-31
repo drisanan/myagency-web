@@ -140,9 +140,10 @@ export function ClientRecruiterWizard() {
     ])
       .then(([profile, allLists]) => {
         setClientProfile(profile);
-        // Filter to only show lists assigned to this client or agency-created lists
+        // Show agency-created lists (not CLIENT_INTEREST type)
+        // CLIENT_INTEREST lists are created by clients themselves and should not appear here
         const filtered = (allLists || []).filter(
-          (l) => l.type !== 'CLIENT_INTEREST' || l.clientId === clientId
+          (l) => l.type !== 'CLIENT_INTEREST'
         );
         setLists(filtered);
       })
