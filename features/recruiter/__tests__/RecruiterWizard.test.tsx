@@ -195,5 +195,48 @@ describe('RecruiterWizard loading indicators', () => {
     const confirmation = await screen.findByTestId('send-confirmation');
     expect(confirmation).toHaveTextContent('Sent to 1 recipient');
   });
+
+  test('WYSIWYG editor is rendered when Edit button is clicked', async () => {
+    const user = userEvent.setup();
+    const fetchMock = jest.fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ connected: true }) } as any)
+      .mockResolvedValue({ ok: true, json: async () => ({ ok: true }) } as any);
+    (global as any).fetch = fetchMock;
+
+    render(wrapper(<RecruiterWizard />));
+
+    // Step 1: select client
+    const clientSelect = await screen.findByLabelText(/client/i);
+    await user.click(clientSelect);
+    await user.click(await screen.findByText(/seed@example.com/i));
+    await user.click(screen.getByRole('button', { name: /next/i }));
+
+    // Step 2: select list
+    const listSelect = await screen.findByLabelText(/list/i);
+    await user.click(listSelect);
+    await user.click(await screen.findByText(/Selenium List/i));
+    await user.click(screen.getByRole('button', { name: /next/i }));
+
+    // Draft step: verify edit button exists
+    const editBtn = await screen.findByRole('button', { name: /edit/i });
+    expect(editBtn).toBeInTheDocument();
+
+    // Click edit to enable WYSIWYG editor
+    await user.click(editBtn);
+
+    // Verify WYSIWYG editor is rendered (using our mock)
+    const quillEditor = await screen.findByTestId('mock-quill-editor');
+    expect(quillEditor).toBeInTheDocument();
+
+    // Verify "Done Editing" button appears
+    const doneEditingBtn = screen.getByRole('button', { name: /done editing/i });
+    expect(doneEditingBtn).toBeInTheDocument();
+
+    // Click "Done Editing" to return to preview mode
+    await user.click(doneEditingBtn);
+
+    // Verify edit button is back
+    expect(screen.getByRole('button', { name: /^edit$/i })).toBeInTheDocument();
+  });
 });
 

@@ -2,7 +2,12 @@
 import React from 'react';
 import { Box, Button, Step, StepLabel, Stepper, TextField, Typography, Card, CardContent, Checkbox, FormControlLabel, MenuItem, Stack, Accordion, AccordionSummary, AccordionDetails, Switch, CircularProgress } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import dynamic from 'next/dynamic';
 import { generateIntro } from '@/services/aiRecruiter';
+
+// Dynamically import ReactQuill to avoid SSR issues
+const ReactQuill = dynamic(() => import('react-quill-new'), { ssr: false });
+import 'react-quill-new/dist/quill.snow.css';
 import { useSession } from '@/features/auth/session';
 import { listClientsByAgencyEmail, setClientGmailTokens, getClientGmailTokens } from '@/services/clients';
 import { getDivisions, getStates } from '@/services/recruiterMeta';
@@ -1122,16 +1127,38 @@ CRITICAL INSTRUCTIONS:
                   </Stack>
                 </Box>
                 {isEditingPreview ? (
-                  <TextField
-                    multiline
-                    fullWidth
-                    minRows={10}
-                    maxRows={20}
-                    value={aiHtml || buildEmailPreview()}
-                    onChange={(e) => setAiHtml(e.target.value)}
-                    sx={{ bgcolor: '#fff' }}
-                    helperText="Edit the HTML content directly. Use <p>, <ul>, <li>, <a>, etc."
-                  />
+                  <Box sx={{ 
+                    bgcolor: '#fff', 
+                    borderRadius: 1,
+                    '& .ql-container': { 
+                      minHeight: 200,
+                      fontSize: '14px',
+                      fontFamily: 'inherit',
+                    },
+                    '& .ql-editor': { 
+                      minHeight: 200,
+                    },
+                    '& .ql-toolbar': {
+                      borderTopLeftRadius: 4,
+                      borderTopRightRadius: 4,
+                    },
+                  }}>
+                    <ReactQuill
+                      theme="snow"
+                      value={aiHtml || buildEmailPreview()}
+                      onChange={(content: string) => setAiHtml(content)}
+                      modules={{
+                        toolbar: [
+                          [{ 'header': [1, 2, 3, false] }],
+                          ['bold', 'italic', 'underline'],
+                          [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                          ['link'],
+                          ['clean']
+                        ]
+                      }}
+                      placeholder="Compose your email..."
+                    />
+                  </Box>
                 ) : (
                   <Box sx={{ bgcolor: '#fff', p: 2, borderRadius: 1, minHeight: 200 }}>
                     <div dangerouslySetInnerHTML={{ __html: aiHtml || buildEmailPreview() }} />

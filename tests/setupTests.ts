@@ -13,4 +13,29 @@ if (!global.TextDecoder) {
   global.TextDecoder = TextDecoder as any;
 }
 
+// Mock react-quill-new for Jest tests (dynamically loaded component)
+jest.mock('react-quill-new', () => {
+  const React = require('react');
+  const MockQuill = React.forwardRef(function MockQuill(
+    { value, onChange, placeholder, ...props }: any,
+    ref: any
+  ) {
+    return React.createElement('div', {
+      'data-testid': 'mock-quill-editor',
+      ref,
+      ...props,
+    }, [
+      React.createElement('textarea', {
+        key: 'editor',
+        'data-testid': 'quill-textarea',
+        value: value || '',
+        onChange: (e: any) => onChange?.(e.target.value),
+        placeholder,
+        style: { width: '100%', minHeight: '200px' },
+      }),
+    ]);
+  });
+  return MockQuill;
+});
+
 
