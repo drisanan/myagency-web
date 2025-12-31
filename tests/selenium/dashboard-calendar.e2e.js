@@ -1,9 +1,20 @@
 const { Builder, By, until } = require('selenium-webdriver');
 const chrome = require('selenium-webdriver/chrome');
-const { setSession, allowlistedConsoleErrors } = require('./utils');
+const { findAndType, allowlistedConsoleErrors, dismissTour, sleep } = require('./utils');
 
-const BASE = process.env.BASE_URL || 'http://localhost:3000';
-const AGENCY_EMAIL = 'agency1@an.test';
+const BASE = process.env.BASE_URL || 'https://www.myrecruiteragency.com';
+const LOGIN_EMAIL = 'drisanjames@gmail.com';
+const LOGIN_PHONE = '2084407940';
+const LOGIN_CODE = '123456';
+
+async function login(driver) {
+  await driver.get(`${BASE}/auth/login`);
+  await findAndType(driver, 'Email', LOGIN_EMAIL);
+  await findAndType(driver, 'Phone', LOGIN_PHONE);
+  await findAndType(driver, 'Access Code', LOGIN_CODE);
+  await driver.findElement(By.xpath(`//button[normalize-space(.)="Sign in"]`)).click();
+  await driver.wait(until.elementLocated(By.xpath(`//*[contains(text(),"Dashboard")]`)), 20000);
+}
 
 async function run() {
   const options = new chrome.Options();
@@ -12,9 +23,12 @@ async function run() {
   const driver = await new Builder().forBrowser('chrome').setChromeOptions(options).build();
 
   try {
-    await setSession(driver, BASE, { role: 'agency', email: AGENCY_EMAIL, agencyId: 'agency-001' });
+    await login(driver);
+    await dismissTour(driver);
     await driver.get(`${BASE}/dashboard`);
+    await dismissTour(driver);
     await driver.wait(until.elementLocated(By.xpath(`//*[contains(text(),"Recruiting Calendar")]`)), 10000);
+    await sleep(500);
 
     // Ensure legend chips and blocks render
     await driver.wait(until.elementLocated(By.xpath(`//*[contains(text(),"Dead")]`)), 5000);
