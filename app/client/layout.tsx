@@ -2,6 +2,7 @@
 import React from 'react';
 import { SessionProvider, useSession } from '@/features/auth/session';
 import { TourProvider } from '@/features/tour/TourProvider';
+import { DynamicThemeProvider } from '@/features/theme/DynamicThemeProvider';
 import { useRouter } from 'next/navigation';
 import { Box, AppBar, Toolbar, Typography } from '@mui/material';
 import { colors } from '@/theme/colors';
@@ -83,7 +84,9 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
     <SessionProvider>
       <TourProvider>
         <Guard>
-          <ClientShell>{children}</ClientShell>
+          <DynamicThemeProvider>
+            <ClientShell>{children}</ClientShell>
+          </DynamicThemeProvider>
         </Guard>
       </TourProvider>
     </SessionProvider>
