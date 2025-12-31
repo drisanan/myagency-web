@@ -88,11 +88,18 @@ export async function checkUsernameAvailability(username: string): Promise<{ ava
       headers: { 'Content-Type': 'application/json' },
     });
     
+    // Check for HTTP errors - don't block user on server issues
+    if (!res.ok) {
+      console.error('[profilePublic] checkUsernameAvailability HTTP error:', res.status);
+      return { available: true, reason: 'check_failed' };
+    }
+    
     const data = await res.json();
-    return { available: data?.available ?? false, reason: data?.reason };
+    return { available: data?.available ?? true, reason: data?.reason };
   } catch (e) {
     console.error('[profilePublic] checkUsernameAvailability error:', e);
-    return { available: false, reason: 'error' };
+    // Don't block user on network errors - will validate on save
+    return { available: true, reason: 'check_failed' };
   }
 }
 

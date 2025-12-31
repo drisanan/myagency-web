@@ -214,7 +214,7 @@ var handler = async (event) => {
       if (!event.body) return response(400, { ok: false, error: "Missing body" }, origin);
       const parsed = JSON.parse(event.body || "{}");
       const email = session.agencyEmail;
-      let existing = await queryGSI1(`EMAIL#${email}`, "AGENCY#");
+      const existing = await queryGSI1(`EMAIL#${email}`, "AGENCY#");
       let agency = existing?.[0];
       if (!agency && session.agencyId) {
         console.log("GSI1 lookup failed, trying PK lookup", { agencyId: session.agencyId });

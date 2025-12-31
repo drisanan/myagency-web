@@ -1979,6 +1979,17 @@ async function queryByPK(PK, beginsWith) {
   );
   return res.Items ?? [];
 }
+async function queryGSI3(GSI3PK, beginsWith) {
+  const res = await docClient.send(
+    new import_lib_dynamodb2.QueryCommand({
+      TableName: TABLE_NAME,
+      IndexName: "GSI3",
+      KeyConditionExpression: beginsWith ? "GSI3PK = :g3pk AND begins_with(GSI3SK, :g3sk)" : "GSI3PK = :g3pk",
+      ExpressionAttributeValues: beginsWith ? { ":g3pk": GSI3PK, ":g3sk": beginsWith } : { ":g3pk": GSI3PK }
+    })
+  );
+  return res.Items ?? [];
+}
 
 // infra/src/handlers/cors.ts
 var ALLOWED_ORIGINS = [
@@ -2058,11 +2069,19 @@ var handler = async (event) => {
     if (payload.accessCode) {
       accessCodeHash = await hashAccessCode(payload.accessCode);
     }
+    let username = payload.username?.toLowerCase().replace(/[^a-z0-9-]/g, "");
+    if (username) {
+      const existing = await queryGSI3(`USERNAME#${username}`);
+      if (existing.length > 0) {
+        return badRequest(origin, "Username is already taken");
+      }
+    }
     const rec = {
       PK: `AGENCY#${cleanAgencyId}`,
       SK: `CLIENT#${id}`,
       GSI1PK: `EMAIL#${payload.email}`,
       GSI1SK: `CLIENT#${id}`,
+      ...username ? { GSI3PK: `USERNAME#${username}`, GSI3SK: `CLIENT#${id}` } : {},
       id,
       email: payload.email,
       firstName: payload.firstName,
@@ -2071,6 +2090,9 @@ var handler = async (event) => {
       agencyId: cleanAgencyId,
       agencyEmail: session.agencyEmail,
       phone: payload.phone,
+      username,
+      galleryImages: payload.galleryImages || [],
+      radar: payload.radar || {},
       accessCodeHash,
       authEnabled: Boolean(accessCodeHash),
       createdAt: now,
@@ -2086,7 +2108,23 @@ var handler = async (event) => {
     const existing = await getItem({ PK: `AGENCY#${cleanAgencyId}`, SK: `CLIENT#${clientId}` });
     if (!existing) return response(404, { ok: false, message: "Not found" }, origin);
     const now = (/* @__PURE__ */ new Date()).toISOString();
-    const merged = { ...existing, ...payload, updatedAt: now };
+    let username = payload.username?.toLowerCase().replace(/[^a-z0-9-]/g, "");
+    if (username && username !== existing.username) {
+      const usernameCheck = await queryGSI3(`USERNAME#${username}`);
+      if (usernameCheck.length > 0) {
+        return badRequest(origin, "Username is already taken");
+      }
+    }
+    const merged = {
+      ...existing,
+      ...payload,
+      updatedAt: now,
+      ...username ? {
+        username,
+        GSI3PK: `USERNAME#${username}`,
+        GSI3SK: `CLIENT#${clientId}`
+      } : {}
+    };
     if (payload.accessCode) {
       merged.accessCodeHash = await hashAccessCode(payload.accessCode);
       merged.authEnabled = true;

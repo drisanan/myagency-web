@@ -6,7 +6,7 @@ import { upsertClient, setClientGmailTokens } from '@/services/clients';
 import { MenuItem, TextField } from '@mui/material';
 import { getSports, formatSportLabel } from '@/features/recruiter/divisionMapping';
 import { useRouter } from 'next/navigation';
-import { FaGoogle, FaCheck, FaTimes, FaTrash, FaPlus } from 'react-icons/fa';
+import { FaGoogle, FaCheck, FaTimes, FaTrash, FaPlus, FaExclamationTriangle } from 'react-icons/fa';
 import { checkUsernameAvailability } from '@/services/profilePublic';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || '';
@@ -344,7 +344,7 @@ function BasicInfoStep({
   const [showUrlInput, setShowUrlInput] = React.useState(false);
   const fileInputRef = React.useRef<HTMLInputElement | null>(null);
   const [photoError, setPhotoError] = React.useState<string | null>(null);
-  const [usernameStatus, setUsernameStatus] = React.useState<'idle' | 'checking' | 'available' | 'taken'>('idle');
+  const [usernameStatus, setUsernameStatus] = React.useState<'idle' | 'checking' | 'available' | 'taken' | 'error'>('idle');
   const usernameCheckTimeout = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Check username availability with debounce
@@ -365,11 +365,15 @@ function BasicInfoStep({
     usernameCheckTimeout.current = setTimeout(async () => {
       try {
         const result = await checkUsernameAvailability(cleaned);
-        setUsernameStatus(result.available ? 'available' : 'taken');
+        if (result.reason === 'check_failed') {
+          setUsernameStatus('error');
+        } else {
+          setUsernameStatus(result.available ? 'available' : 'taken');
+        }
       } catch {
-        setUsernameStatus('idle');
+        setUsernameStatus('error');
       }
-    }, 500);
+    }, 800);
   };
   const handlePhotoFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -505,6 +509,7 @@ function BasicInfoStep({
           errors?.username ||
           (usernameStatus === 'taken' ? 'Username is already taken' :
            usernameStatus === 'available' ? 'Username is available!' :
+           usernameStatus === 'error' ? 'Unable to verify - will check on save' :
            `Your public profile: athletenarrative.com/athlete/${value.username || 'yourname'}`)
         }
         inputProps={{ 'data-testid': 'athlete-username' }}
@@ -515,6 +520,7 @@ function BasicInfoStep({
               {usernameStatus === 'checking' && <CircularProgress size={16} />}
               {usernameStatus === 'available' && <FaCheck color="green" />}
               {usernameStatus === 'taken' && <FaTimes color="red" />}
+              {usernameStatus === 'error' && <FaExclamationTriangle color="orange" />}
             </InputAdornment>
           ),
         }}
