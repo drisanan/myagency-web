@@ -771,7 +771,6 @@ export function ClientWizard({
         gmailTokens: gmailTokens || undefined,
         tempGmailClientId: gmailConnected && !initialClient?.id ? tempClientIdRef.current : undefined,
       };
-      console.log('[ClientWizard] Saving with username:', payload.username, 'full payload keys:', Object.keys(payload));
       if (!payload.password) {
         delete payload.password;
       }

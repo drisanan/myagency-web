@@ -1,6 +1,78 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getTokens } from '../../google/tokenStore';
+import { getTokens, saveTokens } from '../../google/tokenStore';
 import { toBase64Url } from '../utils';
+
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.API_BASE_URL || '';
+
+/**
+ * Fetch tokens from the backend API (DynamoDB) if not in local memory.
+ * This ensures tokens persist across serverless function instances.
+ */
+async function fetchTokensFromBackend(clientId: string, cookies: string): Promise<any> {
+  if (!API_BASE_URL) return null;
+  
+  try {
+    const url = `${API_BASE_URL.startsWith('http') ? API_BASE_URL : `https://${API_BASE_URL}`}/google/tokens?clientId=${encodeURIComponent(clientId)}`;
+    const res = await fetch(url, {
+      headers: { 
+        'Cookie': cookies,
+        'Content-Type': 'application/json',
+      },
+      credentials: 'include',
+    });
+    
+    if (!res.ok) {
+      console.warn('[gmail-draft:backend-tokens] Failed to fetch:', res.status);
+      return null;
+    }
+    
+    const data = await res.json();
+    if (data?.tokens) {
+      // Cache tokens locally for subsequent requests
+      saveTokens(clientId, data.tokens);
+      return data.tokens;
+    }
+    return null;
+  } catch (e) {
+    console.error('[gmail-draft:backend-tokens] Error:', e);
+    return null;
+  }
+}
+
+/**
+ * Refresh expired tokens using the backend API
+ */
+async function refreshTokensFromBackend(clientId: string, cookies: string): Promise<any> {
+  if (!API_BASE_URL) return null;
+  
+  try {
+    const url = `${API_BASE_URL.startsWith('http') ? API_BASE_URL : `https://${API_BASE_URL}`}/google/refresh`;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 
+        'Cookie': cookies,
+        'Content-Type': 'application/json',
+      },
+      credentials: 'include',
+      body: JSON.stringify({ clientId }),
+    });
+    
+    if (!res.ok) {
+      console.warn('[gmail-draft:refresh] Failed:', res.status);
+      return null;
+    }
+    
+    const data = await res.json();
+    if (data?.ok) {
+      // Fetch updated tokens after refresh
+      return await fetchTokensFromBackend(clientId, cookies);
+    }
+    return null;
+  } catch (e) {
+    console.error('[gmail-draft:refresh] Error:', e);
+    return null;
+  }
+}
 
 function stripMailto(s: string): string {
   let out = s.trim();
@@ -81,18 +153,44 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: false, error: 'No valid recipient emails' }, { status: 400 });
     }
 
-    const storeTokens = getTokens(clientId);
-    const tokens = inlineTokens || storeTokens;
+    // Get cookies from request for backend API calls
+    const cookies = req.headers.get('cookie') || '';
+    
+    // Try multiple token sources in order of preference
+    let tokens = inlineTokens || getTokens(clientId);
+    
+    // If no tokens in memory/inline, fetch from backend (DynamoDB)
+    if (!tokens?.access_token && !tokens?.refresh_token) {
+      console.info('[gmail-draft:fetching-from-backend]', { clientId });
+      tokens = await fetchTokensFromBackend(clientId, cookies);
+    }
+    
     console.info('[gmail-draft:tokens]', {
       clientId,
       inline: Boolean(inlineTokens),
       exists: Boolean(tokens),
       hasAccess: Boolean(tokens?.access_token),
       hasRefresh: Boolean(tokens?.refresh_token),
+      expiry: tokens?.expiry_date,
     });
+    
     if (!tokens?.refresh_token && !tokens?.access_token) {
       console.warn('[gmail-draft:unauthorized]', { clientId });
-      return NextResponse.json({ ok: false, error: 'Gmail not connected for this client' }, { status: 401 });
+      return NextResponse.json({ ok: false, error: 'Gmail not connected for this client. Please reconnect Gmail.' }, { status: 401 });
+    }
+    
+    // Check if token is expired and refresh if needed
+    const isExpired = tokens?.expiry_date && Date.now() > tokens.expiry_date;
+    if (isExpired && tokens?.refresh_token) {
+      console.info('[gmail-draft:refreshing-expired-token]', { clientId, expiry: tokens.expiry_date });
+      const refreshedTokens = await refreshTokensFromBackend(clientId, cookies);
+      if (refreshedTokens) {
+        tokens = refreshedTokens;
+        console.info('[gmail-draft:token-refreshed]', { clientId, newExpiry: tokens?.expiry_date });
+      } else {
+        console.warn('[gmail-draft:refresh-failed]', { clientId });
+        // Continue with existing token - Gmail API might still accept it
+      }
     }
 
     const { google } = await import('googleapis');

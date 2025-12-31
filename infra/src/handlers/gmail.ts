@@ -84,11 +84,13 @@ export const handler: Handler = async (event: APIGatewayProxyEventV2) => {
       const tokenRec = await getItem({ 
         PK: `AGENCY#${session.agencyId}`, 
         SK: `GMAIL_TOKEN#${clientId}` 
-      });
+      }) as GmailTokenRecord | undefined;
 
-      if (!tokenRec?.tokens) return response(400, { ok: false, error: 'No Gmail tokens stored for this client' }, origin);
+      if (!tokenRec?.tokens) {
+        return response(400, { ok: false, error: 'No Gmail tokens stored for this client. Please reconnect Gmail.' }, origin);
+      }
       
-      const tokens = tokenRec.tokens;
+      let tokens = tokenRec.tokens;
 
       // 2. Initialize Google Client
       const oauth2Client = new google.auth.OAuth2(
@@ -97,9 +99,36 @@ export const handler: Handler = async (event: APIGatewayProxyEventV2) => {
         process.env.GOOGLE_REDIRECT_URI,
       );
       oauth2Client.setCredentials(tokens);
+      
+      // 3. Check if token is expired and refresh if needed
+      const isExpired = tokens.expiry_date && Date.now() > tokens.expiry_date;
+      if (isExpired && tokens.refresh_token) {
+        console.log('[gmail:create-draft] Token expired, refreshing...', { clientId, expiry: tokens.expiry_date });
+        try {
+          const { credentials } = await oauth2Client.refreshAccessToken();
+          tokens = credentials;
+          oauth2Client.setCredentials(credentials);
+          
+          // Save refreshed tokens
+          await putItem({
+            ...tokenRec,
+            tokens: credentials,
+            updatedAt: Date.now(),
+          });
+          console.log('[gmail:create-draft] Token refreshed successfully', { clientId, newExpiry: credentials.expiry_date });
+        } catch (refreshErr: any) {
+          console.error('[gmail:create-draft] Token refresh failed', refreshErr);
+          return response(401, { 
+            ok: false, 
+            error: 'Gmail token expired and refresh failed. Please reconnect Gmail.',
+            needsReconnect: true 
+          }, origin);
+        }
+      }
+      
       const gmail = google.gmail({ version: 'v1', auth: oauth2Client });
 
-      // 3. Create Drafts
+      // 4. Create Drafts
       const results: Array<{ to: string; ok: boolean; error?: string }> = [];
       for (const to of recipients) {
         try {

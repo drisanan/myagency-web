@@ -6,7 +6,13 @@ export type TokenData = {
   expiry_date?: number;
 };
 
-// WARNING: In-memory store is only for local testing. Replace with a secure DB in production.
+/**
+ * In-memory token cache.
+ * 
+ * NOTE: This is a cache layer only. Primary token storage is in DynamoDB via the backend API.
+ * The create-draft route fetches from DynamoDB if this cache is empty.
+ * This cache helps reduce API calls for tokens during a single request lifecycle.
+ */
 const TOKENS: Record<string, TokenData> = {};
 
 export function saveTokens(clientId: string, tokens: TokenData) {

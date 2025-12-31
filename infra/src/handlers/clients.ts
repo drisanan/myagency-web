@@ -142,7 +142,6 @@ export const handler: Handler = async (event: APIGatewayProxyEventV2) => {
     if (!clientId) return badRequest(origin, 'Missing client id');
     if (!event.body) return badRequest(origin, 'Missing body');
     const payload = JSON.parse(event.body);
-    console.log('[clients PUT] Received payload username:', payload.username);
     
     const existing = await getItem({ PK: `AGENCY#${cleanAgencyId}`, SK: `CLIENT#${clientId}` }) as ClientRecord | undefined;
     if (!existing) return response(404, { ok: false, message: 'Not found' }, origin);
@@ -184,7 +183,6 @@ export const handler: Handler = async (event: APIGatewayProxyEventV2) => {
         GSI3SK: `CLIENT#${clientId}` 
       } : {}),
     };
-    console.log('[clients PUT] Saving with GSI3PK:', merged.GSI3PK, 'username:', merged.username);
     
     if (payload.accessCode) {
       merged.accessCodeHash = await hashAccessCode(payload.accessCode);
