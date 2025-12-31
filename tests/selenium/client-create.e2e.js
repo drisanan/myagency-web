@@ -1,3 +1,11 @@
+/**
+ * E2E Test: Client Creation Wizard
+ * 
+ * NOTE: This test now requires Gmail connection in the Basic Info step.
+ * Since we can't do real OAuth in automated tests, the test simulates
+ * the Gmail connection by manipulating localStorage.
+ */
+
 const { Builder, By, until } = require('selenium-webdriver');
 const chrome = require('selenium-webdriver/chrome');
 const fetch = (...args) => import('node-fetch').then(({ default: f }) => f(...args));
@@ -23,6 +31,15 @@ async function login(driver) {
   sessionCookie = await getSessionCookie(driver);
 }
 
+// Simulate Gmail OAuth success for testing
+async function simulateGmailConnection(driver) {
+  // Post a message to simulate OAuth popup success
+  await driver.executeScript(`
+    window.postMessage({ type: 'google-oauth-success', clientId: 'test-${Date.now()}' }, window.location.origin);
+  `);
+  await new Promise(r => setTimeout(r, 500));
+}
+
 async function run() {
   const options = new chrome.Options();
   // options.addArguments('--headless=new');
@@ -34,12 +51,29 @@ async function run() {
     await driver.get(`${BASE}/clients/new`);
     await dismissTour(driver);
 
-    await findAndType(driver, 'Email', TEST_EMAIL);
+    await findAndType(driver, 'Athlete Email', TEST_EMAIL);
     // Access Code is required; use numeric 6-digit
     await findAndType(driver, 'Access Code', '123456');
     await findAndType(driver, 'First name', 'Client');
     await findAndType(driver, 'Last name', 'Create');
     await selectOption(driver, 'Sport', 'Football');
+
+    // Verify Gmail connection UI is present
+    await driver.wait(
+      until.elementLocated(By.xpath(`//*[contains(text(),"Gmail Connection")]`)),
+      5000
+    );
+    console.log('Gmail Connection section found');
+
+    // Simulate Gmail connection since we can't do real OAuth in tests
+    await simulateGmailConnection(driver);
+    
+    // Verify Gmail Connected chip appears
+    await driver.wait(
+      until.elementLocated(By.xpath(`//*[contains(text(),"Gmail Connected")]`)),
+      5000
+    );
+    console.log('Gmail Connected successfully (simulated)');
 
     // Step through wizard, filling new Difference Maker field on Motivation step
     const clickNext = async () => {
