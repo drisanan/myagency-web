@@ -123,6 +123,23 @@ function response(statusCode, body, origin, extraHeaders) {
   };
 }
 
+// infra/src/lib/dynamo.ts
+var import_lib_dynamodb2 = require("@aws-sdk/lib-dynamodb");
+
+// infra/src/handlers/common.ts
+var import_client_dynamodb = require("@aws-sdk/client-dynamodb");
+var import_lib_dynamodb = require("@aws-sdk/lib-dynamodb");
+var client = new import_client_dynamodb.DynamoDBClient({});
+var docClient = import_lib_dynamodb.DynamoDBDocumentClient.from(client);
+var DEBUG_SESSION = process.env.DEBUG_SESSION === "true";
+
+// infra/src/lib/dynamo.ts
+var TABLE_NAME = process.env.TABLE_NAME || "agency-narrative-crm";
+async function getItem(key) {
+  const res = await docClient.send(new import_lib_dynamodb2.GetCommand({ TableName: TABLE_NAME, Key: key }));
+  return res.Item;
+}
+
 // infra/src/handlers/auth.ts
 var handler = async (event) => {
   const origin = event.headers?.origin || event.headers?.Origin || event.headers?.["origin"] || "";
@@ -139,6 +156,18 @@ var handler = async (event) => {
     const cookieHeader = event.headers?.cookie || event.headers?.Cookie;
     const session = parseSessionFromRequest(event);
     console.log("auth GET", { origin, cookie: cookieHeader, session });
+    if (session?.agencyId) {
+      try {
+        const agency = await getItem({ PK: `AGENCY#${session.agencyId}`, SK: "PROFILE" });
+        if (agency?.settings) {
+          session.agencySettings = agency.settings;
+          session.agencyLogo = agency.settings?.logoDataUrl || agency.logoUrl || session.agencyLogo;
+        }
+        console.log("auth GET merged fresh settings", { agencyId: session.agencyId, hasSettings: !!agency?.settings });
+      } catch (e) {
+        console.error("auth GET failed to fetch agency settings", e);
+      }
+    }
     return response(200, { ok: true, session }, origin);
   }
   if (method === "POST") {

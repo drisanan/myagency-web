@@ -1,6 +1,7 @@
 import { APIGatewayProxyEventV2 } from 'aws-lambda';
 import { buildClearCookie, buildSessionCookie, encodeSession, parseSessionFromRequest } from '../lib/session';
 import { response } from './cors';
+import { getItem } from '../lib/dynamo';
 
 export const handler = async (event: APIGatewayProxyEventV2) => {
   const origin = event.headers?.origin || event.headers?.Origin || event.headers?.['origin'] || '';
@@ -20,6 +21,22 @@ export const handler = async (event: APIGatewayProxyEventV2) => {
     const cookieHeader = event.headers?.cookie || event.headers?.Cookie;
     const session = parseSessionFromRequest(event);
     console.log('auth GET', { origin, cookie: cookieHeader, session });
+    
+    // Fetch fresh agency settings from DB if we have an agencyId
+    if (session?.agencyId) {
+      try {
+        const agency = await getItem({ PK: `AGENCY#${session.agencyId}`, SK: 'PROFILE' });
+        if (agency?.settings) {
+          session.agencySettings = agency.settings;
+          session.agencyLogo = agency.settings?.logoDataUrl || agency.logoUrl || session.agencyLogo;
+        }
+        console.log('auth GET merged fresh settings', { agencyId: session.agencyId, hasSettings: !!agency?.settings });
+      } catch (e) {
+        console.error('auth GET failed to fetch agency settings', e);
+        // Continue with cached session data
+      }
+    }
+    
     return response(200, { ok: true, session }, origin);
   }
 
