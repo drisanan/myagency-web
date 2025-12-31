@@ -80,8 +80,8 @@ export const handler = async (event: APIGatewayProxyEventV2) => {
       const email = session.agencyEmail; 
       
       // Try GSI1 lookup first
-      let existing = await queryGSI1(`EMAIL#${email}`, 'AGENCY#');
-      let agency = existing?.[0];
+      const existing = await queryGSI1(`EMAIL#${email}`, 'AGENCY#');
+      let agency: Record<string, any> | undefined = existing?.[0];
       
       // Fallback: Query by PK using agencyId from session
       if (!agency && session.agencyId) {
