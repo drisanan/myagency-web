@@ -228,4 +228,7 @@ const ghlLoginHandler = async (event: APIGatewayProxyEventV2): Promise<APIGatewa
   }
 };
 
+// Export unwrapped handler for reuse by login.ts
+export { ghlLoginHandler };
+
 export const handler = withSentry(ghlLoginHandler);
