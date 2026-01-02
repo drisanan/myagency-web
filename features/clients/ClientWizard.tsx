@@ -823,12 +823,13 @@ export function ClientWizard({
     } else if (value.accessCode?.trim() && value.accessCode.length !== 6) {
       next.accessCode = 'Access code must be exactly 6 digits';
     }
-    // Gmail is required for new clients (not in edit mode)
-    if (checkGmail && !gmailConnected && mode !== 'edit') {
+    // Gmail is required for new clients (not in edit mode, not public mode)
+    // Public intake forms don't require Gmail connection
+    if (checkGmail && !gmailConnected && mode !== 'edit' && !publicMode) {
       next.gmail = 'Please connect your Gmail account to proceed';
     }
     return next;
-  }, [gmailConnected, mode]);
+  }, [gmailConnected, mode, publicMode]);
 
   const handleNext = async () => {
     // Block advancement from the Basic Info step if required fields are missing.
