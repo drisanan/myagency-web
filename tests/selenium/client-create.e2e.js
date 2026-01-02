@@ -56,6 +56,7 @@ async function run() {
     await findAndType(driver, 'Access Code', '123456');
     await findAndType(driver, 'First name', 'Client');
     await findAndType(driver, 'Last name', 'Create');
+    await findAndType(driver, 'Phone', '2084407940');
     await selectOption(driver, 'Sport', 'Football');
 
     // Verify Gmail connection UI is present
@@ -75,25 +76,27 @@ async function run() {
     );
     console.log('Gmail Connected successfully (simulated)');
 
-    // Step through wizard, filling new Difference Maker field on Motivation step
+    // Step through wizard (8 steps: Basic, Personal, Social, Content, Gallery, Events, Motivation, Review)
     const clickNext = async () => {
       const nextBtn = await driver.findElement(By.xpath(`//button[normalize-space(.)="Next"]`));
       await nextBtn.click();
       await sleep(200);
     };
 
-    // Step 0 -> 1
+    // Step 0 -> 1 (Basic -> Personal)
     await clickNext();
-    // Step 1 -> 2
+    // Step 1 -> 2 (Personal -> Social)
     await clickNext();
-    // Step 2 -> 3
+    // Step 2 -> 3 (Social -> Content)
     await clickNext();
-    // Step 3 -> 4
+    // Step 3 -> 4 (Content -> Gallery)
     await clickNext();
-    // Step 4 -> 5 (Motivation)
+    // Step 4 -> 5 (Gallery -> Events)
+    await clickNext();
+    // Step 5 -> 6 (Events -> Motivation)
     await clickNext();
 
-    // Fill the new "What makes you different..." field
+    // Fill the new "What makes you different..." field on Motivation step
     const diffField = await driver.wait(
       until.elementLocated(
         By.xpath(`//label[contains(., "What makes you different from everyone else as a person?")]/following::textarea[1] | //label[contains(., "What makes you different from everyone else as a person?")]/following::input[1]`)
@@ -103,7 +106,7 @@ async function run() {
     await diffField.clear();
     await diffField.sendKeys('I bring relentless curiosity and teamwork to every challenge.');
 
-    // Step 5 -> 6 (Review)
+    // Step 6 -> 7 (Motivation -> Review)
     await clickNext();
     const createBtn =
       (await driver.findElements(By.xpath(`//button[contains(., "Create Client")]`)))[0] ||

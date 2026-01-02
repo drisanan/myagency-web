@@ -17,7 +17,7 @@ async function login(driver) {
   await driver.wait(until.elementLocated(By.xpath(`//*[contains(text(),"Dashboard")]`)), 20000);
 }
 
-async function advanceNext(driver, times = 6) {
+async function advanceNext(driver, times = 7) {
   for (let i = 0; i < times; i++) {
     const btns = await driver.findElements(By.xpath(`//button[normalize-space(.)="Next"]`));
     if (!btns.length) return;

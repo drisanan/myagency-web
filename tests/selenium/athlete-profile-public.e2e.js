@@ -72,6 +72,7 @@ async function run() {
     await findAndType(driver, 'Access Code', '123456');
     await findAndType(driver, 'First name', 'TestAthlete');
     await findAndType(driver, 'Last name', 'Profile');
+    await findAndType(driver, 'Phone', '2084407940');
     await selectOption(driver, 'Sport', 'Football');
 
     // Fill username field
@@ -173,7 +174,7 @@ async function run() {
     // Verify profile URL shows
     try {
       await driver.wait(
-        until.elementLocated(By.xpath(`//*[contains(text(),"athletenarrative.com")]`)),
+        until.elementLocated(By.xpath(`//*[contains(text(),"myrecruiteragency.com")]`)),
         5000
       );
       console.log('✅ Profile URL displayed in review');

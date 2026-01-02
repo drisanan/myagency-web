@@ -44,11 +44,12 @@ async function run() {
     await findAndType(driver, 'Access Code', '123456');
     await findAndType(driver, 'First name', 'RW');
     await findAndType(driver, 'Last name', 'Client');
+    await findAndType(driver, 'Phone', '2084407940');
     await driver.findElement(By.xpath(`//label[contains(., "Sport")]/following::div[contains(@class,"MuiSelect-select")][1]`)).click();
     const sportOpt = await driver.wait(until.elementLocated(By.xpath(`(//ul//li)[1]`)), 10000);
     await sportOpt.click();
-    // Walk through steps
-    for (let i = 0; i < 6; i++) {
+    // Walk through steps (8 steps total: 0-7, need 7 clicks to reach Review)
+    for (let i = 0; i < 7; i++) {
       const nextBtn = await driver.findElement(By.xpath(`//button[normalize-space(.)="Next"]`));
       await nextBtn.click();
       await sleep(200);
