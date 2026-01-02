@@ -62,7 +62,9 @@ async function selectOption(driver, labelText, optionText) {
 async function allowlistedConsoleErrors(logs) {
   const allowed = [
     'favicon.ico', 
-    'Hydration failed', 
+    'Hydration failed',
+    'error #418', // React hydration mismatch (minified)
+    'error #423', // React hydration error (minified)
     '/auth/signup',
     'Missing session',
     'Failed to fetch agency settings',
