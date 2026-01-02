@@ -2,6 +2,7 @@ import { APIGatewayProxyEventV2 } from 'aws-lambda';
 import fetch from 'node-fetch';
 import { Handler, requireSession } from './common';
 import { response } from './cors';
+import { withSentry } from '../lib/sentry';
 
 const bearerToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJsb2NhdGlvbl9pZCI6IjZCSXRESEVyQTRTVllyUDgxVk1DIiwiY29tcGFueV9pZCI6IjFVbGN6NWpEUjY1N0hwUEFIU0VyIiwidmVyc2lvbiI6MSwiaWF0IjoxNzAyNTAwMjk3Njg4LCJzdWIiOiJ1c2VyX2lkIn0.fqrY7YeSxhmjWhgXySUrWTYvlZwfjjXCP9o8mTZ8exU';
 const accessCodeFieldId = 'D3ogBTF9YTkxJybeMVvF';
@@ -10,7 +11,7 @@ function badRequest(origin: string, msg: string) {
   return response(400, { ok: false, error: msg }, origin);
 }
 
-export const handler: Handler = async (event: APIGatewayProxyEventV2) => {
+const profileHandler: Handler = async (event: APIGatewayProxyEventV2) => {
   const origin = event.headers?.origin || event.headers?.Origin || event.headers?.['origin'] || '';
   const method = (event.requestContext.http?.method || '').toUpperCase();
 
@@ -85,3 +86,5 @@ export const handler: Handler = async (event: APIGatewayProxyEventV2) => {
     return response(500, { ok: false, error: err?.message || 'Server error' }, origin);
   }
 };
+
+export const handler = withSentry(profileHandler);

@@ -34,6 +34,8 @@
     "@mui/material": "^7.3.5",
     "@mui/system": "^7.3.5",
     "@mui/x-data-grid": "^8.19.0",
+    "@sentry/aws-serverless": "^10.32.1",
+    "@sentry/nextjs": "^10.32.1",
     "@tanstack/react-query": "^5.90.10",
     "bcryptjs": "^2.4.3",
     "driver.js": "^1.4.0",

@@ -4,6 +4,7 @@ import { newId } from '../lib/ids';
 import { TaskRecord } from '../lib/models';
 import { getItem, putItem, queryByPK } from '../lib/dynamo';
 import { response } from './cors';
+import { withSentry } from '../lib/sentry';
 
 type TaskStatus = 'todo' | 'in-progress' | 'done';
 
@@ -19,7 +20,7 @@ function validateStatus(status: any): status is TaskStatus {
   return status === 'todo' || status === 'in-progress' || status === 'done';
 }
 
-export const handler: Handler = async (event: APIGatewayProxyEventV2) => {
+const tasksHandler: Handler = async (event: APIGatewayProxyEventV2) => {
   const origin = event.headers?.origin || event.headers?.Origin || event.headers?.['origin'] || '';
   const method = (event.requestContext.http?.method || '').toUpperCase();
   if (!method) return response(400, { ok: false, error: 'Missing method' }, origin);
@@ -113,4 +114,6 @@ export const handler: Handler = async (event: APIGatewayProxyEventV2) => {
 
   return response(405, { ok: false, error: `Method not allowed` }, origin);
 };
+
+export const handler = withSentry(tasksHandler);
 

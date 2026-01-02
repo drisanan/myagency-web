@@ -10,6 +10,7 @@ const ReactQuill = dynamic(() => import('react-quill-new'), { ssr: false });
 import 'react-quill-new/dist/quill.snow.css';
 import { useSession } from '@/features/auth/session';
 import { listClientsByAgencyEmail, setClientGmailTokens, getClientGmailTokens } from '@/services/clients';
+import { listAgents, Agent } from '@/services/agents';
 import { getDivisions, getStates } from '@/services/recruiterMeta';
 import { listUniversities, getUniversityDetails, DIVISION_API_MAPPING } from '@/services/recruiter';
 import { EmailTemplate, listTemplates, saveTemplate, toTemplateHtml, applyTemplate } from '@/services/templates';
@@ -28,9 +29,13 @@ export function RecruiterWizard() {
 
   const [activeStep, setActiveStep] = React.useState(0);
 
-  // Step 1 - client selection
+  // Step 1 - sender type and selection
+  const [senderType, setSenderType] = React.useState<'client' | 'agent'>('client');
   const [clients, setClients] = React.useState<ClientRow[]>([]);
   const [clientId, setClientId] = React.useState<string>('');
+  const [agents, setAgents] = React.useState<Agent[]>([]);
+  const [selectedAgentId, setSelectedAgentId] = React.useState<string>('');
+  const [agentEmailBody, setAgentEmailBody] = React.useState<string>('');
 
   // Step 2 - division/state/schools
   const [divisions, setDivisions] = React.useState<string[]>([]);
@@ -78,6 +83,7 @@ export function RecruiterWizard() {
   const [selectedPromptId, setSelectedPromptId] = React.useState<string>('');
 
   const currentClient = React.useMemo(() => clients.find(c => c.id === clientId) || null, [clients, clientId]);
+  const currentAgent = React.useMemo(() => agents.find(a => a.id === selectedAgentId) || null, [agents, selectedAgentId]);
   const contact = React.useMemo(() => {
     const radar = (currentClient as any)?.radar ?? {};
     return {
@@ -560,6 +566,9 @@ CRITICAL INSTRUCTIONS:
     // Load Clients
     listClientsByAgencyEmail(userEmail).then(setClients);
     
+    // Load Agents
+    listAgents().then(setAgents).catch(() => setAgents([]));
+    
     // Load Meta
     getDivisions().then(setDivisions);
     
@@ -635,8 +644,11 @@ CRITICAL INSTRUCTIONS:
   }, [userEmail, clientId]);
 
   const isLast = activeStep === 3;
+  // Agent mode: only requires agent + recipients selected
+  // Client mode: existing logic unchanged
+  const canNextStep0 = senderType === 'agent' ? Boolean(selectedAgentId) : Boolean(clientId);
   const canNext =
-    (activeStep === 0 && Boolean(clientId)) ||
+    (activeStep === 0 && canNextStep0) ||
     (activeStep === 1 && (Boolean(selectedListId) || (Boolean(division) && Boolean(state) && schools.length > 0))) ||
     (activeStep === 2 && (listMode ? selectedCoaches.length > 0 : Boolean(selectedSchoolName))) ||
     (activeStep === 3);
@@ -736,23 +748,72 @@ CRITICAL INSTRUCTIONS:
           </Typography>
         )}
         {activeStep === 0 && (
-          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 2, maxWidth: 700 }}>
-            <TextField
-              size="small"
-              select
-              label="Client"
-              value={clientId}
-              onChange={(e) => setClientId(e.target.value)}
-              SelectProps={{ MenuProps: { disablePortal: true } }}
-              data-tour="client-selector"
-              inputProps={{ 'data-testid': 'recruiter-client-select' }}
-            >
-              {clients.map((c) => (
-                <MenuItem key={c.id} value={c.id}>
-                  {c.email} {c.firstName ? `- ${c.firstName} ${c.lastName}` : ''}
-                </MenuItem>
-              ))}
-            </TextField>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, maxWidth: 700 }}>
+            {/* Sender Type Toggle */}
+            <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+              <Typography variant="subtitle2" color="text.secondary">Send as:</Typography>
+              <Button
+                variant={senderType === 'client' ? 'contained' : 'outlined'}
+                size="small"
+                onClick={() => { setSenderType('client'); setSelectedAgentId(''); }}
+                sx={senderType === 'client' ? { bgcolor: '#000', color: '#b7ff00' } : {}}
+              >
+                Client
+              </Button>
+              <Button
+                variant={senderType === 'agent' ? 'contained' : 'outlined'}
+                size="small"
+                onClick={() => { setSenderType('agent'); setClientId(''); }}
+                sx={senderType === 'agent' ? { bgcolor: '#000', color: '#b7ff00' } : {}}
+                data-testid="agent-mode-btn"
+              >
+                Agent
+              </Button>
+            </Box>
+
+            {/* Client Selection (existing) */}
+            {senderType === 'client' && (
+              <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 2 }}>
+                <TextField
+                  size="small"
+                  select
+                  label="Client"
+                  value={clientId}
+                  onChange={(e) => setClientId(e.target.value)}
+                  SelectProps={{ MenuProps: { disablePortal: true } }}
+                  data-tour="client-selector"
+                  inputProps={{ 'data-testid': 'recruiter-client-select' }}
+                >
+                  {clients.map((c) => (
+                    <MenuItem key={c.id} value={c.id}>
+                      {c.email} {c.firstName ? `- ${c.firstName} ${c.lastName}` : ''}
+                    </MenuItem>
+                  ))}
+                </TextField>
+              </Box>
+            )}
+
+            {/* Agent Selection (new) */}
+            {senderType === 'agent' && (
+              <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 2 }}>
+                <TextField
+                  size="small"
+                  select
+                  label="Agent"
+                  value={selectedAgentId}
+                  onChange={(e) => setSelectedAgentId(e.target.value)}
+                  SelectProps={{ MenuProps: { disablePortal: true } }}
+                  inputProps={{ 'data-testid': 'recruiter-agent-select' }}
+                  helperText={agents.length === 0 ? 'No agents found. Add agents in Settings.' : ''}
+                >
+                  {agents.map((a) => (
+                    <MenuItem key={a.id} value={a.id}>
+                      {a.email} {a.firstName ? `- ${a.firstName} ${a.lastName}` : ''} {a.role ? `(${a.role})` : ''}
+                    </MenuItem>
+                  ))}
+                </TextField>
+              </Box>
+            )}
           </Box>
         )}
         {activeStep === 1 && (
@@ -1016,7 +1077,91 @@ CRITICAL INSTRUCTIONS:
             </Accordion>
           </Box>
         )}
-        {activeStep === 3 && (
+        {activeStep === 3 && senderType === 'agent' && (
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, maxWidth: 900 }}>
+            <Box sx={{ bgcolor: '#f5f5f5', p: 2, borderRadius: 1, mb: 1 }}>
+              <Typography variant="subtitle2" color="text.secondary">
+                Sending as Agent: <strong>{currentAgent?.firstName} {currentAgent?.lastName}</strong> ({currentAgent?.email})
+              </Typography>
+            </Box>
+
+            {/* Recipients Display */}
+            {selectedCoaches.length > 0 && (
+              <Box>
+                <Typography variant="h6" gutterBottom>Recipients ({selectedCoaches.length})</Typography>
+                <Box sx={{ display: 'flex', gap: 1, overflowX: 'auto', pb: 1 }}>
+                  {selectedCoaches.map((c: any, i: number) => (
+                    <Card key={`${c.id || i}`} sx={{ minWidth: 200, flexShrink: 0 }}>
+                      <CardContent sx={{ p: 1.5 }}>
+                        <Typography variant="subtitle2">
+                          {`${c.firstName || c.FirstName || ''} ${c.lastName || c.LastName || ''}`.trim() || (c.email || '')}
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">{c.title || ''}</Typography>
+                        <Typography variant="body2" color="text.secondary">{c.email || ''}</Typography>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </Box>
+              </Box>
+            )}
+
+            {/* Freeform Email Composer for Agent */}
+            <Box sx={{ border: '1px solid #ddd', borderRadius: 1, p: 2, bgcolor: '#fafafa' }}>
+              <Typography variant="h6" sx={{ mb: 2 }}>Compose Email</Typography>
+              <Box sx={{ 
+                bgcolor: '#fff', 
+                borderRadius: 1,
+                '& .ql-container': { minHeight: 300, fontSize: '14px', fontFamily: 'inherit' },
+                '& .ql-editor': { minHeight: 300 },
+                '& .ql-toolbar': { borderTopLeftRadius: 4, borderTopRightRadius: 4 },
+              }}>
+                <ReactQuill
+                  theme="snow"
+                  value={agentEmailBody}
+                  onChange={(content: string) => setAgentEmailBody(content)}
+                  modules={{
+                    toolbar: [
+                      [{ 'header': [1, 2, 3, false] }],
+                      ['bold', 'italic', 'underline'],
+                      [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                      ['link'],
+                      ['clean']
+                    ]
+                  }}
+                  placeholder="Write your email to the university coaches..."
+                />
+              </Box>
+            </Box>
+
+            {/* Agent Actions */}
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} alignItems="flex-start">
+              <Button
+                size="small"
+                onClick={() => navigator.clipboard.writeText(agentEmailBody)}
+                sx={{ bgcolor: '#000', color: '#b7ff00', '&:hover': { bgcolor: '#111' } }}
+              >
+                Copy Rich Text
+              </Button>
+              <Button
+                variant="contained"
+                disabled={!selectedCoaches.length || !agentEmailBody.trim()}
+                sx={{ bgcolor: '#b7ff00', color: '#000', '&:hover': { bgcolor: '#a0e600' } }}
+                onClick={() => {
+                  // For now, just copy - Gmail integration for agent can be added later
+                  setSendMessage(`Ready to send to ${selectedCoaches.length} recipient(s). Copy the content and paste into your email client.`);
+                }}
+              >
+                Prepare Email
+              </Button>
+              {sendMessage && (
+                <Typography variant="body2" color="success.main" sx={{ ml: 1 }} data-testid="send-confirmation">
+                  {sendMessage}
+                </Typography>
+              )}
+            </Stack>
+          </Box>
+        )}
+        {activeStep === 3 && senderType === 'client' && (
           <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '2fr 1fr' }, gap: 2 }}>
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
               {prompts.length > 0 && (

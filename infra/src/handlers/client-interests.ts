@@ -2,8 +2,9 @@ import { APIGatewayProxyEventV2 } from 'aws-lambda';
 import { Handler, requireSession } from './common';
 import { response } from './cors';
 import { queryClientLists } from '../lib/dynamo';
+import { withSentry } from '../lib/sentry';
 
-export const handler: Handler = async (event: APIGatewayProxyEventV2) => {
+const clientInterestsHandler: Handler = async (event: APIGatewayProxyEventV2) => {
   const origin = event.headers?.origin || event.headers?.Origin || event.headers?.['origin'] || '';
   const method = (event.requestContext.http?.method || '').toUpperCase();
   if (method === 'OPTIONS') return response(200, { ok: true }, origin);
@@ -24,4 +25,6 @@ export const handler: Handler = async (event: APIGatewayProxyEventV2) => {
   const filtered = (items || []).filter((i: any) => i.type === 'CLIENT_INTEREST');
   return response(200, { ok: true, lists: filtered }, origin);
 };
+
+export const handler = withSentry(clientInterestsHandler);
 

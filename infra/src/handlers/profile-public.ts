@@ -3,13 +3,14 @@ import { Handler } from './common';
 import { queryGSI3, scanByGSI3PK } from '../lib/dynamo';
 import { response } from './cors';
 import { ClientRecord } from '../lib/models';
+import { withSentry } from '../lib/sentry';
 
 /**
  * Public Profile Handler - No authentication required
  * GET /profile/:username - Fetch athlete profile by vanity URL
  * GET /profile/check-username?username=xxx - Check username availability
  */
-export const handler: Handler = async (event: APIGatewayProxyEventV2) => {
+const profilePublicHandler: Handler = async (event: APIGatewayProxyEventV2) => {
   const origin = event.headers?.origin || event.headers?.Origin || '*';
   const method = (event.requestContext.http?.method || '').toUpperCase();
   const path = event.rawPath || '';
@@ -103,4 +104,6 @@ export const handler: Handler = async (event: APIGatewayProxyEventV2) => {
 
   return response(405, { ok: false, error: 'Method not allowed' }, origin);
 };
+
+export const handler = withSentry(profilePublicHandler);
 

@@ -4,6 +4,7 @@ import { newId } from '../lib/ids';
 import { CoachListRecord } from '../lib/models';
 import { getItem, putItem, queryByPK } from '../lib/dynamo';
 import { response } from './cors';
+import { withSentry } from '../lib/sentry';
 
 function badRequest(origin: string, msg: string) {
   return response(400, { ok: false, error: msg }, origin);
@@ -13,7 +14,7 @@ function getListId(event: APIGatewayProxyEventV2) {
   return event.pathParameters?.id;
 }
 
-export const handler: Handler = async (event: APIGatewayProxyEventV2) => {
+const listsHandler: Handler = async (event: APIGatewayProxyEventV2) => {
   const origin = event.headers?.origin || event.headers?.Origin || event.headers?.['origin'] || '';
   const method = (event.requestContext.http?.method || '').toUpperCase();
   
@@ -132,3 +133,5 @@ export const handler: Handler = async (event: APIGatewayProxyEventV2) => {
 
   return response(405, { ok: false, error: `Method not allowed` }, origin);
 };
+
+export const handler = withSentry(listsHandler);

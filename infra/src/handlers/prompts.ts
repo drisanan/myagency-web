@@ -3,6 +3,7 @@ import { response } from './cors';
 import { requireSession } from './common';
 import { newId } from '../lib/ids';
 import { putItem, queryByPK, getItem, deleteItem } from '../lib/dynamo';
+import { withSentry } from '../lib/sentry';
 
 // NOTE: In Node 18+ on AWS Lambda, 'fetch' is global. 
 // If you are on Node 16 or older, ensure 'node-fetch' is installed and uncomment the import.
@@ -45,7 +46,7 @@ async function callOpenAI(messages: any[]) {
   }
 }
 
-export const handler = async (event: APIGatewayProxyEventV2) => {
+const promptsHandler = async (event: APIGatewayProxyEventV2) => {
   const origin = event.headers?.origin || event.headers?.Origin || event.headers?.['origin'] || '';
   const method = (event.requestContext.http?.method || '').toUpperCase();
   const path = event.rawPath || event.requestContext.http?.path || '';
@@ -190,3 +191,5 @@ export const handler = async (event: APIGatewayProxyEventV2) => {
 
   return response(404, { ok: false, error: 'Path not found' }, origin);
 };
+
+export const handler = withSentry(promptsHandler);

@@ -1,10 +1,34 @@
 'use client';
 import React from 'react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import * as Sentry from '@sentry/nextjs';
+import { QueryClient, QueryClientProvider, MutationCache, QueryCache } from '@tanstack/react-query';
 import { SessionProvider } from '@/features/auth/session';
 
 export function Providers({ children }: { children: React.ReactNode }) {
-  const [client] = React.useState(() => new QueryClient());
+  const [client] = React.useState(() => new QueryClient({
+    queryCache: new QueryCache({
+      onError: (error, query) => {
+        Sentry.captureException(error, {
+          tags: { source: 'react-query' },
+          extra: { queryKey: query.queryKey },
+        });
+      },
+    }),
+    mutationCache: new MutationCache({
+      onError: (error, _variables, _context, mutation) => {
+        Sentry.captureException(error, {
+          tags: { source: 'react-query-mutation' },
+          extra: { mutationKey: mutation.options.mutationKey },
+        });
+      },
+    }),
+    defaultOptions: {
+      queries: {
+        retry: 1,
+      },
+    },
+  }));
+  
   return (
     <QueryClientProvider client={client}>
       <SessionProvider>{children}</SessionProvider>

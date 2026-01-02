@@ -2,8 +2,9 @@ import { APIGatewayProxyEventV2 } from 'aws-lambda';
 import { buildClearCookie, buildSessionCookie, encodeSession, parseSessionFromRequest } from '../lib/session';
 import { response } from './cors';
 import { getItem } from '../lib/dynamo';
+import { withSentry } from '../lib/sentry';
 
-export const handler = async (event: APIGatewayProxyEventV2) => {
+const authHandler = async (event: APIGatewayProxyEventV2) => {
   const origin = event.headers?.origin || event.headers?.Origin || event.headers?.['origin'] || '';
   const method = (event.requestContext.http?.method || '').toUpperCase();
   if (!method) return response(400, { ok: false, error: 'Missing method' }, origin);
@@ -66,4 +67,6 @@ export const handler = async (event: APIGatewayProxyEventV2) => {
 
   return response(405, { ok: false, error: `Method not allowed` }, origin);
 };
+
+export const handler = withSentry(authHandler);
 

@@ -3,6 +3,7 @@ import fetch from 'node-fetch';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, PutCommand } from '@aws-sdk/lib-dynamodb';
 import { randomUUID } from 'crypto';
+import { withSentry } from '../lib/sentry';
 
 // --- Configuration ---
 // Use the existing table name and schema (PK/SK) consistent with the rest of the stack.
@@ -40,7 +41,7 @@ function getHeaders(origin?: string) {
   };
 }
 
-export const handler = async (event: APIGatewayProxyEventV2): Promise<APIGatewayProxyResultV2> => {
+const ghlLoginHandler = async (event: APIGatewayProxyEventV2): Promise<APIGatewayProxyResultV2> => {
   const origin = event.headers?.origin || event.headers?.Origin || event.headers?.['origin'] || '';
   const headers = getHeaders(origin);
   const method = (event.requestContext.http?.method || '').toUpperCase();
@@ -226,3 +227,5 @@ export const handler = async (event: APIGatewayProxyEventV2): Promise<APIGateway
     };
   }
 };
+
+export const handler = withSentry(ghlLoginHandler);

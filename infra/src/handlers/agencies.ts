@@ -2,7 +2,8 @@ import { APIGatewayProxyEventV2 } from 'aws-lambda';
 import { response } from './cors';
 import { getItem, putItem, queryGSI1 } from '../lib/dynamo';
 import { newId } from '../lib/ids';
-import { requireSession } from './common'; // <--- Critical Import
+import { requireSession } from './common';
+import { withSentry } from '../lib/sentry';
 
 type AgencyRecord = {
   PK: string;
@@ -30,7 +31,7 @@ function toRecord(input: { id?: string; name?: string; email?: string; settings?
   };
 }
 
-export const handler = async (event: APIGatewayProxyEventV2) => {
+const agenciesHandler = async (event: APIGatewayProxyEventV2) => {
   const origin = event.headers?.origin || event.headers?.Origin || event.headers?.['origin'] || '';
   const method = (event.requestContext.http?.method || '').toUpperCase();
   
@@ -156,3 +157,5 @@ export const handler = async (event: APIGatewayProxyEventV2) => {
     return response(500, { ok: false, error: 'Server error' }, origin);
   }
 };
+
+export const handler = withSentry(agenciesHandler);

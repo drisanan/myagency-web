@@ -102,10 +102,20 @@ export function ProfileForm() {
         type="password"
         value={accessCode}
         onChange={(e) => setAccessCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-        placeholder="Enter new 6-digit code"
-        helperText="Leave blank to keep current code"
+        placeholder={session?.authEnabled ? '••••••' : 'Enter new 6-digit code'}
+        helperText={
+          session?.authEnabled 
+            ? '✓ Access code is set. Enter a new 6-digit code to change it.' 
+            : 'Set a 6-digit numeric access code for login.'
+        }
         inputProps={{ inputMode: 'numeric', maxLength: 6 }}
         fullWidth
+        InputProps={{
+          sx: session?.authEnabled && !accessCode ? { 
+            bgcolor: '#f0fdf4', 
+            '& input::placeholder': { color: '#22c55e', opacity: 1 }
+          } : {}
+        }}
       />
       
       {error && <Alert severity="error">{error}</Alert>}

@@ -70,33 +70,77 @@ function ContentLinksStep({ value, onChange }: { value: RadarDraft; onChange: (k
   );
 }
 
+// Image size constants - DynamoDB has 400KB item limit, base64 adds ~33% overhead
+const MAX_SINGLE_IMAGE_KB = 150; // 150KB per image max
+const MAX_SINGLE_IMAGE_BYTES = MAX_SINGLE_IMAGE_KB * 1024;
+const MAX_TOTAL_GALLERY_KB = 800; // 800KB total for all gallery images
+const MAX_TOTAL_GALLERY_BYTES = MAX_TOTAL_GALLERY_KB * 1024;
+const MAX_IMAGES = 6; // Reduced from 10 to be safer
+
+function calculateBase64Size(base64String: string): number {
+  // Base64 strings include the data:image/xxx;base64, prefix
+  const base64Data = base64String.split(',')[1] || base64String;
+  return Math.ceil(base64Data.length * 0.75); // Base64 to bytes approximation
+}
+
 function GalleryStep({ value, onChange }: { value: string[]; onChange: (images: string[]) => void }) {
   const fileInputRef = React.useRef<HTMLInputElement | null>(null);
   const [error, setError] = React.useState<string | null>(null);
   const [showUrlInput, setShowUrlInput] = React.useState(false);
   const [urlValue, setUrlValue] = React.useState('');
 
+  // Calculate current total size of gallery
+  const currentTotalBytes = React.useMemo(() => {
+    return value.reduce((sum, img) => {
+      if (img.startsWith('data:')) {
+        return sum + calculateBase64Size(img);
+      }
+      return sum + 100; // URL strings are small
+    }, 0);
+  }, [value]);
+
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
-    
-    const MAX_IMAGE_BYTES = 1_000_000; // 1MB
-    const MAX_IMAGES = 10;
     
     if (value.length + files.length > MAX_IMAGES) {
       setError(`Maximum ${MAX_IMAGES} images allowed`);
       return;
     }
 
+    let addedCount = 0;
+    let runningTotal = currentTotalBytes;
+
     Array.from(files).forEach(file => {
-      if (file.size > MAX_IMAGE_BYTES) {
-        setError('Each image must be 1MB or smaller');
+      if (file.size > MAX_SINGLE_IMAGE_BYTES) {
+        setError(`Each image must be ${MAX_SINGLE_IMAGE_KB}KB or smaller. "${file.name}" is ${Math.round(file.size / 1024)}KB. Please compress it.`);
         return;
       }
+      
+      // Estimate base64 size (adds ~33% overhead)
+      const estimatedBase64Size = Math.ceil(file.size * 1.37);
+      if (runningTotal + estimatedBase64Size > MAX_TOTAL_GALLERY_BYTES) {
+        setError(`Total gallery size would exceed ${MAX_TOTAL_GALLERY_KB}KB limit. Please remove some images or use smaller files.`);
+        return;
+      }
+      
+      runningTotal += estimatedBase64Size;
+      
       const reader = new FileReader();
       reader.onload = () => {
-        onChange([...value, reader.result as string]);
-        setError(null);
+        const result = reader.result as string;
+        const actualSize = calculateBase64Size(result);
+        
+        if (actualSize > MAX_SINGLE_IMAGE_BYTES) {
+          setError(`Image "${file.name}" exceeds ${MAX_SINGLE_IMAGE_KB}KB after encoding. Please use a smaller image.`);
+          return;
+        }
+        
+        onChange([...value, result]);
+        addedCount++;
+        if (addedCount === files.length) {
+          setError(null);
+        }
       };
       reader.readAsDataURL(file);
     });
@@ -107,10 +151,11 @@ function GalleryStep({ value, onChange }: { value: string[]; onChange: (images: 
 
   const handleAddUrl = () => {
     if (!urlValue.trim()) return;
-    if (value.length >= 10) {
-      setError('Maximum 10 images allowed');
+    if (value.length >= MAX_IMAGES) {
+      setError(`Maximum ${MAX_IMAGES} images allowed`);
       return;
     }
+    // URLs are fine - they're just short strings
     onChange([...value, urlValue.trim()]);
     setUrlValue('');
     setError(null);
@@ -118,13 +163,17 @@ function GalleryStep({ value, onChange }: { value: string[]; onChange: (images: 
 
   const handleRemove = (index: number) => {
     onChange(value.filter((_, i) => i !== index));
+    setError(null);
   };
+
+  const totalKB = Math.round(currentTotalBytes / 1024);
+  const isNearLimit = currentTotalBytes > MAX_TOTAL_GALLERY_BYTES * 0.8;
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
       <Typography variant="subtitle1" fontWeight={600}>Profile Gallery</Typography>
       <Typography variant="body2" color="text.secondary">
-        Add up to 10 images to showcase on your public athlete profile. These could be action shots, team photos, or awards.
+        Add up to {MAX_IMAGES} images to showcase on your public athlete profile. Each image must be under {MAX_SINGLE_IMAGE_KB}KB.
       </Typography>
       
       {error && <Alert severity="error">{error}</Alert>}
@@ -165,7 +214,7 @@ function GalleryStep({ value, onChange }: { value: string[]; onChange: (images: 
           </Box>
         ))}
         
-        {value.length < 10 && (
+        {value.length < MAX_IMAGES && (
           <Box
             onClick={() => fileInputRef.current?.click()}
             sx={{
@@ -223,9 +272,27 @@ function GalleryStep({ value, onChange }: { value: string[]; onChange: (images: 
         </Box>
       )}
       
-      <Typography variant="caption" color="text.secondary">
-        {value.length}/10 images added
-      </Typography>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Typography variant="caption" color="text.secondary">
+          {value.length}/{MAX_IMAGES} images added
+        </Typography>
+        <Typography 
+          variant="caption" 
+          color={isNearLimit ? 'warning.main' : 'text.secondary'}
+          sx={{ fontWeight: isNearLimit ? 600 : 400 }}
+        >
+          {totalKB}KB / {MAX_TOTAL_GALLERY_KB}KB used
+        </Typography>
+      </Box>
+      
+      <Alert severity="info" sx={{ mt: 1 }}>
+        <Typography variant="caption">
+          <strong>Tip:</strong> For best results, compress images before uploading. Use tools like 
+          <a href="https://tinypng.com" target="_blank" rel="noopener noreferrer" style={{ marginLeft: 4 }}>TinyPNG</a> or 
+          <a href="https://squoosh.app" target="_blank" rel="noopener noreferrer" style={{ marginLeft: 4 }}>Squoosh</a>.
+          Max {MAX_SINGLE_IMAGE_KB}KB per image.
+        </Typography>
+      </Alert>
     </Box>
   );
 }
@@ -334,7 +401,7 @@ function BasicInfoStep({
 }: {
   value: Record<string, any>;
   onChange: (v: Record<string, any>) => void;
-  errors?: { email?: string; firstName?: string; lastName?: string; sport?: string; gmail?: string; username?: string };
+  errors?: { email?: string; firstName?: string; lastName?: string; sport?: string; gmail?: string; username?: string; phone?: string; accessCode?: string };
   gmailConnected: boolean;
   gmailConnecting: boolean;
   onConnectGmail: () => void;
@@ -378,9 +445,10 @@ function BasicInfoStep({
   const handlePhotoFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const MAX_IMAGE_BYTES = 1_000_000; // 1MB cap for profile images
-    if (file.size > MAX_IMAGE_BYTES) {
-      setPhotoError('Image must be 1MB or smaller.');
+    const MAX_PROFILE_IMAGE_KB = 200; // 200KB max for profile image
+    const MAX_PROFILE_IMAGE_BYTES = MAX_PROFILE_IMAGE_KB * 1024;
+    if (file.size > MAX_PROFILE_IMAGE_BYTES) {
+      setPhotoError(`Profile image must be ${MAX_PROFILE_IMAGE_KB}KB or smaller. Your image is ${Math.round(file.size / 1024)}KB. Please compress it using TinyPNG or Squoosh.`);
       return;
     }
     const reader = new FileReader();
@@ -417,11 +485,17 @@ function BasicInfoStep({
       <TextField
         size="small"
         label="Access Code"
-        type="number"
-        inputProps={{ inputMode: 'numeric', pattern: '[0-9]*', maxLength: 6 }}
+        type="password"
+        inputProps={{ inputMode: 'numeric', pattern: '[0-9]*', maxLength: 6, 'data-testid': 'athlete-access-code' }}
         value={value.accessCode ?? ''}
         onChange={(e)=>onChange({ ...value, accessCode: e.target.value.slice(0, 6).replace(/\D/g, '') })}
-        helperText="6-digit numeric code"
+        error={Boolean(errors?.accessCode)}
+        helperText={
+          errors?.accessCode || 
+          (value.hasExistingAccessCode && !value.accessCode 
+            ? '••••••  (existing code set - enter new 6-digit code to change)' 
+            : '6-digit numeric code')
+        }
       />
       <TextField size="small" label="First name" value={value.firstName ?? ''} onChange={(e)=>onChange({ ...value, firstName: e.target.value })} error={Boolean(errors?.firstName)} helperText={errors?.firstName || ''} />
       <TextField size="small" label="Last name" value={value.lastName ?? ''} onChange={(e)=>onChange({ ...value, lastName: e.target.value })} error={Boolean(errors?.lastName)} helperText={errors?.lastName || ''} />
@@ -430,7 +504,9 @@ function BasicInfoStep({
         label="Phone"
         value={value.phone ?? ''}
         onChange={(e)=>onChange({ ...value, phone: e.target.value })}
-        inputProps={{ inputMode: 'tel' }}
+        inputProps={{ inputMode: 'tel', 'data-testid': 'athlete-phone' }}
+        error={Boolean(errors?.phone)}
+        helperText={errors?.phone || ''}
       />
 
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
@@ -599,7 +675,12 @@ export function ClientWizard({
   const { session } = useSession();
   const router = useRouter();
   const [activeStep, setActiveStep] = React.useState(0);
-  const [basic, setBasic] = React.useState<Record<string, any>>(initialClient ? { ...initialClient, password: '' } : {});
+  const [basic, setBasic] = React.useState<Record<string, any>>(initialClient ? { 
+    ...initialClient, 
+    password: '',
+    accessCode: '', // Clear for re-entry, but track if exists
+    hasExistingAccessCode: Boolean(initialClient.accessCodeHash || initialClient.authEnabled),
+  } : {});
   const [radar, setRadar] = React.useState<RadarDraft>({
     events: initialClient?.radar?.events ?? [],
     metrics: initialClient?.radar?.metrics ?? [],
@@ -607,7 +688,7 @@ export function ClientWizard({
     ...(initialClient?.radar ?? {}),
   });
   const isLast = activeStep === steps.length - 1;
-  const [errors, setErrors] = React.useState<{ email?: string; firstName?: string; lastName?: string; sport?: string; gmail?: string }>({});
+  const [errors, setErrors] = React.useState<{ email?: string; firstName?: string; lastName?: string; sport?: string; gmail?: string; phone?: string; accessCode?: string }>({});
   const [submitting, setSubmitting] = React.useState(false);
   const [submitError, setSubmitError] = React.useState('');
   const [submitSuccess, setSubmitSuccess] = React.useState('');
@@ -707,7 +788,12 @@ export function ClientWizard({
     if (!initialClient) return;
     setBasic((prev) => {
       if (!prev.id || prev.id !== initialClient.id || Object.keys(prev).length === 0) {
-        return { ...initialClient, password: '' };
+        return { 
+          ...initialClient, 
+          password: '',
+          accessCode: '', // Clear for re-entry
+          hasExistingAccessCode: Boolean(initialClient.accessCodeHash || initialClient.authEnabled),
+        };
       }
       return prev;
     });
@@ -723,11 +809,20 @@ export function ClientWizard({
   }, [initialClient?.id]);
 
   const validateBasic = React.useCallback((value: Record<string, any>, checkGmail = true) => {
-    const next: { email?: string; firstName?: string; lastName?: string; sport?: string; gmail?: string } = {};
+    const next: { email?: string; firstName?: string; lastName?: string; sport?: string; gmail?: string; phone?: string; accessCode?: string } = {};
     if (!value.email?.trim()) next.email = 'Email is required';
     if (!value.firstName?.trim()) next.firstName = 'First name is required';
     if (!value.lastName?.trim()) next.lastName = 'Last name is required';
     if (!value.sport?.trim()) next.sport = 'Sport is required';
+    if (!value.phone?.trim()) next.phone = 'Phone number is required';
+    // Access code: required for new clients, optional for edits if already set
+    const hasExisting = value.hasExistingAccessCode;
+    const hasNewCode = value.accessCode?.trim()?.length === 6;
+    if (!hasExisting && !hasNewCode) {
+      next.accessCode = 'Access code is required (6 digits)';
+    } else if (value.accessCode?.trim() && value.accessCode.length !== 6) {
+      next.accessCode = 'Access code must be exactly 6 digits';
+    }
     // Gmail is required for new clients (not in edit mode)
     if (checkGmail && !gmailConnected && mode !== 'edit') {
       next.gmail = 'Please connect your Gmail account to proceed';
@@ -843,6 +938,8 @@ export function ClientWizard({
                   firstName: v.firstName ? undefined : prev.firstName,
                   lastName: v.lastName ? undefined : prev.lastName,
                   sport: v.sport ? undefined : prev.sport,
+                  phone: v.phone ? undefined : prev.phone,
+                  accessCode: v.accessCode?.length === 6 ? undefined : prev.accessCode,
                   gmail: prev.gmail, // Keep gmail error until connected
                 }));
               }

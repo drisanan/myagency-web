@@ -5,6 +5,7 @@ import { ClientRecord } from '../lib/models';
 import { hashAccessCode } from '../lib/auth';
 import { getItem, putItem, queryByPK, queryGSI3, scanByGSI3PK } from '../lib/dynamo';
 import { response } from './cors';
+import { withSentry, captureMessage } from '../lib/sentry';
 
 function badRequest(origin: string, msg: string) {
   return response(400, { ok: false, error: msg }, origin);
@@ -14,7 +15,7 @@ function getClientId(event: APIGatewayProxyEventV2) {
   return event.pathParameters?.id;
 }
 
-export const handler: Handler = async (event: APIGatewayProxyEventV2) => {
+const clientsHandler: Handler = async (event: APIGatewayProxyEventV2) => {
   const origin = event.headers?.origin || event.headers?.Origin || event.headers?.['origin'] || '';
   const method = (event.requestContext.http?.method || '').toUpperCase();
   
@@ -59,10 +60,15 @@ export const handler: Handler = async (event: APIGatewayProxyEventV2) => {
         console.log('[Clients] RECOVERED: Found clients via manual memory filter.', { count: recoveredClients.length });
         items = recoveredClients;
       } else {
-        console.log('[Clients] ERROR: PK-only query also returned 0 clients.', { 
-           totalItemsFound: allAgencyItems.length,
-           typesFound: allAgencyItems.map((i: any) => i.SK)
-        });
+        // Only log as warning if agency has other items but no clients (unexpected)
+        if (allAgencyItems.length > 1) {
+          captureMessage('Agency has items but no clients found', 'warning', {
+            agencyId: cleanAgencyId,
+            totalItemsFound: allAgencyItems.length,
+            typesFound: allAgencyItems.map((i: any) => i.SK?.split('#')[0]),
+          });
+        }
+        // Otherwise it's a normal case: new agency with just a profile
       }
     }
 
@@ -208,3 +214,6 @@ export const handler: Handler = async (event: APIGatewayProxyEventV2) => {
 
   return response(405, { ok: false, error: `Method not allowed` }, origin);
 };
+
+// Wrap with Sentry for error tracking
+export const handler = withSentry(clientsHandler);

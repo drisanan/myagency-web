@@ -1,8 +1,9 @@
 import { APIGatewayProxyEventV2 } from 'aws-lambda';
 import { requireSession } from './common';
 import { response } from './cors';
-import { putItem, getItem } from '../lib/dynamo'; // Added getItem
+import { putItem, getItem } from '../lib/dynamo';
 import { google } from 'googleapis';
+import { withSentry } from '../lib/sentry';
 
 // Fallback logic ensures we always have a valid string, even if env var fails
 const API_DOMAIN = 'api.myrecruiteragency.com';
@@ -15,7 +16,7 @@ const SCOPES = [
   'openid'
 ];
 
-export const handler = async (event: APIGatewayProxyEventV2) => {
+const googleOauthHandler = async (event: APIGatewayProxyEventV2) => {
   const origin = event.headers?.origin || event.headers?.Origin || event.headers?.['origin'] || '';
   const method = (event.requestContext.http?.method || '').toUpperCase();
   const path = event.rawPath || event.requestContext.http?.path || '';
@@ -238,3 +239,5 @@ export const handler = async (event: APIGatewayProxyEventV2) => {
 
   return response(404, { ok: false, error: 'Path not found' }, origin);
 };
+
+export const handler = withSentry(googleOauthHandler);

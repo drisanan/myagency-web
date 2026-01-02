@@ -19,6 +19,8 @@ provider:
     GOOGLE_CLIENT_SECRET: ${env:GOOGLE_CLIENT_SECRET}
     GOOGLE_REDIRECT_URI: ${env:GOOGLE_REDIRECT_URI, 'https://api.myrecruiteragency.com/google/oauth/callback'}
     FRONTEND_URL: ${env:FRONTEND_URL, 'https://www.myrecruiteragency.com'}
+    # Sentry error tracking
+    SENTRY_DSN: ${env:SENTRY_DSN, ''}
   httpApi:
     cors:
       allowedOrigins:
@@ -210,59 +212,16 @@ functions:
       - httpApi:
           path: /athlete/check-username
           method: get
+  agents:
+    handler: infra/src/handlers/agents.handler
+    events:
+      - httpApi:
+          path: /agents
+          method: any
+      - httpApi:
+          path: /agents/{id}
+          method: any
 
-resources:
-  Resources:
-    DataTable:
-      Type: AWS::DynamoDB::Table
-      Properties:
-        TableName: ${env:TABLE_NAME, 'agency-narrative-crm'}
-        BillingMode: PAY_PER_REQUEST
-        AttributeDefinitions:
-          - AttributeName: PK
-            AttributeType: S
-          - AttributeName: SK
-            AttributeType: S
-          - AttributeName: GSI1PK
-            AttributeType: S
-          - AttributeName: GSI1SK
-            AttributeType: S
-          - AttributeName: GSI3PK
-            AttributeType: S
-          - AttributeName: GSI3SK
-            AttributeType: S
-          - AttributeName: clientId
-            AttributeType: S
-          - AttributeName: createdAt
-            AttributeType: N
-        KeySchema:
-          - AttributeName: PK
-            KeyType: HASH
-          - AttributeName: SK
-            KeyType: RANGE
-        GlobalSecondaryIndexes:
-          - IndexName: GSI1
-            KeySchema:
-              - AttributeName: GSI1PK
-                KeyType: HASH
-              - AttributeName: GSI1SK
-                KeyType: RANGE
-            Projection:
-              ProjectionType: ALL
-          - IndexName: GSI2ClientLists
-            KeySchema:
-              - AttributeName: clientId
-                KeyType: HASH
-              - AttributeName: createdAt
-                KeyType: RANGE
-            Projection:
-              ProjectionType: ALL
-          - IndexName: GSI3
-            KeySchema:
-              - AttributeName: GSI3PK
-                KeyType: HASH
-              - AttributeName: GSI3SK
-                KeyType: RANGE
-            Projection:
-              ProjectionType: ALL
+# Note: DynamoDB table 'agency-narrative-crm' is managed externally with deletion protection enabled.
+# It was originally created by this stack but is now retained independently.
 

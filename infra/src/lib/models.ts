@@ -55,6 +55,20 @@ export type ClientRecord = {
   updatedAt: string;
 };
 
+export type AgentRecord = {
+  PK: string;         // AGENCY#<agencyId>
+  SK: string;         // AGENT#<id>
+  id: string;
+  agencyId: string;
+  agencyEmail?: string;
+  firstName: string;
+  lastName: string;
+  email: string;      // Agent's email (used for sending)
+  role?: string;      // e.g., "Recruiting Coordinator", "Head Coach"
+  createdAt: number;
+  updatedAt: number;
+};
+
 export type CoachListRecord = {
   PK: string;
   SK: string;

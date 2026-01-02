@@ -4,8 +4,9 @@ import { newId } from '../lib/ids';
 import { putItem, getItem, queryGSI1, queryByPK } from '../lib/dynamo';
 import { verify, sign } from '../lib/formsToken';
 import { requireSession } from './common';
+import { withSentry } from '../lib/sentry';
 
-export const handler = async (event: APIGatewayProxyEventV2) => {
+const formsPublicHandler = async (event: APIGatewayProxyEventV2) => {
   const origin = event.headers?.origin || event.headers?.Origin || event.headers?.['origin'] || '';
   const method = (event.requestContext.http?.method || '').toUpperCase();
   const path = event.rawPath || event.requestContext.http?.path || '';
@@ -144,3 +145,5 @@ export const handler = async (event: APIGatewayProxyEventV2) => {
 
   return response(404, { ok: false, error: 'Path not found' }, origin);
 };
+
+export const handler = withSentry(formsPublicHandler);

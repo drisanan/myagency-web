@@ -1,12 +1,13 @@
 import { APIGatewayProxyEventV2 } from 'aws-lambda';
-import { Handler, requireSession } from './common'; // <--- Use strict session check
+import { Handler, requireSession } from './common';
 import { buildOAuthUrl, exchangeCode } from '../lib/google';
 import { putItem, getItem } from '../lib/dynamo';
 import { GmailTokenRecord } from '../lib/models';
 import { google } from 'googleapis';
 import { response } from './cors';
+import { withSentry } from '../lib/sentry';
 
-export const handler: Handler = async (event: APIGatewayProxyEventV2) => {
+const gmailHandler: Handler = async (event: APIGatewayProxyEventV2) => {
   const origin = event.headers?.origin || event.headers?.Origin || event.headers?.['origin'] || '';
   const method = (event.requestContext.http?.method || '').toUpperCase();
   const action = event.pathParameters?.action; // e.g. /gmail/{action}
@@ -171,3 +172,5 @@ function buildMime(subject: string, html: string, to: string) {
   const message = lines.join('\r\n');
   return Buffer.from(message).toString('base64url');
 }
+
+export const handler = withSentry(gmailHandler);

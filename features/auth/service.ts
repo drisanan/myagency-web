@@ -44,6 +44,7 @@ export type Session = {
   impersonatedBy?: { email: string; role: 'parent' };
   contactId?: string;
   clientId?: string;
+  authEnabled?: boolean;
 };
 
 async function postSession(session: Session) {

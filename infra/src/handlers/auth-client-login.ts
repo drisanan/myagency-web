@@ -4,6 +4,7 @@ import { response } from './cors';
 import { queryGSI1, scanByGSI1PK, getItem } from '../lib/dynamo';
 import { encodeSession, buildSessionCookie } from '../lib/session';
 import { verifyAccessCode } from '../lib/auth';
+import { withSentry } from '../lib/sentry';
 
 function mask(value?: string) {
   if (!value) return '';
@@ -20,7 +21,7 @@ function normalizePhone(phone: string) {
   return String(phone || '').trim();
 }
 
-export const handler: Handler = async (event: APIGatewayProxyEventV2) => {
+const authClientLoginHandler: Handler = async (event: APIGatewayProxyEventV2) => {
   const origin = event.headers?.origin || event.headers?.Origin || event.headers?.['origin'] || '';
   const method = (event.requestContext.http?.method || '').toUpperCase();
   if (method === 'OPTIONS') return response(200, { ok: true }, origin);
@@ -106,4 +107,6 @@ export const handler: Handler = async (event: APIGatewayProxyEventV2) => {
 
   return response(200, { ok: true }, origin, headers);
 };
+
+export const handler = withSentry(authClientLoginHandler);
 
