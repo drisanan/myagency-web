@@ -398,6 +398,7 @@ function BasicInfoStep({
   gmailConnecting,
   onConnectGmail,
   gmailError,
+  publicMode = false,
 }: {
   value: Record<string, any>;
   onChange: (v: Record<string, any>) => void;
@@ -406,6 +407,7 @@ function BasicInfoStep({
   gmailConnecting: boolean;
   onConnectGmail: () => void;
   gmailError?: string | null;
+  publicMode?: boolean;
 }) {
   const sports = getSports();
   const [showUrlInput, setShowUrlInput] = React.useState(false);
@@ -603,51 +605,53 @@ function BasicInfoStep({
         sx={{ gridColumn: '1 / -1' }}
       />
 
-      {/* Gmail Connection Section */}
-      <Box sx={{ gridColumn: '1 / -1', mt: 2, p: 2, bgcolor: '#f9fafb', borderRadius: 2, border: errors?.gmail ? '1px solid #d32f2f' : '1px solid #e5e7eb' }}>
-        <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600 }}>
-          Gmail Connection <Typography component="span" color="error">*</Typography>
-        </Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          Connect your Gmail account to allow your agency to send recruiting emails on your behalf.
-        </Typography>
-        
-        {gmailConnected ? (
-          <Chip
-            icon={<FaGoogle size={14} />}
-            label="Gmail Connected"
-            color="success"
-            sx={{ fontWeight: 500 }}
-          />
-        ) : (
-          <Stack spacing={1}>
-            <Button
-              variant="contained"
-              onClick={onConnectGmail}
-              disabled={gmailConnecting}
-              startIcon={gmailConnecting ? <CircularProgress size={16} color="inherit" /> : <FaGoogle />}
-              sx={{ 
-                bgcolor: '#4285f4', 
-                color: '#fff', 
-                '&:hover': { bgcolor: '#3367d6' },
-                alignSelf: 'flex-start',
-              }}
-            >
-              {gmailConnecting ? 'Connecting…' : 'Connect Gmail Account'}
-            </Button>
-            {errors?.gmail && (
-              <Typography variant="caption" color="error">
-                {errors.gmail}
-              </Typography>
-            )}
-          </Stack>
-        )}
-        {gmailError && (
-          <Alert severity="error" sx={{ mt: 1 }}>
-            {gmailError}
-          </Alert>
-        )}
-      </Box>
+      {/* Gmail Connection Section - Hidden in public mode since Gmail is not required for public intake forms */}
+      {!publicMode && (
+        <Box sx={{ gridColumn: '1 / -1', mt: 2, p: 2, bgcolor: '#f9fafb', borderRadius: 2, border: errors?.gmail ? '1px solid #d32f2f' : '1px solid #e5e7eb' }}>
+          <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600 }}>
+            Gmail Connection <Typography component="span" color="error">*</Typography>
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Connect your Gmail account to allow your agency to send recruiting emails on your behalf.
+          </Typography>
+          
+          {gmailConnected ? (
+            <Chip
+              icon={<FaGoogle size={14} />}
+              label="Gmail Connected"
+              color="success"
+              sx={{ fontWeight: 500 }}
+            />
+          ) : (
+            <Stack spacing={1}>
+              <Button
+                variant="contained"
+                onClick={onConnectGmail}
+                disabled={gmailConnecting}
+                startIcon={gmailConnecting ? <CircularProgress size={16} color="inherit" /> : <FaGoogle />}
+                sx={{ 
+                  bgcolor: '#4285f4', 
+                  color: '#fff', 
+                  '&:hover': { bgcolor: '#3367d6' },
+                  alignSelf: 'flex-start',
+                }}
+              >
+                {gmailConnecting ? 'Connecting…' : 'Connect Gmail Account'}
+              </Button>
+              {errors?.gmail && (
+                <Typography variant="caption" color="error">
+                  {errors.gmail}
+                </Typography>
+              )}
+            </Stack>
+          )}
+          {gmailError && (
+            <Alert severity="error" sx={{ mt: 1 }}>
+              {gmailError}
+            </Alert>
+          )}
+        </Box>
+      )}
     </Box>
   );
 }
@@ -950,6 +954,7 @@ export function ClientWizard({
             gmailConnecting={gmailConnecting}
             onConnectGmail={handleConnectGmail}
             gmailError={gmailError}
+            publicMode={publicMode}
           />
         )}
         {activeStep === 1 && (
