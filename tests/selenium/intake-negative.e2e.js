@@ -59,6 +59,7 @@ async function run() {
     await driver.wait(until.elementLocated(By.xpath(`//*[contains(text(),"Sport is required")]`)), 8000);
     await driver.wait(until.elementLocated(By.xpath(`//*[contains(text(),"Phone number is required")]`)), 8000);
     await driver.wait(until.elementLocated(By.xpath(`//*[contains(text(),"Access code is required")]`)), 8000);
+    await driver.wait(until.elementLocated(By.xpath(`//*[contains(text(),"connect your Gmail")]`)), 8000);
     console.log('Intake negative validation passed');
   } finally {
     await driver.quit();

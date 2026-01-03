@@ -11,6 +11,14 @@ const LOGIN_CODE = process.env.TEST_ACCESS || '123456';
 const TEST_EMAIL = `ui-test-${Date.now()}@example.com`;
 const TEST_PHONE = '2081234567';
 
+// Simulate Gmail OAuth success for testing (can't do real OAuth in automated tests)
+async function simulateGmailConnection(driver) {
+  await driver.executeScript(`
+    window.postMessage({ type: 'google-oauth-success', clientId: 'test-${Date.now()}' }, window.location.origin);
+  `);
+  await sleep(500);
+}
+
 async function issueLink(sessionCookie) {
   if (process.env.FORMS_URL) return process.env.FORMS_URL;
   const res = await fetch(`${API}/forms/issue`, {
@@ -64,6 +72,15 @@ async function run() {
     await findAndType(driver, 'Phone', TEST_PHONE);
     await findAndType(driver, 'Access Code', '123456');
     await selectOption(driver, 'Sport', 'Football');
+
+    // Gmail connection is required - simulate OAuth success
+    console.log('Simulating Gmail connection...');
+    await simulateGmailConnection(driver);
+    await driver.wait(
+      until.elementLocated(By.xpath(`//*[contains(text(),"Gmail Connected")]`)),
+      5000
+    );
+    console.log('Gmail connected (simulated)');
 
     // Progress through steps to Review (8 steps total: 0-7, need 7 clicks)
     for (let i = 0; i < 7; i++) {
