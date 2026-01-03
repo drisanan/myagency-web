@@ -1,10 +1,21 @@
 const { Builder, By, until } = require('selenium-webdriver');
 const chrome = require('selenium-webdriver/chrome');
-const { setSession, allowlistedConsoleErrors, sleep } = require('./utils');
+const { findAndType, allowlistedConsoleErrors, sleep, dismissTour } = require('./utils');
 
 const BASE = process.env.BASE_URL || 'https://www.myrecruiteragency.com';
-const AGENCY_EMAIL = process.env.AGENCY_EMAIL || 'drisanjames@gmail.com';
+const LOGIN_EMAIL = process.env.TEST_EMAIL || 'drisanjames@gmail.com';
+const LOGIN_PHONE = process.env.TEST_PHONE || '2084407940';
+const LOGIN_CODE = process.env.TEST_ACCESS || '123456';
 const CLIENT_ID = process.env.CLIENT_ID || 'ag1-c1'; // seeded client
+
+async function login(driver) {
+  await driver.get(`${BASE}/auth/login`);
+  await findAndType(driver, 'Email', LOGIN_EMAIL);
+  await findAndType(driver, 'Phone', LOGIN_PHONE);
+  await findAndType(driver, 'Access Code', LOGIN_CODE);
+  await driver.findElement(By.xpath(`//button[normalize-space(.)="Sign in"]`)).click();
+  await driver.wait(until.elementLocated(By.xpath(`//*[contains(text(),"Dashboard")]`)), 20000);
+}
 
 async function run() {
   if (process.env.SKIP_ATHLETE === '1') {
@@ -17,7 +28,8 @@ async function run() {
   const driver = await new Builder().forBrowser('chrome').setChromeOptions(options).build();
 
   try {
-    await setSession(driver, BASE, { role: 'agency', email: AGENCY_EMAIL, agencyId: 'agency-001' });
+    await login(driver);
+    await dismissTour(driver);
     // seed mail log
     await driver.executeScript(`
       window.localStorage.setItem('mail_log_v1', JSON.stringify([{

@@ -1,9 +1,20 @@
 const { Builder, By, until } = require('selenium-webdriver');
 const chrome = require('selenium-webdriver/chrome');
-const { setSession, findAndType, selectOption, allowlistedConsoleErrors } = require('./utils');
+const { findAndType, allowlistedConsoleErrors, dismissTour } = require('./utils');
 
-const BASE = process.env.BASE_URL || 'http://localhost:3000';
-const AGENCY_EMAIL = 'agency1@an.test';
+const BASE = process.env.BASE_URL || 'https://www.myrecruiteragency.com';
+const LOGIN_EMAIL = process.env.TEST_EMAIL || 'drisanjames@gmail.com';
+const LOGIN_PHONE = process.env.TEST_PHONE || '2084407940';
+const LOGIN_CODE = process.env.TEST_ACCESS || '123456';
+
+async function login(driver) {
+  await driver.get(`${BASE}/auth/login`);
+  await findAndType(driver, 'Email', LOGIN_EMAIL);
+  await findAndType(driver, 'Phone', LOGIN_PHONE);
+  await findAndType(driver, 'Access Code', LOGIN_CODE);
+  await driver.findElement(By.xpath(`//button[normalize-space(.)="Sign in"]`)).click();
+  await driver.wait(until.elementLocated(By.xpath(`//*[contains(text(),"Dashboard")]`)), 20000);
+}
 
 async function run() {
   if (process.env.SKIP_AI_PROMPTS === '1') {
@@ -16,12 +27,8 @@ async function run() {
   const driver = await new Builder().forBrowser('chrome').setChromeOptions(options).build();
 
   try {
-    await setSession(driver, BASE, { role: 'agency', email: AGENCY_EMAIL, agencyId: 'agency-001' });
-    await driver.executeScript(`
-      window.localStorage.setItem('clients_data', JSON.stringify([
-        { id: 'ai-tmp', email: 'ai-${Date.now()}@example.com', firstName: 'AI', lastName: 'Tester', sport: 'Football', agencyEmail: '${AGENCY_EMAIL}' }
-      ]));
-    `);
+    await login(driver);
+    await dismissTour(driver);
     await driver.get(`${BASE}/ai/prompts`);
 
     // select client (open select then first option)
