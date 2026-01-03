@@ -1,10 +1,22 @@
 const { Builder, By, until } = require('selenium-webdriver');
 const chrome = require('selenium-webdriver/chrome');
 const fetch = (...args) => import('node-fetch').then(({ default: f }) => f(...args));
-const { allowlistedConsoleErrors, sleep, setSession } = require('./utils');
+const { allowlistedConsoleErrors, sleep, findAndType, dismissTour } = require('./utils');
 
 const BASE = process.env.BASE_URL || 'https://www.myrecruiteragency.com';
+const LOGIN_EMAIL = process.env.TEST_EMAIL || 'drisanjames@gmail.com';
+const LOGIN_PHONE = process.env.TEST_PHONE || '2084407940';
+const LOGIN_CODE = process.env.TEST_ACCESS || '123456';
 const AGENCY_NAME = `Selenium Agency ${Date.now()}`;
+
+async function login(driver) {
+  await driver.get(`${BASE}/auth/login`);
+  await findAndType(driver, 'Email', LOGIN_EMAIL);
+  await findAndType(driver, 'Phone', LOGIN_PHONE);
+  await findAndType(driver, 'Access Code', LOGIN_CODE);
+  await driver.findElement(By.xpath(`//button[normalize-space(.)="Sign in"]`)).click();
+  await driver.wait(until.elementLocated(By.xpath(`//*[contains(text(),"Dashboard")]`)), 20000);
+}
 
 async function run() {
   if (process.env.SKIP_AGENCY === '1') {
@@ -17,7 +29,8 @@ async function run() {
   const driver = await new Builder().forBrowser('chrome').setChromeOptions(options).build();
 
   try {
-    await setSession(driver, BASE, { email: 'drisanjames@gmail.com', agencyId: 'agency-001', role: 'agency' });
+    await login(driver);
+    await dismissTour(driver);
     await driver.get(`${BASE}/agencies/new`);
 
     // Start on the create form directly

@@ -225,6 +225,20 @@ functions:
           path: /agents/{id}
           method: any
 
-# Note: DynamoDB table 'agency-narrative-crm' is managed externally with deletion protection enabled.
-# It was originally created by this stack but is now retained independently.
+# ╔════════════════════════════════════════════════════════════════════════════╗
+# ║  ⚠️  CRITICAL: DATABASE PROTECTION NOTICE                                  ║
+# ╠════════════════════════════════════════════════════════════════════════════╣
+# ║  The DynamoDB table 'agency-narrative-crm' is EXTERNALLY MANAGED with:    ║
+# ║                                                                            ║
+# ║  1. DELETION PROTECTION ENABLED - Cannot be deleted via AWS Console/CLI   ║
+# ║  2. POINT-IN-TIME RECOVERY (PITR) - 35 days of continuous backups         ║
+# ║  3. IAM DENY POLICY - Explicit deny on dynamodb:DeleteTable action        ║
+# ║                                                                            ║
+# ║  DO NOT:                                                                   ║
+# ║  - Add a 'resources' section to recreate this table                       ║
+# ║  - Delete the CloudFormation stack without retaining the table            ║
+# ║  - Modify deletion protection settings                                    ║
+# ║                                                                            ║
+# ║  To restore from backup: aws dynamodb restore-table-to-point-in-time      ║
+# ╚════════════════════════════════════════════════════════════════════════════╝
 

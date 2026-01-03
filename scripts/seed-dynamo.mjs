@@ -50,7 +50,7 @@ async function seed() {
   }
 
   for (const c of clients) {
-    const now = new Date().toISOString();
+    const now = Date.now(); // Use timestamp number for GSI2
     await put({
       PK: `AGENCY#${c.agencyId}`,
       SK: `CLIENT#${c.id}`,
