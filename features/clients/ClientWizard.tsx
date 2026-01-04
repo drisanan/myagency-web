@@ -708,7 +708,10 @@ export function ClientWizard({
   React.useEffect(() => {
     function onMessage(e: MessageEvent) {
       if (typeof window === 'undefined') return;
-      if (e.origin !== window.location.origin) return;
+      // Allow messages from both frontend and API origins (OAuth callback posts from API domain)
+      const apiOrigin = (API_BASE_URL || 'https://api.myrecruiteragency.com').replace(/\/$/, '');
+      const allowedOrigins = [window.location.origin, apiOrigin];
+      if (!allowedOrigins.includes(e.origin)) return;
       
       if (e.data?.type === 'google-oauth-success') {
         const id = e.data?.clientId || tempClientIdRef.current;

@@ -64,9 +64,9 @@ const clientsHandler: Handler = async (event: APIGatewayProxyEventV2) => {
         if (allAgencyItems.length > 1) {
           captureMessage('Agency has items but no clients found', 'warning', {
             agencyId: cleanAgencyId,
-            totalItemsFound: allAgencyItems.length,
+           totalItemsFound: allAgencyItems.length,
             typesFound: allAgencyItems.map((i: any) => i.SK?.split('#')[0]),
-          });
+        });
         }
         // Otherwise it's a normal case: new agency with just a profile
       }
