@@ -144,8 +144,13 @@ console.log('agencyId', agencyId);
     agencyLogo: agencyLogo,
     agencySettings,
   };
-  // Issue session cookie via API if available
-  await postSession(session).catch(() => null);
+  // Issue session cookie via API - this MUST succeed for persistent login
+  try {
+    await postSession(session);
+    console.log('[Auth] Session cookie set successfully for:', session.email);
+  } catch (err: any) {
+    console.error('[Auth] CRITICAL: Failed to set session cookie:', err?.message);
+  }
   return session;
 }
 
