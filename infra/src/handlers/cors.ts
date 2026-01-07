@@ -17,11 +17,20 @@ export function buildCors(origin?: string) {
   };
 }
 
-export function response(statusCode: number, body: unknown, origin?: string, extraHeaders?: Record<string, string>) {
+export function response(
+  statusCode: number,
+  body: unknown,
+  origin?: string,
+  extraHeaders?: Record<string, string>,
+  cookies?: string[]
+) {
   const cors = buildCors(origin);
+  // Remove set-cookie from headers if present (use cookies array for HTTP API v2)
+  const { 'set-cookie': _, ...cleanHeaders } = extraHeaders || {};
   return {
     statusCode,
-    headers: { ...cors, ...(extraHeaders || {}) },
+    headers: { ...cors, ...cleanHeaders },
+    ...(cookies && cookies.length > 0 ? { cookies } : {}),
     body: JSON.stringify(body),
   };
 }

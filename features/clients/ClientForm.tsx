@@ -3,6 +3,7 @@ import React from 'react';
 import { TextField, Stack, Button, MenuItem } from '@mui/material';
 import { z } from 'zod';
 import { upsertClient } from '@/services/clients';
+import { getSports, formatSportLabel } from '@/features/recruiter/divisionMapping';
 
 const Schema = z.object({
   email: z.string().email(),
@@ -22,7 +23,7 @@ export function ClientForm({ initial }: { initial?: any }) {
       <TextField size="small" label="First name" value={value.firstName ?? ''} onChange={e=>setValue({...value, firstName: e.target.value})}/>
       <TextField size="small" label="Last name" value={value.lastName ?? ''} onChange={e=>setValue({...value, lastName: e.target.value})}/>
       <TextField size="small" select label="Sport" value={value.sport ?? ''} onChange={e=>setValue({...value, sport: e.target.value})}>
-        {['Football','Basketball','Baseball','Soccer'].map(s => <MenuItem key={s} value={s}>{s}</MenuItem>)}
+        {getSports().map(s => <MenuItem key={s} value={s}>{formatSportLabel(s)}</MenuItem>)}
       </TextField>
       <Button variant="contained" onClick={onSave}>Save</Button>
     </Stack>

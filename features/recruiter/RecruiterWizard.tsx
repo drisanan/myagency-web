@@ -91,6 +91,7 @@ export function RecruiterWizard() {
       phone: (currentClient as any)?.phone ?? '',
       firstName: currentClient?.firstName ?? '',
       lastName: currentClient?.lastName ?? '',
+      username: (currentClient as any)?.username ?? '',
       school: radar.school ?? '',
       accomplishments: radar.accomplishments ?? [],
       motivationalQuotes: radar.motivationalQuotes ?? (radar.athleteAdvice ? [radar.athleteAdvice] : []),
@@ -245,8 +246,9 @@ export function RecruiterWizard() {
       emailContent += `<p><img src="${(contact as any).profileImage}" alt="Profile Picture" width="250px" height="250px" style="max-width: 250px; height: auto; display: block;"></p>`;
     }
     emailContent += `<p>Thank you for your time!</p><p>${contact.firstName || ''} ${contact.lastName || ''} - ${contact.school || ''}</p>`;
-    if (enabledIds.includes('radarPage') && contact.email) {
-      emailContent += `\nFollow My Radar Page: <a href="https://radar.athletenarrative.com/?username=${encodeURIComponent(contact.email)}" target="_blank">HERE</a>`;
+    if (enabledIds.includes('radarPage') && contact.username) {
+      const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://www.myrecruiteragency.com';
+      emailContent += `\nFollow My Radar Page: <a href="${baseUrl}/athlete/${contact.username}" target="_blank">HERE</a>`;
     }
     return emailContent;
   }

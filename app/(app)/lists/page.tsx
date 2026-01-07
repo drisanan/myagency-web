@@ -5,7 +5,7 @@ import { Box, Button, Card, CardContent, Divider, FormControlLabel, Checkbox, Me
 import { useSession } from '@/features/auth/session';
 import { getStates } from '@/services/recruiterMeta';
 import { getDivisions } from '@/services/recruiterMeta';
-import { getSports } from '@/features/recruiter/divisionMapping';
+import { getSports, formatSportLabel } from '@/features/recruiter/divisionMapping';
 import { listUniversities, getUniversityDetails, DIVISION_API_MAPPING } from '@/services/recruiter';
 import { listLists, saveList, updateList, deleteList, CoachEntry, CoachList } from '@/services/lists';
 import { useTour } from '@/features/tour/TourProvider';
@@ -210,7 +210,7 @@ export default function ListsPage() {
         <Box>
           <Box data-tour="list-filters" sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(3, 1fr)' }, gap: 2, mb: 2 }}>
             <TextField size="small" select label="Sport" value={sport} onChange={(e) => setSport(e.target.value)} SelectProps={{ MenuProps: { disablePortal: true } }}>
-              {sports.map(s => <MenuItem key={s} value={s}>{s}</MenuItem>)}
+              {sports.map(s => <MenuItem key={s} value={s}>{formatSportLabel(s)}</MenuItem>)}
             </TextField>
             <TextField size="small" select label="Division" value={division} onChange={(e) => setDivision(e.target.value)} SelectProps={{ MenuProps: { disablePortal: true } }}>
               {divisions.map((d) => <MenuItem key={d} value={d}>{d}</MenuItem>)}

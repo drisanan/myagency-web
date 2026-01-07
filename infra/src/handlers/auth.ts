@@ -54,15 +54,14 @@ const authHandler = async (event: APIGatewayProxyEventV2) => {
       userId: payload.userId,
       firstName: payload.firstName,
       lastName: payload.lastName,
-      agencyLogo: payload.agencyLogo,
-      agencySettings: payload.agencySettings,
+      // agencyLogo/agencySettings excluded to keep cookie <4KB; fetched fresh on GET
     });
     const cookie = buildSessionCookie(token, secureCookie);
-    return response(200, { ok: true, session: payload }, origin, { 'set-cookie': cookie });
+    return response(200, { ok: true, session: payload }, origin, {}, [cookie]);
   }
 
   if (method === 'DELETE') {
-    return response(200, { ok: true }, origin, { 'set-cookie': buildClearCookie(secureCookie) });
+    return response(200, { ok: true }, origin, {}, [buildClearCookie(secureCookie)]);
   }
 
   return response(405, { ok: false, error: `Method not allowed` }, origin);
