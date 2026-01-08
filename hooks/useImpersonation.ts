@@ -13,6 +13,7 @@ import { useRouter } from 'next/navigation';
 import { logImpersonationStart, logImpersonationEnd } from '@/services/audit';
 
 const STORAGE_KEY = 'session_impersonation_base';
+const IMPERSONATION_SESSION_KEY = 'session_impersonation_active';
 
 type ImpersonateClientInput = {
   id: string;
@@ -77,11 +78,13 @@ export function useImpersonation() {
     // Log audit event
     logImpersonationEnd(base.email, session.email);
 
+    // Clear impersonation storage BEFORE setting session
+    // This prevents race conditions with other SessionProviders
+    window.localStorage.removeItem(STORAGE_KEY);
+    window.localStorage.removeItem(IMPERSONATION_SESSION_KEY);
+
     // Restore original session
     setSession(base);
-
-    // Clear storage
-    window.localStorage.removeItem(STORAGE_KEY);
 
     // Navigate back to clients list
     router.push('/clients');
