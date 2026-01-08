@@ -239,41 +239,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           bgcolor: contentBg,
         }}
       >
-        <Toolbar />
-        {/* Impersonation Banner - below utility header, in main content area */}
-        {isImpersonating && (
-          <Alert 
-            severity="warning" 
-            sx={{ 
-              mb: 2,
-              display: 'flex',
-              alignItems: 'center',
-              '& .MuiAlert-message': { 
-                flexGrow: 1,
-              },
-              '& .MuiAlert-action': {
-                pt: 0,
-                alignItems: 'center',
-              },
-            }}
-            action={
-              <Button 
-                color="inherit" 
-                size="small" 
-                variant="outlined"
-                onClick={stopImpersonation}
-                sx={{ 
-                  whiteSpace: 'nowrap',
-                  minWidth: 'auto',
-                }}
-              >
-                Stop Impersonating
-              </Button>
-            }
-          >
-            You are viewing as: {session?.firstName} {session?.lastName} ({session?.email})
-          </Alert>
-        )}
+        <Toolbar />        
         {children}
       </Box>
     </Box>

@@ -15873,11 +15873,13 @@ function buildCors(origin) {
     "Access-Control-Allow-Methods": "GET,POST,PUT,PATCH,DELETE,OPTIONS"
   };
 }
-function response(statusCode, body, origin, extraHeaders) {
+function response(statusCode, body, origin, extraHeaders, cookies) {
   const cors = buildCors(origin);
+  const { "set-cookie": _, ...cleanHeaders } = extraHeaders || {};
   return {
     statusCode,
-    headers: { ...cors, ...extraHeaders || {} },
+    headers: { ...cors, ...cleanHeaders },
+    ...cookies && cookies.length > 0 ? { cookies } : {},
     body: JSON.stringify(body)
   };
 }

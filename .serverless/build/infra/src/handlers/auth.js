@@ -13982,11 +13982,13 @@ function buildCors(origin) {
     "Access-Control-Allow-Methods": "GET,POST,PUT,PATCH,DELETE,OPTIONS"
   };
 }
-function response(statusCode, body, origin, extraHeaders) {
+function response(statusCode, body, origin, extraHeaders, cookies) {
   const cors = buildCors(origin);
+  const { "set-cookie": _, ...cleanHeaders } = extraHeaders || {};
   return {
     statusCode,
-    headers: { ...cors, ...extraHeaders || {} },
+    headers: { ...cors, ...cleanHeaders },
+    ...cookies && cookies.length > 0 ? { cookies } : {},
     body: JSON.stringify(body)
   };
 }
@@ -25546,15 +25548,14 @@ var authHandler = async (event) => {
       role: payload.role,
       userId: payload.userId,
       firstName: payload.firstName,
-      lastName: payload.lastName,
-      agencyLogo: payload.agencyLogo,
-      agencySettings: payload.agencySettings
+      lastName: payload.lastName
+      // agencyLogo/agencySettings excluded to keep cookie <4KB; fetched fresh on GET
     });
     const cookie = buildSessionCookie(token, secureCookie);
-    return response(200, { ok: true, session: payload }, origin, { "set-cookie": cookie });
+    return response(200, { ok: true, session: payload }, origin, {}, [cookie]);
   }
   if (method === "DELETE") {
-    return response(200, { ok: true }, origin, { "set-cookie": buildClearCookie(secureCookie) });
+    return response(200, { ok: true }, origin, {}, [buildClearCookie(secureCookie)]);
   }
   return response(405, { ok: false, error: `Method not allowed` }, origin);
 };
