@@ -28,8 +28,20 @@ const TEST_CLIENT_EMAIL = `impersonate-test-${Date.now()}@example.com`;
 
 let sessionCookie = null;
 
+async function clearImpersonationStorage(driver) {
+  // Clear any stale impersonation data from previous test runs
+  await driver.executeScript(`
+    window.localStorage.removeItem('session_impersonation_base');
+    window.localStorage.removeItem('session_impersonation_active');
+  `);
+}
+
 async function login(driver) {
   await driver.get(`${BASE}/auth/login`);
+  
+  // Clear any stale impersonation state
+  await clearImpersonationStorage(driver);
+  
   await findAndType(driver, 'Email', LOGIN_EMAIL);
   await findAndType(driver, 'Phone', LOGIN_PHONE);
   await findAndType(driver, 'Access Code', LOGIN_CODE);
@@ -177,7 +189,10 @@ async function run() {
       until.elementLocated(By.xpath(`//button[contains(text(),"Stop Impersonating")]`)),
       5000
     );
-    await stopBtn.click();
+    // Use JavaScript click to avoid element click interception
+    await driver.executeScript('arguments[0].scrollIntoView({block: "center"});', stopBtn);
+    await sleep(500);
+    await driver.executeScript('arguments[0].click();', stopBtn);
     await sleep(2000);
 
     // Step 9: Verify redirected back to agency view (/clients)

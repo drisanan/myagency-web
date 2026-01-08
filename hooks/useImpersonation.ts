@@ -86,8 +86,10 @@ export function useImpersonation() {
     // Restore original session
     setSession(base);
 
-    // Navigate back to clients list
-    router.push('/clients');
+    // Navigate back to clients list using full page navigation
+    // This bypasses the client layout Guard which would otherwise
+    // redirect to /auth/client-login before router.push completes
+    window.location.href = '/clients';
   };
 
   return {
