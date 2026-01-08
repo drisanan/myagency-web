@@ -4,7 +4,6 @@ import { Box, CssBaseline, AppBar, Toolbar, Typography, Drawer, List, ListItemBu
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useSession } from '@/features/auth/session';
-import { logImpersonationEnd } from '@/services/audit';
 import { colors } from '@/theme/colors';
 import { IoAppsOutline, IoBarbellOutline, IoFlaskOutline, IoClipboardOutline, IoSchoolOutline } from 'react-icons/io5';
 import { IoNotificationsOutline } from 'react-icons/io5';
@@ -25,17 +24,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const navActiveText = s.navActiveText || colors.navActiveText;
   const contentBg = s.contentBg || '#fff';
   const cardBg = s.cardBg || '#fff';
-
-  const stopImpersonation = React.useCallback(() => {
-    if (typeof window === 'undefined') return;
-    const baseRaw = window.localStorage.getItem('session_impersonation_base');
-    if (session?.impersonatedBy && baseRaw) {
-      const base = JSON.parse(baseRaw);
-      logImpersonationEnd(base.email, session.email);
-      setSession(base);
-      window.localStorage.removeItem('session_impersonation_base');
-    }
-  }, [session, setSession]);
 
   const navItemSx = {
     width: 'calc(100% - 20px)', // leave 10px inset on each side
@@ -132,16 +120,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             )}
           </Box>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            {session?.impersonatedBy && (
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                <Typography variant="body2" sx={{ color: '#212636' }}>
-                  Impersonating {typeof session.impersonatedBy === 'string'
-                    ? session.impersonatedBy
-                    : (session.impersonatedBy as any)?.email || 'another user'}
-                </Typography>
-                <Button color="inherit" variant="outlined" onClick={stopImpersonation}>Stop Impersonating</Button>
-              </Box>
-            )}
             {session ? (
               <Stack direction="row" spacing={2} alignItems="center">
                 <Badge color="primary" badgeContent={openTasks.length || null} anchorOrigin={{ vertical: 'top', horizontal: 'left' }}>
@@ -260,11 +238,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         }}
       >
         <Toolbar />
-        {session?.impersonatedBy && (
-          <Alert severity="error" sx={{ mb: 2 }}>
-            You are impersonating agency account: {session.email}. Actions will be logged.
-          </Alert>
-        )}
         {children}
       </Box>
     </Box>

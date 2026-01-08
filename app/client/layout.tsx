@@ -50,7 +50,7 @@ function ClientShell({ children }: { children: React.ReactNode }) {
           severity="warning" 
           sx={{ 
             borderRadius: 0, 
-            py: 0.5,
+            py: 0.45, // Reduced by 10%
             '& .MuiAlert-message': { 
               display: 'flex', 
               alignItems: 'center', 
@@ -73,58 +73,61 @@ function ClientShell({ children }: { children: React.ReactNode }) {
           You are viewing as: {session?.firstName} {session?.lastName} ({session?.email})
         </Alert>
       )}
-      <AppBar 
-        position="static" 
-        sx={{ 
-          bgcolor: primaryColor,
-          boxShadow: 1,
-        }}
-      >
-        <Toolbar>
-          {agencyLogo ? (
-            <img 
-              src={agencyLogo} 
-              alt="Agency Logo" 
-              style={{ height: 32, objectFit: 'contain', marginRight: 16 }} 
-            />
-          ) : null}
-          <Typography variant="h6" sx={{ color: '#fff', mr: 4 }}>
-            Client Portal
-          </Typography>
-          
-          {/* Navigation */}
-          <Stack direction="row" spacing={1} sx={{ flexGrow: 1 }}>
-            {navItems.map((item) => {
-              const isActive = pathname === item.href || pathname?.startsWith(item.href + '/');
-              return (
-                <Button
-                  key={item.href}
-                  component={Link}
-                  href={item.href}
-                  sx={{
-                    color: isActive ? secondaryColor : 'rgba(255,255,255,0.8)',
-                    bgcolor: isActive ? 'rgba(255,255,255,0.1)' : 'transparent',
-                    '&:hover': {
-                      bgcolor: 'rgba(255,255,255,0.15)',
-                    },
-                    fontWeight: isActive ? 600 : 400,
-                    textTransform: 'none',
-                    px: 2,
-                  }}
-                >
-                  {item.label}
-                </Button>
-              );
-            })}
-          </Stack>
-
-          {session?.firstName && (
-            <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.8)' }}>
-              {session.firstName} {session.lastName}
+      {/* Hide navigation bar when impersonating */}
+      {!isImpersonating && (
+        <AppBar 
+          position="static" 
+          sx={{ 
+            bgcolor: primaryColor,
+            boxShadow: 1,
+          }}
+        >
+          <Toolbar>
+            {agencyLogo ? (
+              <img 
+                src={agencyLogo} 
+                alt="Agency Logo" 
+                style={{ height: 32, objectFit: 'contain', marginRight: 16 }} 
+              />
+            ) : null}
+            <Typography variant="h6" sx={{ color: '#fff', mr: 4 }}>
+              Client Portal
             </Typography>
-          )}
-        </Toolbar>
-      </AppBar>
+            
+            {/* Navigation */}
+            <Stack direction="row" spacing={1} sx={{ flexGrow: 1 }}>
+              {navItems.map((item) => {
+                const isActive = pathname === item.href || pathname?.startsWith(item.href + '/');
+                return (
+                  <Button
+                    key={item.href}
+                    component={Link}
+                    href={item.href}
+                    sx={{
+                      color: isActive ? secondaryColor : 'rgba(255,255,255,0.8)',
+                      bgcolor: isActive ? 'rgba(255,255,255,0.1)' : 'transparent',
+                      '&:hover': {
+                        bgcolor: 'rgba(255,255,255,0.15)',
+                      },
+                      fontWeight: isActive ? 600 : 400,
+                      textTransform: 'none',
+                      px: 2,
+                    }}
+                  >
+                    {item.label}
+                  </Button>
+                );
+              })}
+            </Stack>
+
+            {session?.firstName && (
+              <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.8)' }}>
+                {session.firstName} {session.lastName}
+              </Typography>
+            )}
+          </Toolbar>
+        </AppBar>
+      )}
       <Box 
         component="main" 
         sx={{ 
