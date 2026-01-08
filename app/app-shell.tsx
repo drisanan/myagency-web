@@ -4,6 +4,7 @@ import { Box, CssBaseline, AppBar, Toolbar, Typography, Drawer, List, ListItemBu
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useSession } from '@/features/auth/session';
+import { useImpersonation } from '@/hooks/useImpersonation';
 import { colors } from '@/theme/colors';
 import { IoAppsOutline, IoBarbellOutline, IoFlaskOutline, IoClipboardOutline, IoSchoolOutline } from 'react-icons/io5';
 import { IoNotificationsOutline } from 'react-icons/io5';
@@ -15,6 +16,7 @@ const drawerWidth = 240;
 export function AppShell({ children }: { children: React.ReactNode }) {
   const { session, setSession } = useSession();
   const pathname = usePathname();
+  const { isImpersonating, stopImpersonation } = useImpersonation();
 
   // Dynamic colors from agency settings (white-label)
   const s = session?.agencySettings || {};
@@ -238,6 +240,40 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         }}
       >
         <Toolbar />
+        {/* Impersonation Banner - below utility header, in main content area */}
+        {isImpersonating && (
+          <Alert 
+            severity="warning" 
+            sx={{ 
+              mb: 2,
+              display: 'flex',
+              alignItems: 'center',
+              '& .MuiAlert-message': { 
+                flexGrow: 1,
+              },
+              '& .MuiAlert-action': {
+                pt: 0,
+                alignItems: 'center',
+              },
+            }}
+            action={
+              <Button 
+                color="inherit" 
+                size="small" 
+                variant="outlined"
+                onClick={stopImpersonation}
+                sx={{ 
+                  whiteSpace: 'nowrap',
+                  minWidth: 'auto',
+                }}
+              >
+                Stop Impersonating
+              </Button>
+            }
+          >
+            You are viewing as: {session?.firstName} {session?.lastName} ({session?.email})
+          </Alert>
+        )}
         {children}
       </Box>
     </Box>

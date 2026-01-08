@@ -64,7 +64,11 @@ function ClientShell({ children }: { children: React.ReactNode }) {
               size="small" 
               variant="outlined"
               onClick={stopImpersonation}
-              sx={{ ml: 2 }}
+              sx={{ 
+                ml: 2,
+                whiteSpace: 'nowrap',
+                minWidth: 'auto',
+              }}
             >
               Stop Impersonating
             </Button>
