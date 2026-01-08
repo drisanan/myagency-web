@@ -50,6 +50,9 @@
       ],
       "@/infra-adapter/*": [
         "infra-adapter/*"
+      ],
+      "@/hooks/*": [
+        "hooks/*"
       ]
     },
     "incremental": true,
