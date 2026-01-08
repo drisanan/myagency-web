@@ -44,39 +44,7 @@ function ClientShell({ children }: { children: React.ReactNode }) {
 
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: '#f5f5f5' }}>
-      {/* Impersonation Banner */}
-      {isImpersonating && (
-        <Alert 
-          severity="warning" 
-          sx={{ 
-            borderRadius: 0, 
-            py: 0.45, // Reduced by 10%
-            '& .MuiAlert-message': { 
-              display: 'flex', 
-              alignItems: 'center', 
-              justifyContent: 'space-between',
-              width: '80%',
-            },
-          }}
-          action={
-            <Button 
-              color="inherit" 
-              size="small" 
-              variant="outlined"
-              onClick={stopImpersonation}
-              sx={{ 
-                ml: 2,
-                whiteSpace: 'nowrap',
-                minWidth: 'auto',
-              }}
-            >
-              Stop Impersonating
-            </Button>
-          }
-        >
-          You are viewing as: {session?.firstName} {session?.lastName} ({session?.email})
-        </Alert>
-      )}
+      
       {/* Hide navigation bar when impersonating */}
       {!isImpersonating && (
         <AppBar 
