@@ -1,8 +1,18 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import React from 'react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AppShell } from '@/app/app-shell';
 import * as sessionMod from '@/features/auth/session';
 import * as audit from '@/services/audit';
+
+const createWrapper = () => {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+  return ({ children }: { children: React.ReactNode }) => (
+    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  );
+};
 
 describe('AppShell impersonation banner', () => {
   test('renders banner and can stop impersonation', () => {
@@ -15,7 +25,7 @@ describe('AppShell impersonation banner', () => {
       loading: false
     } as any);
     const endSpy = jest.spyOn(audit, 'logImpersonationEnd').mockReturnValue('id-end');
-    render(<AppShell><div /></AppShell>);
+    render(<AppShell><div /></AppShell>, { wrapper: createWrapper() });
     expect(screen.getByText(/You are impersonating agency account/i)).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /stop impersonating/i }));
     expect(endSpy).toHaveBeenCalledWith('admin', 'agency1@an.test');

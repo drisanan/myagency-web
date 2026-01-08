@@ -5,8 +5,9 @@ import { TourProvider } from '@/features/tour/TourProvider';
 import { DynamicThemeProvider } from '@/features/theme/DynamicThemeProvider';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { Box, AppBar, Toolbar, Typography, Button, Stack } from '@mui/material';
+import { Box, AppBar, Toolbar, Typography, Button, Stack, Alert } from '@mui/material';
 import { colors } from '@/theme/colors';
+import { useImpersonation } from '@/hooks/useImpersonation';
 
 function Guard({ children }: { children: React.ReactNode }) {
   const { session, loading } = useSession();
@@ -34,6 +35,7 @@ const navItems = [
 function ClientShell({ children }: { children: React.ReactNode }) {
   const { session } = useSession();
   const pathname = usePathname();
+  const { isImpersonating, impersonatedBy, stopImpersonation } = useImpersonation();
   
   // Dynamic colors from agency settings (white-label)
   const primaryColor = session?.agencySettings?.primaryColor || colors.sidebarBg;
@@ -42,6 +44,35 @@ function ClientShell({ children }: { children: React.ReactNode }) {
 
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: '#f5f5f5' }}>
+      {/* Impersonation Banner */}
+      {isImpersonating && (
+        <Alert 
+          severity="warning" 
+          sx={{ 
+            borderRadius: 0, 
+            py: 0.5,
+            '& .MuiAlert-message': { 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'space-between',
+              width: '100%',
+            },
+          }}
+          action={
+            <Button 
+              color="inherit" 
+              size="small" 
+              variant="outlined"
+              onClick={stopImpersonation}
+              sx={{ ml: 2 }}
+            >
+              Stop Impersonating
+            </Button>
+          }
+        >
+          You are viewing as: {session?.firstName} {session?.lastName} ({session?.email})
+        </Alert>
+      )}
       <AppBar 
         position="static" 
         sx={{ 

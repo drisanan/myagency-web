@@ -28,12 +28,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   const stopImpersonation = React.useCallback(() => {
     if (typeof window === 'undefined') return;
-    const baseRaw = null;
+    const baseRaw = window.localStorage.getItem('session_impersonation_base');
     if (session?.impersonatedBy && baseRaw) {
       const base = JSON.parse(baseRaw);
       logImpersonationEnd(base.email, session.email);
       setSession(base);
-      // no-op; legacy impersonation store removed
+      window.localStorage.removeItem('session_impersonation_base');
     }
   }, [session, setSession]);
 

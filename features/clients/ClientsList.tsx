@@ -5,6 +5,7 @@ import { listClientsByAgencyEmail, deleteClient, getGmailStatus, refreshGmailTok
 import { DataGrid, GridColDef } from '@mui/x-data-grid';
 import { Button, Stack, Box, Typography, Avatar, Paper, Chip, CircularProgress } from '@mui/material';
 import { useSession } from '@/features/auth/session';
+import { useImpersonation } from '@/hooks/useImpersonation';
 
 function GmailStatusCell({ clientId }: { clientId: string }) {
   const [refreshing, setRefreshing] = React.useState(false);
@@ -56,9 +57,11 @@ function GmailStatusCell({ clientId }: { clientId: string }) {
 
 export function ClientsList() {
   const { session } = useSession();
+  const { impersonateClient, isImpersonating } = useImpersonation();
   
   // FIX: Check for agencyEmail OR email so it works with your API response
   const agencyEmail = session?.agencyEmail || session?.email || '';
+  const canImpersonate = session?.role === 'agency' && !isImpersonating;
 
   const { data = [], refetch } = useQuery({
     queryKey: ['clients', agencyEmail],
@@ -108,13 +111,27 @@ export function ClientsList() {
     {
       field: 'actions',
       headerName: 'Actions',
-      width: 200,
+      width: 280,
       sortable: false,
       renderCell: (p) => (
         <Stack direction="row" spacing={1}>
           <Button size="small" href={`/clients/${p.row.id}`}>View</Button>
           <Button size="small" href={`/clients/${p.row.id}/edit`}>Edit</Button>
           <Button size="small" color="error" onClick={async ()=>{ await deleteClient(p.row.id); refetch(); }}>Delete</Button>
+          {canImpersonate && (
+            <Button 
+              size="small" 
+              color="secondary"
+              onClick={() => impersonateClient({
+                id: p.row.id,
+                email: p.row.email,
+                firstName: p.row.firstName,
+                lastName: p.row.lastName,
+              })}
+            >
+              Impersonate
+            </Button>
+          )}
         </Stack>
       )
     }

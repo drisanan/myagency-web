@@ -41,7 +41,7 @@ export type Session = {
   firstName?: string;
   lastName?: string;
   agencySettings?: AgencySettings;
-  impersonatedBy?: { email: string; role: 'parent' };
+  impersonatedBy?: { email: string; role: 'parent' | 'agency' };
   contactId?: string;
   clientId?: string;
   authEnabled?: boolean;
