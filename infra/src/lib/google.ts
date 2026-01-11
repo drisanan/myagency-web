@@ -3,7 +3,7 @@ import { google } from 'googleapis';
 export function buildOAuthClient() {
   const clientId = process.env.GOOGLE_CLIENT_ID;
   const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
-  const redirectUri = process.env.GOOGLE_REDIRECT_URI || 'https://master.d2yp6hyv6u0efd.amplifyapp.com/';
+  const redirectUri = process.env.GOOGLE_REDIRECT_URI || 'https://api.myrecruiteragency.com/google/oauth/callback';
   if (!clientId || !clientSecret) throw new Error('Missing Google client config');
   return new google.auth.OAuth2(clientId, clientSecret, redirectUri);
 }
