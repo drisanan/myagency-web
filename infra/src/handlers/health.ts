@@ -7,7 +7,7 @@ const healthHandler = async (event: APIGatewayProxyEventV2) => {
   const method = (event.requestContext.http?.method || '').toUpperCase();
   if (method === 'OPTIONS') return response(200, { ok: true }, origin);
   if (method && method !== 'GET') return response(405, { ok: false, error: 'Method not allowed' }, origin);
-  return response(200, { ok: true, service: 'athlete-narrative-api', status: 'healthy' }, origin);
+  return response(200, { ok: true, service: 'athlete-narrative-api', status: 'healthy', version: '1.1.0' }, origin);
 };
 
 export const handler = withSentry(healthHandler);
