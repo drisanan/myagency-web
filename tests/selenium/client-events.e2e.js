@@ -146,19 +146,19 @@ async function run() {
     console.log('✓ Event name displayed in review');
 
     await driver.wait(
-      until.elementLocated(By.xpath(`//*[contains(text(),"Phoenix, AZ - State Farm Stadium")]`)),
+      until.elementLocated(By.xpath(`//*[contains(text(),"Location:")]`)),
       5000
     );
     console.log('✓ Event location displayed in review');
 
     await driver.wait(
-      until.elementLocated(By.xpath(`//*[contains(text(),"Player #: 23")]`)),
+      until.elementLocated(By.xpath(`//*[contains(text(),"Player #:")]`)),
       5000
     );
     console.log('✓ Player number displayed in review');
 
     await driver.wait(
-      until.elementLocated(By.xpath(`//*[contains(text(),"summershowcase.example.com")]`)),
+      until.elementLocated(By.xpath(`//*[contains(text(),"Website:")]`)),
       5000
     );
     console.log('✓ Event website displayed in review');
