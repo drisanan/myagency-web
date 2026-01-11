@@ -21,6 +21,7 @@ type EventItem = {
 };
 type MetricItem = { title: string; value: string };
 type ReferenceItem = { name: string; email?: string; phone?: string };
+type HighlightVideoItem = { url: string; title?: string };
 type RadarDraft = {
   events?: EventItem[];
   metrics?: MetricItem[];
@@ -90,7 +91,19 @@ function calculateBase64Size(base64String: string): number {
   return Math.ceil(base64Data.length * 0.75); // Base64 to bytes approximation
 }
 
-function GalleryStep({ value, onChange }: { value: string[]; onChange: (images: string[]) => void }) {
+const MAX_HIGHLIGHT_VIDEOS = 4;
+
+function GalleryStep({ 
+  images, 
+  onImagesChange,
+  videos,
+  onVideosChange,
+}: { 
+  images: string[]; 
+  onImagesChange: (images: string[]) => void;
+  videos: HighlightVideoItem[];
+  onVideosChange: (videos: HighlightVideoItem[]) => void;
+}) {
   const fileInputRef = React.useRef<HTMLInputElement | null>(null);
   const [error, setError] = React.useState<string | null>(null);
   const [showUrlInput, setShowUrlInput] = React.useState(false);
@@ -98,19 +111,19 @@ function GalleryStep({ value, onChange }: { value: string[]; onChange: (images: 
 
   // Calculate current total size of gallery
   const currentTotalBytes = React.useMemo(() => {
-    return value.reduce((sum, img) => {
+    return images.reduce((sum, img) => {
       if (img.startsWith('data:')) {
         return sum + calculateBase64Size(img);
       }
       return sum + 100; // URL strings are small
     }, 0);
-  }, [value]);
+  }, [images]);
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
     
-    if (value.length + files.length > MAX_IMAGES) {
+    if (images.length + files.length > MAX_IMAGES) {
       setError(`Maximum ${MAX_IMAGES} images allowed`);
       return;
     }
@@ -143,7 +156,7 @@ function GalleryStep({ value, onChange }: { value: string[]; onChange: (images: 
           return;
         }
         
-        onChange([...value, result]);
+        onImagesChange([...images, result]);
         addedCount++;
         if (addedCount === files.length) {
           setError(null);
@@ -158,18 +171,18 @@ function GalleryStep({ value, onChange }: { value: string[]; onChange: (images: 
 
   const handleAddUrl = () => {
     if (!urlValue.trim()) return;
-    if (value.length >= MAX_IMAGES) {
+    if (images.length >= MAX_IMAGES) {
       setError(`Maximum ${MAX_IMAGES} images allowed`);
       return;
     }
     // URLs are fine - they're just short strings
-    onChange([...value, urlValue.trim()]);
+    onImagesChange([...images, urlValue.trim()]);
     setUrlValue('');
     setError(null);
   };
 
-  const handleRemove = (index: number) => {
-    onChange(value.filter((_, i) => i !== index));
+  const handleRemoveImage = (index: number) => {
+    onImagesChange(images.filter((_, i) => i !== index));
     setError(null);
   };
 
@@ -186,7 +199,7 @@ function GalleryStep({ value, onChange }: { value: string[]; onChange: (images: 
       {error && <Alert severity="error">{error}</Alert>}
       
       <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-        {value.map((img, idx) => (
+        {images.map((img, idx) => (
           <Box
             key={idx}
             sx={{
@@ -206,7 +219,7 @@ function GalleryStep({ value, onChange }: { value: string[]; onChange: (images: 
             />
             <IconButton
               size="small"
-              onClick={() => handleRemove(idx)}
+              onClick={() => handleRemoveImage(idx)}
               sx={{
                 position: 'absolute',
                 top: 4,
@@ -221,7 +234,7 @@ function GalleryStep({ value, onChange }: { value: string[]; onChange: (images: 
           </Box>
         ))}
         
-        {value.length < MAX_IMAGES && (
+        {images.length < MAX_IMAGES && (
           <Box
             onClick={() => fileInputRef.current?.click()}
             sx={{
@@ -281,7 +294,7 @@ function GalleryStep({ value, onChange }: { value: string[]; onChange: (images: 
       
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <Typography variant="caption" color="text.secondary">
-          {value.length}/{MAX_IMAGES} images added
+          {images.length}/{MAX_IMAGES} images added
         </Typography>
         <Typography 
           variant="caption" 
@@ -300,6 +313,63 @@ function GalleryStep({ value, onChange }: { value: string[]; onChange: (images: 
           Max {MAX_SINGLE_IMAGE_KB}KB per image.
         </Typography>
       </Alert>
+
+      {/* Highlight Videos Section */}
+      <Box sx={{ mt: 4, pt: 3, borderTop: '1px solid #e5e7eb' }}>
+        <Typography variant="subtitle1" fontWeight={600}>Highlight Videos</Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          Add up to {MAX_HIGHLIGHT_VIDEOS} highlight video URLs (YouTube, Vimeo, Hudl, or direct MP4 links).
+        </Typography>
+        
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+          {videos.map((video, idx) => (
+            <Box key={idx} sx={{ display: 'flex', gap: 1, alignItems: 'center', p: 1.5, bgcolor: '#fafafa', borderRadius: 1, border: '1px solid #e5e7eb' }}>
+              <TextField
+                size="small"
+                label={`Video ${idx + 1} Title`}
+                value={video.title ?? ''}
+                onChange={(e) => onVideosChange(videos.map((v, i) => i === idx ? { ...v, title: e.target.value } : v))}
+                sx={{ width: 180 }}
+                inputProps={{ 'data-testid': `highlight-video-title-${idx}` }}
+              />
+              <TextField
+                size="small"
+                label="Video URL"
+                value={video.url}
+                onChange={(e) => onVideosChange(videos.map((v, i) => i === idx ? { ...v, url: e.target.value } : v))}
+                sx={{ flex: 1 }}
+                placeholder="https://youtube.com/watch?v=... or .mp4 URL"
+                inputProps={{ 'data-testid': `highlight-video-url-${idx}` }}
+              />
+              <IconButton 
+                size="small" 
+                color="error" 
+                onClick={() => onVideosChange(videos.filter((_, i) => i !== idx))}
+                data-testid={`remove-highlight-video-${idx}`}
+              >
+                <FaTrash size={14} />
+              </IconButton>
+            </Box>
+          ))}
+          
+          {videos.length < MAX_HIGHLIGHT_VIDEOS && (
+            <Button
+              variant="outlined"
+              size="small"
+              startIcon={<FaPlus />}
+              onClick={() => onVideosChange([...videos, { url: '', title: '' }])}
+              sx={{ alignSelf: 'flex-start' }}
+              data-testid="add-highlight-video"
+            >
+              Add Highlight Video
+            </Button>
+          )}
+        </Box>
+        
+        <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+          {videos.length}/{MAX_HIGHLIGHT_VIDEOS} videos added
+        </Typography>
+      </Box>
     </Box>
   );
 }
@@ -1018,8 +1088,10 @@ export function ClientWizard({
         )}
         {activeStep === 4 && (
           <GalleryStep 
-            value={basic.galleryImages || []} 
-            onChange={(images) => setBasic((prev) => ({ ...prev, galleryImages: images }))} 
+            images={basic.galleryImages || []} 
+            onImagesChange={(images) => setBasic((prev) => ({ ...prev, galleryImages: images }))}
+            videos={basic.highlightVideos || []}
+            onVideosChange={(videos) => setBasic((prev) => ({ ...prev, highlightVideos: videos }))}
           />
         )}
         {activeStep === 5 && (
@@ -1149,6 +1221,21 @@ export function ClientWizard({
                           alt={`Gallery ${i + 1}`}
                           sx={{ width: 80, height: 80, objectFit: 'cover', borderRadius: 1 }}
                         />
+                      ))}
+                    </Box>
+                  </Box>
+                )}
+                {(basic.highlightVideos?.length ?? 0) > 0 && (
+                  <Box sx={{ gridColumn: '1 / -1' }}>
+                    <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>Highlight Videos ({basic.highlightVideos.length})</Typography>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                      {basic.highlightVideos.map((video: HighlightVideoItem, i: number) => (
+                        <Box key={i} sx={{ pl: 1.5, borderLeft: '2px solid #e5e7eb' }}>
+                          <Typography fontWeight={500}>{video.title || `Video ${i + 1}`}</Typography>
+                          <Typography variant="body2" color="text.secondary" sx={{ wordBreak: 'break-all' }}>
+                            {video.url || 'No URL'}
+                          </Typography>
+                        </Box>
                       ))}
                     </Box>
                   </Box>
