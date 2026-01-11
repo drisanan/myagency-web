@@ -25,8 +25,8 @@ let cachedTenantRegistry: TenantRegistry | null = null;
 
 export function getServiceConfig(): ServiceConfig {
   if (cachedServiceConfig) return cachedServiceConfig;
-  // Single source of truth; hardwired to prod API base
-  const apiBaseUrl = 'https://api.myrecruiteragency.com';
+  // Use env var for local dev, fallback to prod API
+  const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://api.myrecruiteragency.com';
   cachedServiceConfig = { apiBaseUrl };
   return cachedServiceConfig;
 }
