@@ -5,14 +5,16 @@ import { getItem } from '../lib/dynamo';
 import { withSentry } from '../lib/sentry';
 
 const authHandler = async (event: APIGatewayProxyEventV2) => {
-  const origin = event.headers?.origin || event.headers?.Origin || event.headers?.['origin'] || '';
+  const headers = event.headers || {};
+  const origin = headers.origin || headers.Origin || '';
   const method = (event.requestContext.http?.method || '').toUpperCase();
   if (!method) return response(400, { ok: false, error: 'Missing method' }, origin);
 
-  const host = event.headers['x-forwarded-host'] || event.headers['Host'] || '';
-  const proto = event.headers['x-forwarded-proto'] || 'https';
+  const host = headers['x-forwarded-host'] || headers.host || headers.Host || '';
+  const proto = headers['x-forwarded-proto'] || 'https';
   const resolvedOrigin = origin || `${proto}://${host}`;
   const isLocal = resolvedOrigin.includes('localhost');
+  console.log('[auth] locality check:', { origin, host, proto, resolvedOrigin, isLocal });
   const secureCookie = proto === 'https' && !isLocal;
 
   if (method === 'OPTIONS') {
@@ -58,11 +60,20 @@ const authHandler = async (event: APIGatewayProxyEventV2) => {
       // agencyLogo/agencySettings excluded to keep cookie <4KB; fetched fresh on GET
     });
     const cookie = buildSessionCookie(token, secureCookie, isLocal);
+    // Local: use Set-Cookie header (serverless-offline/Hapi compatible)
+    // Production: use cookies array (AWS HTTP API v2 format)
+    if (isLocal) {
+      return response(200, { ok: true, session: payload }, origin, { 'Set-Cookie': cookie });
+    }
     return response(200, { ok: true, session: payload }, origin, {}, [cookie]);
   }
 
   if (method === 'DELETE') {
-    return response(200, { ok: true }, origin, {}, [buildClearCookie(secureCookie, isLocal)]);
+    const clearCookie = buildClearCookie(secureCookie, isLocal);
+    if (isLocal) {
+      return response(200, { ok: true }, origin, { 'Set-Cookie': clearCookie });
+    }
+    return response(200, { ok: true }, origin, {}, [clearCookie]);
   }
 
   return response(405, { ok: false, error: `Method not allowed` }, origin);
