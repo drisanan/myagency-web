@@ -172,8 +172,10 @@ export function SettingsForm() {
         logoDataUrl: logoDataUrl || undefined,
       });
       
-      setSuccess('Settings saved! Changes will apply immediately.');
+      setSuccess('Settings saved! Refreshing...');
       await refreshSession();
+      // Reload page to apply theme changes across all components
+      window.location.reload();
     } catch (e: any) {
       setError(e?.message || 'Failed to save settings');
     } finally {
