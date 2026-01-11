@@ -11,7 +11,14 @@ import { checkUsernameAvailability } from '@/services/profilePublic';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || '';
 
-type EventItem = { name: string; startTime?: string };
+type EventItem = { 
+  name: string; 
+  startTime?: string;
+  endTime?: string;
+  website?: string;
+  playerNumber?: string;
+  location?: string;
+};
 type MetricItem = { title: string; value: string };
 type ReferenceItem = { name: string; email?: string; phone?: string };
 type RadarDraft = {
@@ -308,23 +315,66 @@ function EventsMetricsStep({ value, onChange }: { value: RadarDraft; onChange: (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
       <Box>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-          <Typography variant="subtitle1">Events</Typography>
-          <Button size="small" data-testid="add-event" onClick={() => updateEvents([...events, { name: '', startTime: '' }])}>+ Add Event</Button>
+          <Typography variant="subtitle1">Upcoming Events</Typography>
+          <Button size="small" data-testid="add-event" onClick={() => updateEvents([...events, { name: '', startTime: '', endTime: '', website: '', playerNumber: '', location: '' }])}>+ Add Event</Button>
         </Box>
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
           {events.length === 0 && <Typography variant="body2" color="text.secondary">No events added</Typography>}
           {events.map((ev, idx) => (
-            <Box key={idx} sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr auto' }, gap: 1 }}>
-              <TextField size="small" label="Event Name" value={ev.name} onChange={(e)=>updateEvents(events.map((v,i)=>i===idx?{...v,name:e.target.value}:v))} />
-              <TextField
-                size="small"
-                label="Start Time"
-                type="datetime-local"
-                InputLabelProps={{ shrink: true }}
-                value={ev.startTime ?? ''}
-                onChange={(e)=>updateEvents(events.map((v,i)=>i===idx?{...v,startTime:e.target.value}:v))}
-              />
-              <Button color="error" onClick={()=>updateEvents(events.filter((_,i)=>i!==idx))}>Remove</Button>
+            <Box key={idx} sx={{ p: 2, border: '1px solid #e5e7eb', borderRadius: 2, bgcolor: '#fafafa' }}>
+              <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 1.5 }}>
+                <TextField 
+                  size="small" 
+                  label="Event Name" 
+                  value={ev.name} 
+                  onChange={(e) => updateEvents(events.map((v, i) => i === idx ? { ...v, name: e.target.value } : v))}
+                  inputProps={{ 'data-testid': `event-name-${idx}` }}
+                />
+                <TextField 
+                  size="small" 
+                  label="Event Website" 
+                  value={ev.website ?? ''} 
+                  onChange={(e) => updateEvents(events.map((v, i) => i === idx ? { ...v, website: e.target.value } : v))} 
+                  placeholder="https://..."
+                  inputProps={{ 'data-testid': `event-website-${idx}` }}
+                />
+                <TextField
+                  size="small"
+                  label="Start Time"
+                  type="datetime-local"
+                  InputLabelProps={{ shrink: true }}
+                  value={ev.startTime ?? ''}
+                  onChange={(e) => updateEvents(events.map((v, i) => i === idx ? { ...v, startTime: e.target.value } : v))}
+                  inputProps={{ 'data-testid': `event-start-${idx}` }}
+                />
+                <TextField
+                  size="small"
+                  label="End Time"
+                  type="datetime-local"
+                  InputLabelProps={{ shrink: true }}
+                  value={ev.endTime ?? ''}
+                  onChange={(e) => updateEvents(events.map((v, i) => i === idx ? { ...v, endTime: e.target.value } : v))}
+                  inputProps={{ 'data-testid': `event-end-${idx}` }}
+                />
+                <TextField 
+                  size="small" 
+                  label="Player Number / Jersey #" 
+                  value={ev.playerNumber ?? ''} 
+                  onChange={(e) => updateEvents(events.map((v, i) => i === idx ? { ...v, playerNumber: e.target.value } : v))}
+                  inputProps={{ 'data-testid': `event-player-number-${idx}` }}
+                />
+                <TextField 
+                  size="small" 
+                  label="Location" 
+                  value={ev.location ?? ''} 
+                  onChange={(e) => updateEvents(events.map((v, i) => i === idx ? { ...v, location: e.target.value } : v))} 
+                  placeholder="City, State or Venue"
+                  inputProps={{ 'data-testid': `event-location-${idx}` }}
+                />
+              </Box>
+              <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 1.5 }}>
+                <Button size="small" color="error" onClick={() => updateEvents(events.filter((_, i) => i !== idx))}>Remove Event</Button>
+              </Box>
             </Box>
           ))}
         </Box>
@@ -1051,10 +1101,17 @@ export function ClientWizard({
                 <Typography>Additional Stats: {radar.additionalStatsLink || '-'}</Typography>
               </Box>
               <Box>
-                  <Typography variant="subtitle2" color="text.secondary">Events</Typography>
+                  <Typography variant="subtitle2" color="text.secondary">Upcoming Events</Typography>
                   {(radar.events ?? []).length
                     ? (radar.events ?? []).map((ev: EventItem, i: number) => (
-                        <Typography key={i}>{ev.name || 'Untitled'}{ev.startTime ? ` — ${ev.startTime}` : ''}</Typography>
+                        <Box key={i} sx={{ mb: 1.5, pl: 1.5, borderLeft: '2px solid #e5e7eb' }}>
+                          <Typography fontWeight={500}>{ev.name || 'Untitled Event'}</Typography>
+                          {ev.startTime && <Typography variant="body2" color="text.secondary">Start: {ev.startTime}</Typography>}
+                          {ev.endTime && <Typography variant="body2" color="text.secondary">End: {ev.endTime}</Typography>}
+                          {ev.location && <Typography variant="body2" color="text.secondary">Location: {ev.location}</Typography>}
+                          {ev.playerNumber && <Typography variant="body2" color="text.secondary">Player #: {ev.playerNumber}</Typography>}
+                          {ev.website && <Typography variant="body2" color="text.secondary">Website: {ev.website}</Typography>}
+                        </Box>
                       ))
                     : <Typography color="text.secondary">No events</Typography>}
               </Box>
