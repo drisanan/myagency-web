@@ -4,7 +4,9 @@ import { SessionContext } from './models';
 
 const SECRET = process.env.SESSION_SECRET || 'dev-secret-change-me';
 const COOKIE_NAME = 'an_session';
+// For local development (localhost), omit domain so cookie works across ports
 const COOKIE_DOMAIN = process.env.COOKIE_DOMAIN || '.myrecruiteragency.com';
+const IS_LOCAL = process.env.IS_OFFLINE === 'true' || process.env.COOKIE_DOMAIN === 'localhost';
 
 function sign(payload: string) {
   const sig = createHmac('sha256', SECRET).update(payload).digest('base64url');
@@ -65,20 +67,20 @@ export function buildSessionCookie(token: string, secure = true) {
     `${COOKIE_NAME}=${token}`,
     'HttpOnly',
     'Path=/',
-    'SameSite=None',
-    `Domain=${COOKIE_DOMAIN}`,
-    ...(secure ? ['Secure'] : []),
+    // For localhost, use SameSite=Lax (no Secure required); for production use SameSite=None + Secure
+    IS_LOCAL ? 'SameSite=Lax' : 'SameSite=None',
+    // Omit Domain for localhost so cookie works across ports (3000 frontend, 3001 API)
+    ...(IS_LOCAL ? [] : [`Domain=${COOKIE_DOMAIN}`]),
+    ...(secure && !IS_LOCAL ? ['Secure'] : []),
     'Max-Age=604800', // 7d
   ];
   return attrs.join('; ');
 }
 
 export function buildClearCookie(secure = true) {
-  const attrs = [
-    `${COOKIE_NAME}=; Path=/; Max-Age=0; HttpOnly; SameSite=None; Domain=${COOKIE_DOMAIN}${
-      secure ? '; Secure' : ''
-    }`,
-  ];
-  return attrs.join('; ');
+  const sameSite = IS_LOCAL ? 'Lax' : 'None';
+  const domain = IS_LOCAL ? '' : `; Domain=${COOKIE_DOMAIN}`;
+  const secureFlag = secure && !IS_LOCAL ? '; Secure' : '';
+  return `${COOKIE_NAME}=; Path=/; Max-Age=0; HttpOnly; SameSite=${sameSite}${domain}${secureFlag}`;
 }
 
