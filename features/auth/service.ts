@@ -69,6 +69,15 @@ async function postSession(session: Session) {
     const txt = await res.text();
     throw new Error(`auth session failed: ${res.status} ${txt}`);
   }
+  
+  // LOCAL DEV WORKAROUND: If API sent custom header, manually set cookie
+  // This bypasses Hapi's strict cookie validation in serverless-offline
+  const localCookie = res.headers.get('X-Local-Set-Cookie');
+  if (localCookie && typeof document !== 'undefined') {
+    document.cookie = localCookie;
+    console.log('[Local Auth] Cookie manually set from X-Local-Set-Cookie header');
+  }
+  
   return res.json();
 }
 

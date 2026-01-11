@@ -12,7 +12,9 @@ export function buildCors(origin?: string) {
     'Content-Type': 'application/json',
     'Access-Control-Allow-Origin': allow,
     'Access-Control-Allow-Credentials': 'true',
+    // Include X-Local-Set-Cookie in exposed headers so frontend can read it
     'Access-Control-Allow-Headers': 'Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token',
+    'Access-Control-Expose-Headers': 'X-Local-Set-Cookie',
     'Access-Control-Allow-Methods': 'GET,POST,PUT,PATCH,DELETE,OPTIONS',
   };
 }
@@ -25,21 +27,25 @@ export function response(
   cookies?: string[]
 ) {
   const cors = buildCors(origin);
+  const isLocal = origin?.includes('localhost');
   // Strip any set-cookie from extraHeaders (we handle cookies separately)
   const { 'set-cookie': _, 'Set-Cookie': __, ...cleanHeaders } = extraHeaders || {};
   
   const res: Record<string, unknown> = {
     statusCode,
-    headers: { ...cors, ...cleanHeaders },
+    headers: { ...cors, ...cleanHeaders } as Record<string, string>,
     body: JSON.stringify(body),
   };
 
-  // When cookies are provided, use both formats for compatibility:
-  // - 'cookies' array: AWS HTTP API v2 format (production)
-  // - 'multiValueHeaders': Bypasses Hapi validation in serverless-offline (local)
   if (cookies && cookies.length > 0) {
-    res.cookies = cookies;
-    res.multiValueHeaders = { 'Set-Cookie': cookies };
+    if (isLocal) {
+      // LOCAL DEV: Use custom header to bypass Hapi's strict cookie validation
+      // Frontend will read this and manually set document.cookie
+      (res.headers as Record<string, string>)['X-Local-Set-Cookie'] = cookies[0];
+    } else {
+      // PRODUCTION: Standard AWS HTTP API v2 cookies array
+      res.cookies = cookies;
+    }
   }
 
   return res;
