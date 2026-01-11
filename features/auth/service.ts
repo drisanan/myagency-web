@@ -1,13 +1,13 @@
 import { getAgencyByEmail } from '@/services/agencies';
 import { createAgencyFromGHL } from '@/services/agencies';
 import { loginWithGHL } from '@/services/authGHL';
-import { getApiBaseUrl } from '@/config/env';
 
-// Use centralized config - no more hardcoded URLs!
-const API_BASE_URL = getApiBaseUrl();
+// Read env var directly like other services for consistent SSR/client behavior
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://api.myrecruiteragency.com';
 
 function requireApiBase() {
-  return getApiBaseUrl();
+  if (!API_BASE_URL) throw new Error('API_BASE_URL is not configured');
+  return API_BASE_URL;
 }
 
 export type AgencySettings = {
