@@ -328,7 +328,36 @@ function GalleryStep({
         </Typography>
         
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-          {videos.map((video, idx) => (
+          {videos.map((video, idx) => {
+            const handleVideoFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+              const file = e.target.files?.[0];
+              if (!file || !clientId) return;
+              
+              const validation = validateVideoFile(file);
+              if (!validation.valid) {
+                setError(validation.error || 'Invalid video file');
+                e.target.value = ''; // Reset input
+                return;
+              }
+              
+              setUploadingVideoIndex(idx);
+              setUploadProgress(0);
+              setError(null);
+              
+              try {
+                const publicUrl = await uploadMedia(clientId, file, 'video', setUploadProgress);
+                onVideosChange(videos.map((v, i) => i === idx ? { ...v, url: publicUrl } : v));
+              } catch (err: unknown) {
+                const errorMessage = err instanceof Error ? err.message : 'Upload failed';
+                setError(errorMessage);
+              } finally {
+                setUploadingVideoIndex(null);
+                setUploadProgress(0);
+                e.target.value = ''; // Reset input for next upload
+              }
+            };
+
+            return (
             <Box key={idx} sx={{ display: 'flex', gap: 1, alignItems: 'center', p: 1.5, bgcolor: '#fafafa', borderRadius: 1, border: '1px solid #e5e7eb', flexWrap: 'wrap' }}>
               <TextField
                 size="small"
@@ -364,6 +393,14 @@ function GalleryStep({
                   <FaTrash size={14} />
                 </IconButton>
               )}
+              {/* Hidden file input for Selenium testing */}
+              <input
+                type="file"
+                accept="video/mp4,video/quicktime,video/webm"
+                hidden
+                onChange={handleVideoFileChange}
+                data-testid={`video-file-input-${idx}`}
+              />
               {/* Upload button for this video slot - always visible when clientId exists */}
               {clientId && uploadingVideoIndex !== idx && (
                 <Button
@@ -371,35 +408,8 @@ function GalleryStep({
                   size="small"
                   startIcon={<FaPlus />}
                   onClick={() => {
-                    const input = document.createElement('input');
-                    input.type = 'file';
-                    input.accept = 'video/mp4,video/quicktime,video/webm';
-                    input.onchange = async (e) => {
-                      const file = (e.target as HTMLInputElement).files?.[0];
-                      if (!file) return;
-                      
-                      const validation = validateVideoFile(file);
-                      if (!validation.valid) {
-                        setError(validation.error || 'Invalid video file');
-                        return;
-                      }
-                      
-                      setUploadingVideoIndex(idx);
-                      setUploadProgress(0);
-                      setError(null);
-                      
-                      try {
-                        const publicUrl = await uploadMedia(clientId, file, 'video', setUploadProgress);
-                        onVideosChange(videos.map((v, i) => i === idx ? { ...v, url: publicUrl } : v));
-                      } catch (err: unknown) {
-                        const errorMessage = err instanceof Error ? err.message : 'Upload failed';
-                        setError(errorMessage);
-                      } finally {
-                        setUploadingVideoIndex(null);
-                        setUploadProgress(0);
-                      }
-                    };
-                    input.click();
+                    const input = document.querySelector(`[data-testid="video-file-input-${idx}"]`) as HTMLInputElement;
+                    input?.click();
                   }}
                   sx={{ textTransform: 'none', whiteSpace: 'nowrap' }}
                   data-testid={`upload-video-${idx}`}
@@ -408,7 +418,8 @@ function GalleryStep({
                 </Button>
               )}
             </Box>
-          ))}
+            );
+          })}
           
           {videos.length < MAX_HIGHLIGHT_VIDEOS && (
             <Button

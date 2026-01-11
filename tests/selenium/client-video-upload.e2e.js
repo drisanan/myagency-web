@@ -2,14 +2,16 @@
  * E2E Test: Client Video Upload to S3
  * 
  * Tests the video upload feature via S3 presigned URLs.
- * Since we can't actually upload files in Selenium, this test verifies:
+ * This test verifies:
  * 1. The UI elements exist and are functional
- * 2. Video URL input works (fallback for tests)
- * 3. The video appears in the Review section
+ * 2. Video URL input works
+ * 3. File upload via hidden input works (actual S3 upload)
+ * 4. The video appears in the Review section
  */
 
 const { Builder, By, until } = require('selenium-webdriver');
 const chrome = require('selenium-webdriver/chrome');
+const path = require('path');
 const { findAndType, selectOption, allowlistedConsoleErrors, sleep, getSessionCookie, deleteClientByEmail, dismissTour } = require('./utils');
 
 const BASE = process.env.BASE_URL || 'https://www.myrecruiteragency.com';
@@ -18,6 +20,9 @@ const TEST_EMAIL = `ui-video-upload-${Date.now()}@example.com`;
 const LOGIN_EMAIL = 'drisanjames@gmail.com';
 const LOGIN_PHONE = '2084407940';
 const LOGIN_CODE = '123456';
+
+// Path to test video fixture
+const TEST_VIDEO_PATH = path.resolve(__dirname, '../fixtures/test-video.mp4');
 
 let sessionCookie = null;
 
@@ -84,58 +89,62 @@ async function run() {
     );
     console.log('On Gallery step');
 
-    // Verify Highlight Videos section with new messaging
+    // Verify Highlight Videos section
     await driver.wait(
       until.elementLocated(By.xpath(`//*[contains(text(),"Highlight Videos")]`)),
       5000
     );
     console.log('✓ Highlight Videos section found');
 
-    console.log('✓ Highlight Videos instructions available');
-
-    // Add first highlight video
-    console.log('Adding highlight video...');
+    // Add first highlight video slot
+    console.log('Adding highlight video slot...');
     const addVideoBtn = await driver.findElement(By.xpath(`//button[@data-testid="add-highlight-video"]`));
     await addVideoBtn.click();
-    await sleep(300);
+    await sleep(500);
 
-    // Fill video details using URL (since we can't test actual file upload in Selenium)
+    // Verify the hidden file input exists
+    const fileInput = await driver.findElement(By.css(`[data-testid="video-file-input-0"]`));
+    console.log('✓ Hidden file input found');
+
+    // Test actual file upload via the hidden input
+    console.log('Testing actual file upload to S3...');
+    await fileInput.sendKeys(TEST_VIDEO_PATH);
+    console.log('✓ File path sent to input');
+
+    // Wait for upload to complete (look for URL to be populated or progress to finish)
+    // The upload should populate the URL field with an S3 URL
+    await driver.wait(async () => {
+      const urlField = await driver.findElement(By.css(`[data-testid="highlight-video-url-0"]`));
+      const value = await urlField.getAttribute('value');
+      return value && value.includes('s3');
+    }, 30000, 'Waiting for S3 upload to complete');
+    
+    console.log('✓ Video uploaded to S3 successfully!');
+
+    // Get the uploaded URL for verification
+    const uploadedUrlField = await driver.findElement(By.css(`[data-testid="highlight-video-url-0"]`));
+    const uploadedUrl = await uploadedUrlField.getAttribute('value');
+    console.log(`✓ Uploaded video URL: ${uploadedUrl.substring(0, 60)}...`);
+
+    // Fill in the title for the uploaded video
     const video1Title = await driver.findElement(By.css(`[data-testid="highlight-video-title-0"]`));
     await video1Title.clear();
-    await video1Title.sendKeys('State Championship Highlights');
+    await video1Title.sendKeys('S3 Uploaded Highlight');
 
-    const video1Url = await driver.findElement(By.css(`[data-testid="highlight-video-url-0"]`));
-    await video1Url.clear();
-    await video1Url.sendKeys('https://example-s3-bucket.s3.us-west-1.amazonaws.com/videos/test.mp4');
-
-    console.log('✓ Video 1 added with S3-style URL');
-
-    // Verify "Upload File" button exists for empty video slots
+    // Add second video with manual URL
     const addVideoBtn2 = await driver.findElement(By.xpath(`//button[@data-testid="add-highlight-video"]`));
     await addVideoBtn2.click();
     await sleep(300);
 
-    // The second video slot should have an "Upload File" button since URL is empty
-    try {
-      await driver.wait(
-        until.elementLocated(By.xpath(`//button[@data-testid="upload-video-1"]`)),
-        3000
-      );
-      console.log('✓ Upload File button available for empty video slot');
-    } catch {
-      console.log('(Upload File button test skipped - may require clientId)');
-    }
-
-    // Fill second video with URL
     const video2Title = await driver.findElement(By.css(`[data-testid="highlight-video-title-1"]`));
     await video2Title.clear();
-    await video2Title.sendKeys('Junior Year Reel');
+    await video2Title.sendKeys('YouTube Highlight');
 
     const video2Url = await driver.findElement(By.css(`[data-testid="highlight-video-url-1"]`));
     await video2Url.clear();
     await video2Url.sendKeys('https://youtube.com/watch?v=test123');
 
-    console.log('✓ Video 2 added with YouTube URL');
+    console.log('✓ Second video added with YouTube URL');
 
     // Continue to Review step
     await clickNext(); // 4 -> 5 (Gallery -> Events)
@@ -152,22 +161,22 @@ async function run() {
     console.log('✓ Highlight Videos section in review');
 
     await driver.wait(
-      until.elementLocated(By.xpath(`//*[contains(text(),"State Championship Highlights")]`)),
+      until.elementLocated(By.xpath(`//*[contains(text(),"S3 Uploaded Highlight")]`)),
       5000
     );
-    console.log('✓ Video 1 title displayed in review');
+    console.log('✓ Uploaded video title displayed in review');
 
     await driver.wait(
-      until.elementLocated(By.xpath(`//*[contains(text(),"example-s3-bucket")]`)),
+      until.elementLocated(By.xpath(`//*[contains(text(),"athlete-narrative-api-media")]`)),
       5000
     );
-    console.log('✓ Video 1 S3 URL displayed in review');
+    console.log('✓ S3 bucket URL displayed in review');
 
     await driver.wait(
-      until.elementLocated(By.xpath(`//*[contains(text(),"Junior Year Reel")]`)),
+      until.elementLocated(By.xpath(`//*[contains(text(),"YouTube Highlight")]`)),
       5000
     );
-    console.log('✓ Video 2 title displayed in review');
+    console.log('✓ YouTube video title displayed in review');
 
     // Submit the form
     console.log('Submitting form...');
