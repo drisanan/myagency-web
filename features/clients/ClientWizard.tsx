@@ -8,6 +8,7 @@ import { getSports, formatSportLabel } from '@/features/recruiter/divisionMappin
 import { useRouter } from 'next/navigation';
 import { FaGoogle, FaCheck, FaTimes, FaTrash, FaPlus, FaExclamationTriangle } from 'react-icons/fa';
 import { checkUsernameAvailability } from '@/services/profilePublic';
+import { uploadMedia, validateVideoFile } from '@/services/uploads';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || '';
 
@@ -98,16 +99,21 @@ function GalleryStep({
   onImagesChange,
   videos,
   onVideosChange,
+  clientId,
 }: { 
   images: string[]; 
   onImagesChange: (images: string[]) => void;
   videos: HighlightVideoItem[];
   onVideosChange: (videos: HighlightVideoItem[]) => void;
+  clientId?: string;
 }) {
   const fileInputRef = React.useRef<HTMLInputElement | null>(null);
+  const videoInputRef = React.useRef<HTMLInputElement | null>(null);
   const [error, setError] = React.useState<string | null>(null);
   const [showUrlInput, setShowUrlInput] = React.useState(false);
   const [urlValue, setUrlValue] = React.useState('');
+  const [uploadingVideoIndex, setUploadingVideoIndex] = React.useState<number | null>(null);
+  const [uploadProgress, setUploadProgress] = React.useState<number>(0);
 
   // Calculate current total size of gallery
   const currentTotalBytes = React.useMemo(() => {
@@ -318,12 +324,12 @@ function GalleryStep({
       <Box sx={{ mt: 4, pt: 3, borderTop: '1px solid #e5e7eb' }}>
         <Typography variant="subtitle1" fontWeight={600}>Highlight Videos</Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          Add up to {MAX_HIGHLIGHT_VIDEOS} highlight video URLs (YouTube, Vimeo, Hudl, or direct MP4 links).
+          Add up to {MAX_HIGHLIGHT_VIDEOS} highlight videos. Upload MP4/MOV/WebM files (max 100MB) or paste video URLs.
         </Typography>
         
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
           {videos.map((video, idx) => (
-            <Box key={idx} sx={{ display: 'flex', gap: 1, alignItems: 'center', p: 1.5, bgcolor: '#fafafa', borderRadius: 1, border: '1px solid #e5e7eb' }}>
+            <Box key={idx} sx={{ display: 'flex', gap: 1, alignItems: 'center', p: 1.5, bgcolor: '#fafafa', borderRadius: 1, border: '1px solid #e5e7eb', flexWrap: 'wrap' }}>
               <TextField
                 size="small"
                 label={`Video ${idx + 1} Title`}
@@ -331,24 +337,75 @@ function GalleryStep({
                 onChange={(e) => onVideosChange(videos.map((v, i) => i === idx ? { ...v, title: e.target.value } : v))}
                 sx={{ width: 180 }}
                 inputProps={{ 'data-testid': `highlight-video-title-${idx}` }}
+                disabled={uploadingVideoIndex === idx}
               />
               <TextField
                 size="small"
                 label="Video URL"
                 value={video.url}
                 onChange={(e) => onVideosChange(videos.map((v, i) => i === idx ? { ...v, url: e.target.value } : v))}
-                sx={{ flex: 1 }}
-                placeholder="https://youtube.com/watch?v=... or .mp4 URL"
+                sx={{ flex: 1, minWidth: 200 }}
+                placeholder="https://youtube.com/watch?v=... or upload below"
                 inputProps={{ 'data-testid': `highlight-video-url-${idx}` }}
+                disabled={uploadingVideoIndex === idx}
               />
-              <IconButton 
-                size="small" 
-                color="error" 
-                onClick={() => onVideosChange(videos.filter((_, i) => i !== idx))}
-                data-testid={`remove-highlight-video-${idx}`}
-              >
-                <FaTrash size={14} />
-              </IconButton>
+              {uploadingVideoIndex === idx ? (
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <CircularProgress size={20} />
+                  <Typography variant="caption">{uploadProgress}%</Typography>
+                </Box>
+              ) : (
+                <IconButton 
+                  size="small" 
+                  color="error" 
+                  onClick={() => onVideosChange(videos.filter((_, i) => i !== idx))}
+                  data-testid={`remove-highlight-video-${idx}`}
+                >
+                  <FaTrash size={14} />
+                </IconButton>
+              )}
+              {/* Upload button for this video slot */}
+              {clientId && !video.url && uploadingVideoIndex !== idx && (
+                <Button
+                  variant="text"
+                  size="small"
+                  onClick={() => {
+                    const input = document.createElement('input');
+                    input.type = 'file';
+                    input.accept = 'video/mp4,video/quicktime,video/webm';
+                    input.onchange = async (e) => {
+                      const file = (e.target as HTMLInputElement).files?.[0];
+                      if (!file) return;
+                      
+                      const validation = validateVideoFile(file);
+                      if (!validation.valid) {
+                        setError(validation.error || 'Invalid video file');
+                        return;
+                      }
+                      
+                      setUploadingVideoIndex(idx);
+                      setUploadProgress(0);
+                      setError(null);
+                      
+                      try {
+                        const publicUrl = await uploadMedia(clientId, file, 'video', setUploadProgress);
+                        onVideosChange(videos.map((v, i) => i === idx ? { ...v, url: publicUrl } : v));
+                      } catch (err: unknown) {
+                        const errorMessage = err instanceof Error ? err.message : 'Upload failed';
+                        setError(errorMessage);
+                      } finally {
+                        setUploadingVideoIndex(null);
+                        setUploadProgress(0);
+                      }
+                    };
+                    input.click();
+                  }}
+                  sx={{ textTransform: 'none', whiteSpace: 'nowrap' }}
+                  data-testid={`upload-video-${idx}`}
+                >
+                  Upload File
+                </Button>
+              )}
             </Box>
           ))}
           
@@ -360,6 +417,7 @@ function GalleryStep({
               onClick={() => onVideosChange([...videos, { url: '', title: '' }])}
               sx={{ alignSelf: 'flex-start' }}
               data-testid="add-highlight-video"
+              disabled={uploadingVideoIndex !== null}
             >
               Add Highlight Video
             </Button>
@@ -369,6 +427,12 @@ function GalleryStep({
         <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
           {videos.length}/{MAX_HIGHLIGHT_VIDEOS} videos added
         </Typography>
+        
+        <Alert severity="info" sx={{ mt: 2 }}>
+          <Typography variant="caption">
+            <strong>Supported formats:</strong> MP4, MOV, WebM (max 100MB). You can also paste links from YouTube, Vimeo, or Hudl.
+          </Typography>
+        </Alert>
       </Box>
     </Box>
   );
@@ -1092,6 +1156,7 @@ export function ClientWizard({
             onImagesChange={(images) => setBasic((prev) => ({ ...prev, galleryImages: images }))}
             videos={basic.highlightVideos || []}
             onVideosChange={(videos) => setBasic((prev) => ({ ...prev, highlightVideos: videos }))}
+            clientId={initialClient?.id || tempClientIdRef.current}
           />
         )}
         {activeStep === 5 && (

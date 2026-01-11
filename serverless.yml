@@ -21,6 +21,8 @@ provider:
     FRONTEND_URL: ${env:FRONTEND_URL, 'https://www.myrecruiteragency.com'}
     # Sentry error tracking
     SENTRY_DSN: ${env:SENTRY_DSN, ''}
+    # S3 Media Bucket
+    MEDIA_BUCKET: ${self:service}-media-${self:provider.stage}
   httpApi:
     cors:
       allowedOrigins:
@@ -56,6 +58,13 @@ provider:
           Resource:
             - arn:aws:dynamodb:${self:provider.region}:*:table/${env:TABLE_NAME, 'agency-narrative-crm'}
             - arn:aws:dynamodb:${self:provider.region}:*:table/${env:TABLE_NAME, 'agency-narrative-crm'}/index/*
+        - Effect: Allow
+          Action:
+            - s3:PutObject
+            - s3:GetObject
+            - s3:DeleteObject
+          Resource:
+            - arn:aws:s3:::${self:service}-media-${self:provider.stage}/*
 
 plugins:
   # serverless-esbuild removed because Serverless v4 bundles esbuild/TS by default
@@ -224,6 +233,52 @@ functions:
       - httpApi:
           path: /agents/{id}
           method: any
+  uploads:
+    handler: infra/src/handlers/uploads.handler
+    events:
+      - httpApi:
+          path: /uploads/presigned-url
+          method: post
+
+resources:
+  Resources:
+    MediaBucket:
+      Type: AWS::S3::Bucket
+      DeletionPolicy: Retain
+      Properties:
+        BucketName: ${self:service}-media-${self:provider.stage}
+        CorsConfiguration:
+          CorsRules:
+            - AllowedHeaders:
+                - '*'
+              AllowedMethods:
+                - PUT
+                - GET
+              AllowedOrigins:
+                - https://www.myrecruiteragency.com
+                - https://myrecruiteragency.com
+                - https://master.d2yp6hyv6u0efd.amplifyapp.com
+                - http://localhost:3000
+                - http://localhost:3001
+              MaxAge: 3000
+        PublicAccessBlockConfiguration:
+          BlockPublicAcls: false
+          BlockPublicPolicy: false
+          IgnorePublicAcls: false
+          RestrictPublicBuckets: false
+    MediaBucketPolicy:
+      Type: AWS::S3::BucketPolicy
+      Properties:
+        Bucket: !Ref MediaBucket
+        PolicyDocument:
+          Statement:
+            - Sid: PublicReadGetObject
+              Effect: Allow
+              Principal: '*'
+              Action:
+                - s3:GetObject
+              Resource:
+                - !Sub 'arn:aws:s3:::${MediaBucket}/*'
 
 # ╔════════════════════════════════════════════════════════════════════════════╗
 # ║  ⚠️  CRITICAL: DATABASE PROTECTION NOTICE                                  ║
