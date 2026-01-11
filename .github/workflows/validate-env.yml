@@ -1,0 +1,147 @@
+name: Validate Environment Safety
+
+on:
+  push:
+    branches: [master, main, develop]
+  pull_request:
+    branches: [master, main, develop]
+
+jobs:
+  env-safety-check:
+    name: Environment Safety Checks
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Check for hardcoded localhost URLs
+        run: |
+          echo "🔍 Checking for hardcoded localhost URLs..."
+          
+          # Find localhost references in TypeScript/JavaScript files (excluding tests and configs)
+          MATCHES=$(grep -rn "localhost:3" \
+            --include="*.ts" --include="*.tsx" --include="*.js" --include="*.jsx" \
+            --exclude-dir=node_modules \
+            --exclude-dir=.next \
+            --exclude-dir=coverage \
+            --exclude="*.test.*" \
+            --exclude="*.spec.*" \
+            --exclude="*.e2e.*" \
+            . 2>/dev/null || true)
+          
+          if [ -n "$MATCHES" ]; then
+            echo ""
+            echo "❌ Found hardcoded localhost references:"
+            echo "$MATCHES"
+            echo ""
+            echo "Use environment variables instead:"
+            echo "  import { getApiBaseUrl } from '@/config/env'"
+            exit 1
+          fi
+          
+          echo "✅ No hardcoded localhost URLs found"
+
+      - name: Check for leaked secrets patterns
+        run: |
+          echo "🔍 Checking for potential leaked secrets..."
+          
+          # Patterns that might indicate leaked secrets
+          SECRETS_PATTERNS='(sk_live_|pk_live_|AKIA[0-9A-Z]{16}|ghp_[a-zA-Z0-9]{36}|gho_[a-zA-Z0-9]{36}|xox[baprs]-[0-9a-zA-Z]{10,})'
+          
+          MATCHES=$(grep -rEn "$SECRETS_PATTERNS" \
+            --include="*.ts" --include="*.tsx" --include="*.js" --include="*.jsx" --include="*.json" \
+            --exclude-dir=node_modules \
+            --exclude-dir=.next \
+            --exclude="package-lock.json" \
+            --exclude="yarn.lock" \
+            . 2>/dev/null || true)
+          
+          if [ -n "$MATCHES" ]; then
+            echo ""
+            echo "❌ Potential secrets detected:"
+            echo "$MATCHES"
+            echo ""
+            echo "Never commit API keys, tokens, or credentials!"
+            echo "Use environment variables and Amplify Console instead."
+            exit 1
+          fi
+          
+          echo "✅ No secret patterns found"
+
+      - name: Verify .env.local is not committed
+        run: |
+          echo "🔍 Checking for accidentally committed .env.local..."
+          
+          if [ -f ".env.local" ]; then
+            echo "❌ .env.local exists in repository!"
+            echo "This file should be in .gitignore and never committed."
+            exit 1
+          fi
+          
+          if [ -f ".env.development.local" ]; then
+            echo "❌ .env.development.local exists in repository!"
+            exit 1
+          fi
+          
+          if [ -f ".env.production.local" ]; then
+            echo "❌ .env.production.local exists in repository!"
+            exit 1
+          fi
+          
+          echo "✅ No local env files committed"
+
+      - name: Verify .gitignore protects env files
+        run: |
+          echo "🔍 Verifying .gitignore configuration..."
+          
+          if ! grep -q "\.env\.local" .gitignore; then
+            echo "⚠️ WARNING: .gitignore should contain .env.local"
+          fi
+          
+          if ! grep -q "\.env\.development\.local" .gitignore; then
+            echo "⚠️ WARNING: .gitignore should contain .env.development.local"
+          fi
+          
+          echo "✅ .gitignore check complete"
+
+      - name: Check for centralized config usage
+        run: |
+          echo "🔍 Checking for proper config usage..."
+          
+          # Find files that define API_BASE_URL directly (should use config/env.ts)
+          DIRECT_DEFS=$(grep -rn "const.*API_BASE_URL.*=.*process\.env" \
+            --include="*.ts" --include="*.tsx" \
+            --exclude-dir=node_modules \
+            --exclude-dir=config \
+            . 2>/dev/null || true)
+          
+          if [ -n "$DIRECT_DEFS" ]; then
+            echo ""
+            echo "⚠️ WARNING: Found direct API_BASE_URL definitions outside config:"
+            echo "$DIRECT_DEFS"
+            echo ""
+            echo "Consider using: import { getApiBaseUrl } from '@/config/env'"
+          fi
+          
+          echo "✅ Config usage check complete"
+
+  type-check:
+    name: TypeScript Type Check
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          
+      - name: Install dependencies
+        run: npm ci
+        
+      - name: Run TypeScript check
+        run: npm run typecheck

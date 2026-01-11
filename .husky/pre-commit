@@ -1,0 +1,54 @@
+#!/bin/sh
+
+echo "🔍 Running pre-commit environment safety checks..."
+
+# Check for hardcoded localhost URLs in staged TypeScript/JavaScript files
+LOCALHOST_FILES=$(git diff --cached --name-only --diff-filter=ACMR | grep -E '\.(ts|tsx|js|jsx)$' | xargs grep -l "localhost:3" 2>/dev/null | grep -v "test" | grep -v ".env" | grep -v "node_modules" || true)
+
+if [ -n "$LOCALHOST_FILES" ]; then
+  echo ""
+  echo "❌ ERROR: Found localhost references in staged files:"
+  echo "$LOCALHOST_FILES"
+  echo ""
+  echo "Please remove hardcoded localhost URLs before committing."
+  echo "Use environment variables instead (e.g., process.env.NEXT_PUBLIC_API_BASE_URL)"
+  exit 1
+fi
+
+# Check for accidentally staged .env files with secrets
+ENV_FILES=$(git diff --cached --name-only | grep -E '^\.env\.local$|^\.env\.development\.local$|^\.env\.production\.local$' || true)
+
+if [ -n "$ENV_FILES" ]; then
+  echo ""
+  echo "❌ ERROR: Attempting to commit local environment files:"
+  echo "$ENV_FILES"
+  echo ""
+  echo "These files should NEVER be committed. They are in .gitignore."
+  exit 1
+fi
+
+# Check for hardcoded API URLs outside config (warning only)
+HARDCODED_API=$(git diff --cached --name-only --diff-filter=ACMR | grep -E '\.(ts|tsx)$' | grep -v "config/" | grep -v ".env" | grep -v "test" | xargs grep -l "api\.myrecruiteragency\.com" 2>/dev/null || true)
+
+if [ -n "$HARDCODED_API" ]; then
+  echo ""
+  echo "⚠️  WARNING: Found hardcoded production API URL outside config:"
+  echo "$HARDCODED_API"
+  echo ""
+  echo "Consider using the centralized config: import { getApiBaseUrl } from '@/config/env'"
+fi
+
+# Check for potential secrets (API keys, tokens)
+SECRETS_PATTERN='(sk_live_|pk_live_|AKIA[0-9A-Z]{16}|ghp_[a-zA-Z0-9]{36}|gho_[a-zA-Z0-9]{36})'
+SECRET_FILES=$(git diff --cached --name-only --diff-filter=ACMR | grep -E '\.(ts|tsx|js|jsx|json)$' | grep -v "node_modules" | xargs grep -lE "$SECRETS_PATTERN" 2>/dev/null || true)
+
+if [ -n "$SECRET_FILES" ]; then
+  echo ""
+  echo "❌ ERROR: Potential secrets detected in staged files:"
+  echo "$SECRET_FILES"
+  echo ""
+  echo "Never commit API keys, tokens, or credentials to the repository."
+  exit 1
+fi
+
+echo "✅ Pre-commit environment checks passed!"
