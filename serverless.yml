@@ -13,6 +13,8 @@ provider:
     SESSION_SECRET: ${env:SESSION_SECRET, '37c9a436-7ea8-4422-9f26-85192414b923'}
     AWS_NODEJS_CONNECTION_REUSE_ENABLED: 1
     NODE_OPTIONS: --enable-source-maps
+    # Local development flag - empty in production, 'true' when running serverless-offline
+    IS_OFFLINE: ${env:IS_OFFLINE, ''}
     FORMS_SECRET: ${env:FORMS_SECRET, 'ff58bc99-63a5-4493-83dc-6720cb3c7db7'}
     DEBUG_SESSION: ${env:DEBUG_SESSION, 'false'}
     GOOGLE_CLIENT_ID: ${env:GOOGLE_CLIENT_ID}
