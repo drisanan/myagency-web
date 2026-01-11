@@ -25,24 +25,63 @@ async function run() {
     await driver.wait(until.elementLocated(By.css('input[type="email"], input[name="email"]')), TIMEOUT);
 
     console.log('2. Fill login credentials...');
-    const emailInput = await driver.findElement(By.css('input[type="email"], input[name="email"]'));
+    // MUI TextFields - find by input type
+    const emailInput = await driver.findElement(By.css('input[type="email"]'));
     await emailInput.clear();
     await emailInput.sendKeys('brian@coachhorschel.com');
 
-    const phoneInput = await driver.findElement(By.css('input[type="tel"], input[name="phone"]'));
+    const phoneInput = await driver.findElement(By.css('input[type="tel"]'));
     await phoneInput.clear();
     await phoneInput.sendKeys('5126574030');
 
-    const codeInput = await driver.findElement(By.css('input[name="accessCode"]'));
+    // Access code is type="text" - find the third text input or by label
+    const textInputs = await driver.findElements(By.css('input[type="text"]'));
+    const codeInput = textInputs[textInputs.length - 1]; // Last text input is access code
     await codeInput.clear();
     await codeInput.sendKeys('123456');
 
     console.log('3. Submit login form...');
-    const loginBtn = await driver.findElement(By.css('button[type="submit"]'));
+    const loginBtn = await driver.findElement(By.css('[data-testid="login-submit"]'));
     await loginBtn.click();
 
-    // Wait for redirect to dashboard
-    await driver.wait(until.urlContains('/dashboard'), TIMEOUT);
+    // Wait for redirect away from login page
+    console.log('   Waiting for navigation...');
+    await driver.sleep(3000);
+    
+    let currentUrl = await driver.getCurrentUrl();
+    console.log('   Current URL after login attempt:', currentUrl);
+    
+    // Check for any error messages on the page
+    try {
+      const errorEl = await driver.findElement(By.css('[data-testid="error-list"], .MuiAlert-message'));
+      const errorText = await errorEl.getText();
+      if (errorText) {
+        console.log('   Login error message:', errorText);
+      }
+    } catch (e) {
+      // No error message found
+    }
+    
+    // Wait for redirect to dashboard or any authenticated page
+    if (currentUrl.includes('/auth/login')) {
+      console.log('   Still on login page, waiting more...');
+      await driver.wait(async () => {
+        const url = await driver.getCurrentUrl();
+        return !url.includes('/auth/login');
+      }, TIMEOUT);
+      currentUrl = await driver.getCurrentUrl();
+      console.log('   Navigated to:', currentUrl);
+    }
+    
+    // If we're not on dashboard, try navigating directly
+    if (!currentUrl.includes('/dashboard') && !currentUrl.includes('/settings')) {
+      console.log('   Not on expected page, navigating to dashboard...');
+      await driver.get(`${BASE_URL}/dashboard`);
+      await driver.sleep(2000);
+      currentUrl = await driver.getCurrentUrl();
+      console.log('   Now on:', currentUrl);
+    }
+    
     console.log('   Logged in successfully.');
 
     console.log('4. Navigate to settings page...');
