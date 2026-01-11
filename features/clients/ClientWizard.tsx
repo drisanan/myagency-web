@@ -364,11 +364,12 @@ function GalleryStep({
                   <FaTrash size={14} />
                 </IconButton>
               )}
-              {/* Upload button for this video slot */}
-              {clientId && !video.url && uploadingVideoIndex !== idx && (
+              {/* Upload button for this video slot - always visible when clientId exists */}
+              {clientId && uploadingVideoIndex !== idx && (
                 <Button
-                  variant="text"
+                  variant="outlined"
                   size="small"
+                  startIcon={<FaPlus />}
                   onClick={() => {
                     const input = document.createElement('input');
                     input.type = 'file';
@@ -403,7 +404,7 @@ function GalleryStep({
                   sx={{ textTransform: 'none', whiteSpace: 'nowrap' }}
                   data-testid={`upload-video-${idx}`}
                 >
-                  Upload File
+                  {video.url ? 'Replace' : 'Upload'}
                 </Button>
               )}
             </Box>
