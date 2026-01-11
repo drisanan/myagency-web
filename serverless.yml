@@ -68,8 +68,14 @@ provider:
 
 plugins:
   # serverless-esbuild removed because Serverless v4 bundles esbuild/TS by default
+  - serverless-offline # Local development only - does not affect production deployments
 
 custom:
+  # Local development configuration (serverless offline)
+  serverless-offline:
+    httpPort: 3001
+    lambdaPort: 3002
+    noPrependStageInUrl: true  # Keep URLs clean: /auth/session instead of /local/auth/session
   resourcePrefix: ${env:RESOURCE_PREFIX, 'agn'}
   namingConvention: ${env:NAMING_CONVENTION, 'agn-resource-prd-region'}
   build:
