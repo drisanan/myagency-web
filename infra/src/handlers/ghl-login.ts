@@ -2,6 +2,7 @@ import { APIGatewayProxyEventV2, APIGatewayProxyResultV2 } from 'aws-lambda';
 import fetch from 'node-fetch';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, PutCommand } from '@aws-sdk/lib-dynamodb';
+import { fromIni } from '@aws-sdk/credential-provider-ini';
 import { randomUUID } from 'crypto';
 import { withSentry } from '../lib/sentry';
 
@@ -27,7 +28,11 @@ const ALLOWED_ORIGINS = [
 ];
 
 // --- Clients ---
-const client = new DynamoDBClient({});
+const IS_OFFLINE = process.env.IS_OFFLINE === 'true';
+const client = new DynamoDBClient({
+  region: process.env.AWS_REGION || 'us-west-1',
+  credentials: IS_OFFLINE ? fromIni({ profile: process.env.AWS_PROFILE || 'myagency' }) : undefined
+});
 const docClient = DynamoDBDocumentClient.from(client);
 
 function getHeaders(origin?: string) {

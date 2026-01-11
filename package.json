@@ -3,7 +3,7 @@
   "scripts": {
     "prepare": "husky || true",
     "dev": "next dev",
-    "dev:api": "IS_OFFLINE=true AWS_PROFILE=myagency AWS_REGION=us-west-1 serverless offline --stage local",
+    "dev:api": "IS_OFFLINE=true AWS_PROFILE=myagency AWS_REGION=us-west-1 TABLE_NAME=agency-narrative-crm serverless offline --stage local",
     "build": "next build",
     "postbuild": "rm -rf .next/cache",
     "start": "next start",

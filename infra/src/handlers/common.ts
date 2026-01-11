@@ -1,10 +1,16 @@
 import { APIGatewayProxyEventV2, APIGatewayProxyResultV2 } from 'aws-lambda';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb';
+import { fromIni } from '@aws-sdk/credential-provider-ini';
 import { SessionContext } from '../lib/models';
 import { parseSessionFromRequest } from '../lib/session';
 
-const client = new DynamoDBClient({});
+const IS_OFFLINE = process.env.IS_OFFLINE === 'true';
+
+const client = new DynamoDBClient({ 
+  region: process.env.AWS_REGION || 'us-west-1',
+  credentials: IS_OFFLINE ? fromIni({ profile: process.env.AWS_PROFILE || 'myagency' }) : undefined
+});
 export const docClient = DynamoDBDocumentClient.from(client);
 
 const DEBUG_SESSION = process.env.DEBUG_SESSION === 'true';

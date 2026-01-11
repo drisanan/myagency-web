@@ -484,15 +484,15 @@ function EventsMetricsStep({ value, onChange }: { value: RadarDraft; onChange: (
                   placeholder="https://..."
                   inputProps={{ 'data-testid': `event-website-${idx}` }}
                 />
-                <TextField
-                  size="small"
-                  label="Start Time"
-                  type="datetime-local"
-                  InputLabelProps={{ shrink: true }}
-                  value={ev.startTime ?? ''}
+              <TextField
+                size="small"
+                label="Start Time"
+                type="datetime-local"
+                InputLabelProps={{ shrink: true }}
+                value={ev.startTime ?? ''}
                   onChange={(e) => updateEvents(events.map((v, i) => i === idx ? { ...v, startTime: e.target.value } : v))}
                   inputProps={{ 'data-testid': `event-start-${idx}` }}
-                />
+              />
                 <TextField
                   size="small"
                   label="End Time"
