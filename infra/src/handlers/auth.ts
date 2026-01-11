@@ -63,7 +63,8 @@ const authHandler = async (event: APIGatewayProxyEventV2) => {
     // Local: use Set-Cookie header (serverless-offline/Hapi compatible)
     // Production: use cookies array (AWS HTTP API v2 format)
     if (isLocal) {
-      return response(200, { ok: true, session: payload }, origin, { 'Set-Cookie': cookie });
+      // Lowercase 'set-cookie' bypasses Hapi's statehood validation in serverless-offline
+      return response(200, { ok: true, session: payload }, origin, { 'set-cookie': cookie });
     }
     return response(200, { ok: true, session: payload }, origin, {}, [cookie]);
   }
@@ -71,7 +72,8 @@ const authHandler = async (event: APIGatewayProxyEventV2) => {
   if (method === 'DELETE') {
     const clearCookie = buildClearCookie(secureCookie, isLocal);
     if (isLocal) {
-      return response(200, { ok: true }, origin, { 'Set-Cookie': clearCookie });
+      // Lowercase 'set-cookie' bypasses Hapi's statehood validation in serverless-offline
+      return response(200, { ok: true }, origin, { 'set-cookie': clearCookie });
     }
     return response(200, { ok: true }, origin, {}, [clearCookie]);
   }

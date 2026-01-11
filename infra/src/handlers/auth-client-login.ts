@@ -110,11 +110,13 @@ const authClientLoginHandler: Handler = async (event: APIGatewayProxyEventV2) =>
     agencySettings,
   });
 
-  const cookieHeader = {
-    'Set-Cookie': buildSessionCookie(token, secureCookie, isLocal),
-  };
-
-  return response(200, { ok: true }, origin, cookieHeader);
+  const cookie = buildSessionCookie(token, secureCookie, isLocal);
+  // Lowercase 'set-cookie' bypasses Hapi's statehood validation in serverless-offline
+  // Production uses cookies array for AWS HTTP API v2
+  if (isLocal) {
+    return response(200, { ok: true }, origin, { 'set-cookie': cookie });
+  }
+  return response(200, { ok: true }, origin, {}, [cookie]);
 };
 
 export const handler = withSentry(authClientLoginHandler);
