@@ -222,7 +222,7 @@ CRITICAL INSTRUCTIONS:
             onChange={(e) => setTemplateName(e.target.value)}
             sx={{ width: 220 }}
           />
-          <Button data-tour="create-prompt-btn" variant="outlined" onClick={handleSave} disabled={!userEmail || !response}>Save Prompt</Button>
+          <Button data-tour="create-prompt-btn" variant="outlined" onClick={handleSave} disabled={!userEmail || !response}>Save Intro</Button>
           <Button
             variant="outlined"
             color="error"
