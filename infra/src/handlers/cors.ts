@@ -25,8 +25,11 @@ export function response(
   cookies?: string[]
 ) {
   const cors = buildCors(origin);
-  // Remove set-cookie from headers if present (use cookies array for HTTP API v2)
-  const { 'set-cookie': _, ...cleanHeaders } = extraHeaders || {};
+  // Only strip set-cookie from headers when cookies array is provided (HTTP API v2)
+  // Keep it for local dev where we pass cookie via header directly
+  const cleanHeaders = cookies && cookies.length > 0
+    ? (({ 'set-cookie': _, ...rest }) => rest)(extraHeaders || {})
+    : extraHeaders || {};
   return {
     statusCode,
     headers: { ...cors, ...cleanHeaders },
