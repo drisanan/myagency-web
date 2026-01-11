@@ -5,11 +5,6 @@ import { SessionContext } from './models';
 const SECRET = process.env.SESSION_SECRET || 'dev-secret-change-me';
 const COOKIE_NAME = 'an_session';
 
-// Check if running locally (serverless-offline sets IS_OFFLINE=true)
-function isLocalDev(): boolean {
-  return process.env.IS_OFFLINE === 'true' || process.env.COOKIE_DOMAIN === 'localhost';
-}
-
 function getCookieDomain(): string {
   return process.env.COOKIE_DOMAIN || '.myrecruiteragency.com';
 }
@@ -68,8 +63,7 @@ export function parseSessionFromRequest(event: APIGatewayProxyEventV2): SessionC
   return parseSession(token);
 }
 
-export function buildSessionCookie(token: string, secure = true) {
-  const local = isLocalDev();
+export function buildSessionCookie(token: string, secure = true, local = false) {
   const attrs = [
     `${COOKIE_NAME}=${token}`,
     'HttpOnly',
@@ -81,12 +75,10 @@ export function buildSessionCookie(token: string, secure = true) {
     ...(secure && !local ? ['Secure'] : []),
     'Max-Age=604800', // 7d
   ];
-  console.log('[session] buildSessionCookie', { local, IS_OFFLINE: process.env.IS_OFFLINE });
   return attrs.join('; ');
 }
 
-export function buildClearCookie(secure = true) {
-  const local = isLocalDev();
+export function buildClearCookie(secure = true, local = false) {
   const sameSite = local ? 'Lax' : 'None';
   const domain = local ? '' : `; Domain=${getCookieDomain()}`;
   const secureFlag = secure && !local ? '; Secure' : '';

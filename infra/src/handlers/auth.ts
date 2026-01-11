@@ -12,7 +12,8 @@ const authHandler = async (event: APIGatewayProxyEventV2) => {
   const host = event.headers['x-forwarded-host'] || event.headers['Host'] || '';
   const proto = event.headers['x-forwarded-proto'] || 'https';
   const resolvedOrigin = origin || `${proto}://${host}`;
-  const secureCookie = proto === 'https' && !resolvedOrigin.includes('localhost');
+  const isLocal = resolvedOrigin.includes('localhost');
+  const secureCookie = proto === 'https' && !isLocal;
 
   if (method === 'OPTIONS') {
     return response(200, { ok: true }, origin);
@@ -56,12 +57,12 @@ const authHandler = async (event: APIGatewayProxyEventV2) => {
       lastName: payload.lastName,
       // agencyLogo/agencySettings excluded to keep cookie <4KB; fetched fresh on GET
     });
-    const cookie = buildSessionCookie(token, secureCookie);
+    const cookie = buildSessionCookie(token, secureCookie, isLocal);
     return response(200, { ok: true, session: payload }, origin, {}, [cookie]);
   }
 
   if (method === 'DELETE') {
-    return response(200, { ok: true }, origin, {}, [buildClearCookie(secureCookie)]);
+    return response(200, { ok: true }, origin, {}, [buildClearCookie(secureCookie, isLocal)]);
   }
 
   return response(405, { ok: false, error: `Method not allowed` }, origin);
