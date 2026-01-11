@@ -111,11 +111,7 @@ const authClientLoginHandler: Handler = async (event: APIGatewayProxyEventV2) =>
   });
 
   const cookie = buildSessionCookie(token, secureCookie, isLocal);
-  // Lowercase 'set-cookie' bypasses Hapi's statehood validation in serverless-offline
-  // Production uses cookies array for AWS HTTP API v2
-  if (isLocal) {
-    return response(200, { ok: true }, origin, { 'set-cookie': cookie });
-  }
+  // response() now handles both local (multiValueHeaders) and prod (cookies array)
   return response(200, { ok: true }, origin, {}, [cookie]);
 };
 
