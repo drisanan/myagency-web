@@ -74,7 +74,11 @@ async function postSession(session: Session) {
   // This bypasses Hapi's strict cookie validation in serverless-offline
   const localCookie = res.headers.get('X-Local-Set-Cookie');
   if (localCookie && typeof document !== 'undefined') {
-    document.cookie = localCookie;
+    // Strip HttpOnly (can't set via JS) and Secure (not on localhost)
+    const jsCompatibleCookie = localCookie
+      .replace(/;\s*HttpOnly/gi, '')
+      .replace(/;\s*Secure/gi, '');
+    document.cookie = jsCompatibleCookie;
     console.log('[Local Auth] Cookie manually set from X-Local-Set-Cookie header');
   }
   
