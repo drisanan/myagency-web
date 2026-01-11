@@ -22,8 +22,17 @@ function normalizePhone(phone: string) {
 }
 
 const authClientLoginHandler: Handler = async (event: APIGatewayProxyEventV2) => {
-  const origin = event.headers?.origin || event.headers?.Origin || event.headers?.['origin'] || '';
+  const headers = event.headers || {};
+  const origin = headers.origin || headers.Origin || '';
   const method = (event.requestContext.http?.method || '').toUpperCase();
+  
+  // Detect localhost for cookie settings (production requests never contain 'localhost')
+  const host = headers['x-forwarded-host'] || headers.host || headers.Host || '';
+  const proto = headers['x-forwarded-proto'] || 'https';
+  const resolvedOrigin = origin || `${proto}://${host}`;
+  const isLocal = resolvedOrigin.includes('localhost');
+  const secureCookie = proto === 'https' && !isLocal;
+  
   if (method === 'OPTIONS') return response(200, { ok: true }, origin);
   if (method !== 'POST') return response(405, { ok: false, error: 'Method not allowed' }, origin);
   if (!event.body) return response(400, { ok: false, error: 'Missing body' }, origin);
@@ -101,11 +110,11 @@ const authClientLoginHandler: Handler = async (event: APIGatewayProxyEventV2) =>
     agencySettings,
   });
 
-  const headers = {
-    'Set-Cookie': buildSessionCookie(token),
+  const cookieHeader = {
+    'Set-Cookie': buildSessionCookie(token, secureCookie, isLocal),
   };
 
-  return response(200, { ok: true }, origin, headers);
+  return response(200, { ok: true }, origin, cookieHeader);
 };
 
 export const handler = withSentry(authClientLoginHandler);
