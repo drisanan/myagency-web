@@ -4,9 +4,15 @@ import { SessionContext } from './models';
 
 const SECRET = process.env.SESSION_SECRET || 'dev-secret-change-me';
 const COOKIE_NAME = 'an_session';
-// For local development (localhost), omit domain so cookie works across ports
-const COOKIE_DOMAIN = process.env.COOKIE_DOMAIN || '.myrecruiteragency.com';
-const IS_LOCAL = process.env.IS_OFFLINE === 'true' || process.env.COOKIE_DOMAIN === 'localhost';
+
+// Check if running locally (serverless-offline sets IS_OFFLINE=true)
+function isLocalDev(): boolean {
+  return process.env.IS_OFFLINE === 'true' || process.env.COOKIE_DOMAIN === 'localhost';
+}
+
+function getCookieDomain(): string {
+  return process.env.COOKIE_DOMAIN || '.myrecruiteragency.com';
+}
 
 function sign(payload: string) {
   const sig = createHmac('sha256', SECRET).update(payload).digest('base64url');
@@ -63,24 +69,27 @@ export function parseSessionFromRequest(event: APIGatewayProxyEventV2): SessionC
 }
 
 export function buildSessionCookie(token: string, secure = true) {
+  const local = isLocalDev();
   const attrs = [
     `${COOKIE_NAME}=${token}`,
     'HttpOnly',
     'Path=/',
     // For localhost, use SameSite=Lax (no Secure required); for production use SameSite=None + Secure
-    IS_LOCAL ? 'SameSite=Lax' : 'SameSite=None',
+    local ? 'SameSite=Lax' : 'SameSite=None',
     // Omit Domain for localhost so cookie works across ports (3000 frontend, 3001 API)
-    ...(IS_LOCAL ? [] : [`Domain=${COOKIE_DOMAIN}`]),
-    ...(secure && !IS_LOCAL ? ['Secure'] : []),
+    ...(local ? [] : [`Domain=${getCookieDomain()}`]),
+    ...(secure && !local ? ['Secure'] : []),
     'Max-Age=604800', // 7d
   ];
+  console.log('[session] buildSessionCookie', { local, IS_OFFLINE: process.env.IS_OFFLINE });
   return attrs.join('; ');
 }
 
 export function buildClearCookie(secure = true) {
-  const sameSite = IS_LOCAL ? 'Lax' : 'None';
-  const domain = IS_LOCAL ? '' : `; Domain=${COOKIE_DOMAIN}`;
-  const secureFlag = secure && !IS_LOCAL ? '; Secure' : '';
+  const local = isLocalDev();
+  const sameSite = local ? 'Lax' : 'None';
+  const domain = local ? '' : `; Domain=${getCookieDomain()}`;
+  const secureFlag = secure && !local ? '; Secure' : '';
   return `${COOKIE_NAME}=; Path=/; Max-Age=0; HttpOnly; SameSite=${sameSite}${domain}${secureFlag}`;
 }
 
