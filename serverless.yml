@@ -254,45 +254,47 @@ functions:
           path: /uploads/presigned-url
           method: post
 
-resources:
-  Resources:
-    MediaBucket:
-      Type: AWS::S3::Bucket
-      DeletionPolicy: Retain
-      Properties:
-        BucketName: ${self:service}-media-${self:provider.stage}
-        CorsConfiguration:
-          CorsRules:
-            - AllowedHeaders:
-                - '*'
-              AllowedMethods:
-                - PUT
-                - GET
-              AllowedOrigins:
-                - https://www.myrecruiteragency.com
-                - https://myrecruiteragency.com
-                - https://master.d2yp6hyv6u0efd.amplifyapp.com
-                - http://localhost:3000
-                - http://localhost:3001
-              MaxAge: 3000
-        PublicAccessBlockConfiguration:
-          BlockPublicAcls: false
-          BlockPublicPolicy: false
-          IgnorePublicAcls: false
-          RestrictPublicBuckets: false
-    MediaBucketPolicy:
-      Type: AWS::S3::BucketPolicy
-      Properties:
-        Bucket: !Ref MediaBucket
-        PolicyDocument:
-          Statement:
-            - Sid: PublicReadGetObject
-              Effect: Allow
-              Principal: '*'
-              Action:
-                - s3:GetObject
-              Resource:
-                - !Sub 'arn:aws:s3:::${MediaBucket}/*'
+# NOTE: MediaBucket resources commented out - bucket already exists outside CloudFormation
+# To re-enable, import the existing bucket into the stack first
+# resources:
+#   Resources:
+#     MediaBucket:
+#       Type: AWS::S3::Bucket
+#       DeletionPolicy: Retain
+#       Properties:
+#         BucketName: ${self:service}-media-${self:provider.stage}
+#         CorsConfiguration:
+#           CorsRules:
+#             - AllowedHeaders:
+#                 - '*'
+#               AllowedMethods:
+#                 - PUT
+#                 - GET
+#               AllowedOrigins:
+#                 - https://www.myrecruiteragency.com
+#                 - https://myrecruiteragency.com
+#                 - https://master.d2yp6hyv6u0efd.amplifyapp.com
+#                 - http://localhost:3000
+#                 - http://localhost:3001
+#               MaxAge: 3000
+#         PublicAccessBlockConfiguration:
+#           BlockPublicAcls: false
+#           BlockPublicPolicy: false
+#           IgnorePublicAcls: false
+#           RestrictPublicBuckets: false
+#     MediaBucketPolicy:
+#       Type: AWS::S3::BucketPolicy
+#       Properties:
+#         Bucket: !Ref MediaBucket
+#         PolicyDocument:
+#           Statement:
+#             - Sid: PublicReadGetObject
+#               Effect: Allow
+#               Principal: '*'
+#               Action:
+#                 - s3:GetObject
+#               Resource:
+#                 - !Sub 'arn:aws:s3:::${MediaBucket}/*'
 
 # ╔════════════════════════════════════════════════════════════════════════════╗
 # ║  ⚠️  CRITICAL: DATABASE PROTECTION NOTICE                                  ║
