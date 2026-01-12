@@ -1,11 +1,12 @@
 import { APIGatewayProxyEventV2 } from 'aws-lambda';
 import { Handler, requireSession } from './common';
 import { newId } from '../lib/ids';
-import { ClientRecord } from '../lib/models';
+import { ClientRecord, AgencyRecord, STARTER_USER_LIMIT } from '../lib/models';
 import { hashAccessCode } from '../lib/auth';
 import { getItem, putItem, queryByPK, queryGSI3, scanByGSI3PK } from '../lib/dynamo';
 import { response } from './cors';
 import { withSentry, captureMessage } from '../lib/sentry';
+import { logAuditEvent, extractAuditContext } from '../lib/audit';
 
 function badRequest(origin: string, msg: string) {
   return response(400, { ok: false, error: msg }, origin);
@@ -83,6 +84,31 @@ const clientsHandler: Handler = async (event: APIGatewayProxyEventV2) => {
     if (!payload.email || !payload.firstName || !payload.lastName || !payload.sport) {
       return badRequest(origin, 'email, firstName, lastName, sport are required');
     }
+
+    // --- TIER LIMIT ENFORCEMENT ---
+    const agency = await getItem({ PK: `AGENCY#${cleanAgencyId}`, SK: 'PROFILE' }) as AgencyRecord | undefined;
+    const subscriptionLevel = agency?.subscriptionLevel || 'starter';
+
+    if (subscriptionLevel !== 'unlimited') {
+      const existingClients = await queryByPK(`AGENCY#${cleanAgencyId}`, 'CLIENT#');
+      const activeClients = existingClients.filter((c: any) => !c.deletedAt);
+      
+      const existingAgents = await queryByPK(`AGENCY#${cleanAgencyId}`, 'AGENT#');
+      const activeAgents = existingAgents.filter((a: any) => !a.deletedAt);
+      
+      const totalUsers = activeClients.length + activeAgents.length;
+      
+      if (totalUsers >= STARTER_USER_LIMIT) {
+        return response(403, { 
+          ok: false, 
+          error: `User limit reached. Please upgrade to Unlimited to add more than ${STARTER_USER_LIMIT} users.`,
+          code: 'USER_LIMIT_REACHED',
+          currentCount: totalUsers,
+          limit: STARTER_USER_LIMIT
+        }, origin);
+      }
+    }
+    // --- END TIER LIMIT ENFORCEMENT ---
     
     const id = payload.id || newId('client');
     const now = new Date().toISOString();
@@ -140,6 +166,17 @@ const clientsHandler: Handler = async (event: APIGatewayProxyEventV2) => {
     };
     
     await putItem(rec);
+    
+    // Audit log: client created
+    await logAuditEvent({
+      session,
+      action: 'client_create',
+      targetType: 'client',
+      targetId: id,
+      targetName: `${payload.firstName} ${payload.lastName}`,
+      ...extractAuditContext(event),
+    });
+    
     return response(200, { ok: true, client: rec }, origin);
   }
 
@@ -195,6 +232,18 @@ const clientsHandler: Handler = async (event: APIGatewayProxyEventV2) => {
       merged.authEnabled = true;
     }
     await putItem(merged);
+    
+    // Audit log: client updated
+    await logAuditEvent({
+      session,
+      action: 'client_update',
+      targetType: 'client',
+      targetId: clientId,
+      targetName: `${merged.firstName} ${merged.lastName}`,
+      details: { fieldsUpdated: Object.keys(payload) },
+      ...extractAuditContext(event),
+    });
+    
     return response(200, { ok: true, client: merged }, origin);
   }
 
@@ -202,11 +251,21 @@ const clientsHandler: Handler = async (event: APIGatewayProxyEventV2) => {
   if (method === 'DELETE') {
     if (!clientId) return response(400, { ok: false, error: 'Missing client id' }, origin);
     
-    const existing = await getItem({ PK: `AGENCY#${cleanAgencyId}`, SK: `CLIENT#${clientId}` });
+    const existing = await getItem({ PK: `AGENCY#${cleanAgencyId}`, SK: `CLIENT#${clientId}` }) as ClientRecord | undefined;
     if (existing) {
       await putItem({
         ...existing,
         deletedAt: new Date().toISOString(),
+      });
+      
+      // Audit log: client deleted
+      await logAuditEvent({
+        session,
+        action: 'client_delete',
+        targetType: 'client',
+        targetId: clientId,
+        targetName: `${existing.firstName} ${existing.lastName}`,
+        ...extractAuditContext(event),
       });
     }
     return response(200, { ok: true }, origin);

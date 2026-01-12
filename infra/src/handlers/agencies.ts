@@ -4,30 +4,24 @@ import { getItem, putItem, queryGSI1 } from '../lib/dynamo';
 import { newId } from '../lib/ids';
 import { requireSession } from './common';
 import { withSentry } from '../lib/sentry';
+import { AgencyRecord } from '../lib/models';
 
-type AgencyRecord = {
-  PK: string;
-  SK: string;
-  GSI1PK: string;
-  GSI1SK: string;
-  id: string;
-  name: string;
-  email: string;
-  settings?: { primaryColor?: string; secondaryColor?: string; logoDataUrl?: string };
-  deletedAt?: string;
-};
-
-function toRecord(input: { id?: string; name?: string; email?: string; settings?: any }): AgencyRecord {
-  const id = input.id || newId('agency');
+function toRecord(input: Partial<AgencyRecord> & { email: string; name: string }, existing?: AgencyRecord): AgencyRecord {
+  const id = input.id || existing?.id || newId('agency');
   return {
+    // Preserve existing fields first
+    ...existing,
+    // Then overlay new fields
     PK: `AGENCY#${id}`,
     SK: 'PROFILE',
     GSI1PK: `EMAIL#${input.email}`,
     GSI1SK: `AGENCY#${id}`,
     id,
-    name: input.name || 'New Agency',
-    email: input.email || '',
-    settings: input.settings,
+    name: input.name,
+    email: input.email,
+    settings: input.settings ?? existing?.settings,
+    subscriptionLevel: input.subscriptionLevel ?? existing?.subscriptionLevel,
+    createdAt: existing?.createdAt ?? Date.now(),
   };
 }
 
@@ -122,7 +116,13 @@ const agenciesHandler = async (event: APIGatewayProxyEventV2) => {
         return response(400, { ok: false, error: 'name and email are required' }, origin);
       }
       
-      const rec = toRecord(body);
+      // Fetch existing record to preserve fields like subscriptionLevel
+      let existing: AgencyRecord | undefined;
+      if (body.id) {
+        existing = await getItem({ PK: `AGENCY#${body.id}`, SK: 'PROFILE' }) as AgencyRecord | undefined;
+      }
+      
+      const rec = toRecord(body, existing);
       try {
         await putItem(rec);
         return response(200, { ok: true, id: rec.id }, origin);

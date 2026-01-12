@@ -18,6 +18,7 @@ const agencyIdFieldId = '2nUnTxRCuWPiGQ4j23we';
 const agencyNameFieldId = 'mSth0jJ8VQk1k9caFxCC';
 const agencyColorFieldId = '0STRDPbWyZ6ChSApAtjz';
 const agencyLogoFieldId = 'Bvng0E2Yf5TkmEI8KyD6';
+const subscriptionLevelFieldId = 'PLACEHOLDER_SUB_LEVEL'; // TODO: Replace with actual GHL field ID
 
 const ALLOWED_ORIGINS = [
   'https://myrecruiteragency.com',
@@ -125,6 +126,10 @@ const ghlLoginHandler = async (event: APIGatewayProxyEventV2): Promise<APIGatewa
     const agencyColor = (customFields.find((f: any) => f.id === agencyColorFieldId)?.value || '').toString().trim();
     const agencyLogo = (customFields.find((f: any) => f.id === agencyLogoFieldId)?.value || '').toString().trim();
     
+    // Parse subscription level - 'unlimited' or default to 'starter' (25 users)
+    const rawSubscriptionLevel = (customFields.find((f: any) => f.id === subscriptionLevelFieldId)?.value || '').toString().trim().toLowerCase();
+    const subscriptionLevel = rawSubscriptionLevel === 'unlimited' ? 'unlimited' : 'starter';
+    
     const isNew = agencyId === 'READY';
     let resolvedAgencyId = agencyId;
 
@@ -150,6 +155,7 @@ const ghlLoginHandler = async (event: APIGatewayProxyEventV2): Promise<APIGatewa
             contactId: contact.id,
             color: agencyColor,
             logoUrl: agencyLogo,
+            subscriptionLevel, // 'starter' or 'unlimited'
             settings: {
               primaryColor: agencyColor || undefined,
               logoDataUrl: agencyLogo || undefined,
@@ -157,7 +163,7 @@ const ghlLoginHandler = async (event: APIGatewayProxyEventV2): Promise<APIGatewa
             createdAt: Date.now(),
           }
         }));
-        console.log(`Created agency ${newAgencyId} in DynamoDB`);
+        console.log(`Created agency ${newAgencyId} with subscriptionLevel=${subscriptionLevel}`);
         
         resolvedAgencyId = newAgencyId;
       } catch (dbError: any) {
@@ -197,6 +203,28 @@ const ghlLoginHandler = async (event: APIGatewayProxyEventV2): Promise<APIGatewa
         } catch (err: any) {
           console.error('Error updating GHL contact with new agency id', { error: err?.message });
         }
+      }
+    } else if (resolvedAgencyId && resolvedAgencyId !== 'READY') {
+      // Existing agency - update subscription level if changed in GHL
+      try {
+        const { GetCommand, UpdateCommand } = await import('@aws-sdk/lib-dynamodb');
+        const existing = await docClient.send(new GetCommand({
+          TableName: TABLE_NAME,
+          Key: { PK: `AGENCY#${resolvedAgencyId}`, SK: 'PROFILE' }
+        }));
+        
+        if (existing.Item && existing.Item.subscriptionLevel !== subscriptionLevel) {
+          await docClient.send(new UpdateCommand({
+            TableName: TABLE_NAME,
+            Key: { PK: `AGENCY#${resolvedAgencyId}`, SK: 'PROFILE' },
+            UpdateExpression: 'SET subscriptionLevel = :sl',
+            ExpressionAttributeValues: { ':sl': subscriptionLevel }
+          }));
+          console.log(`Updated agency ${resolvedAgencyId} subscriptionLevel to ${subscriptionLevel}`);
+        }
+      } catch (updateErr: any) {
+        // Non-fatal - log and continue
+        console.error('Failed to update existing agency subscription', { error: updateErr?.message });
       }
     }
 

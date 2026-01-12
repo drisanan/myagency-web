@@ -32,8 +32,12 @@ export type AgencySettings = {
   preferredSport?: string;
 };
 
+export type SubscriptionLevel = 'starter' | 'unlimited';
+
+export const STARTER_USER_LIMIT = 25;
+
 export type Session = {
-  role: 'parent' | 'agency' | 'client';
+  role: 'parent' | 'agency' | 'client' | 'agent';
   agencyId?: string;
   email: string;
   agencyEmail?: string;
@@ -44,7 +48,11 @@ export type Session = {
   impersonatedBy?: { email: string; role: 'parent' | 'agency' };
   contactId?: string;
   clientId?: string;
+  agentId?: string;       // Set when logged in as agent
+  agentEmail?: string;    // Agent's own email
   authEnabled?: boolean;
+  subscriptionLevel?: SubscriptionLevel;
+  currentUserCount?: number;
 };
 
 async function postSession(session: Session) {
@@ -167,4 +175,45 @@ console.log('agencyId', agencyId);
   return session;
 }
 
+/**
+ * Login as an agent (sub-account of agency)
+ * Agent must have authEnabled=true and valid accessCode set by agency
+ */
+export async function agentLogin(input: { 
+  agencyId: string; 
+  email: string; 
+  phone: string; 
+  accessCode: string;
+}): Promise<{ ok: boolean; error?: string; agent?: any }> {
+  const base = requireApiBase();
+  
+  const res = await fetch(`${base}/auth/agent-login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify({
+      agencyId: input.agencyId.trim(),
+      email: input.email.trim(),
+      phone: input.phone.trim(),
+      accessCode: input.accessCode.trim(),
+    }),
+  });
 
+  const data = await res.json();
+  
+  if (!res.ok || !data.ok) {
+    return { ok: false, error: data.error || 'Login failed' };
+  }
+
+  // LOCAL DEV WORKAROUND: If API sent custom header, manually set cookie
+  const localCookie = res.headers.get('X-Local-Set-Cookie');
+  if (localCookie && typeof document !== 'undefined') {
+    const jsCompatibleCookie = localCookie
+      .replace(/;\s*HttpOnly/gi, '')
+      .replace(/;\s*Secure/gi, '');
+    document.cookie = jsCompatibleCookie;
+    console.log('[Local Auth] Agent cookie manually set from X-Local-Set-Cookie header');
+  }
+
+  return { ok: true, agent: data.agent };
+}

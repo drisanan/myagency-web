@@ -1,3 +1,7 @@
+export type SubscriptionLevel = 'starter' | 'unlimited';
+
+export const STARTER_USER_LIMIT = 25;
+
 export type AgencySettings = {
   primaryColor?: string;
   secondaryColor?: string;
@@ -19,16 +23,34 @@ export type AgencySettings = {
   logoDataUrl?: string;
 };
 
+export type AgencyRecord = {
+  PK: string;                          // AGENCY#<id>
+  SK: string;                          // PROFILE
+  GSI1PK: string;                      // EMAIL#<email>
+  GSI1SK: string;                      // AGENCY#<id>
+  id: string;
+  name: string;
+  email: string;
+  settings?: AgencySettings;
+  subscriptionLevel?: SubscriptionLevel;  // Default: 'starter'
+  deletedAt?: string;
+  createdAt?: number;
+};
+
 export type SessionContext = {
   agencyId: string;
   agencyEmail?: string;
-  role: 'agency' | 'athlete' | 'admin' | 'client';
+  role: 'agency' | 'athlete' | 'admin' | 'client' | 'agent';
   userId?: string;
   clientId?: string;
+  agentId?: string;          // Set when logged in as agent
+  agentEmail?: string;       // Agent's email for audit
   firstName?: string;
   lastName?: string;
   agencyLogo?: string;
   agencySettings?: AgencySettings;
+  subscriptionLevel?: SubscriptionLevel;
+  currentUserCount?: number;
 };
 
 export type ClientRecord = {
@@ -63,8 +85,13 @@ export type AgentRecord = {
   agencyEmail?: string;
   firstName: string;
   lastName: string;
-  email: string;      // Agent's email (used for sending)
-  role?: string;      // e.g., "Recruiting Coordinator", "Head Coach"
+  email: string;           // Agent's email (used for login + sending)
+  phone?: string;          // For login verification
+  role?: string;           // e.g., "Recruiting Coordinator", "Head Coach"
+  accessCodeHash?: string; // Hashed access code for login
+  authEnabled?: boolean;   // Can this agent log in?
+  lastLoginAt?: number;    // Track login activity
+  deletedAt?: string;      // Soft delete
   createdAt: number;
   updatedAt: number;
 };

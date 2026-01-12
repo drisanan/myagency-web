@@ -1,8 +1,9 @@
 import { APIGatewayProxyEventV2 } from 'aws-lambda';
 import { buildClearCookie, buildSessionCookie, encodeSession, parseSessionFromRequest } from '../lib/session';
 import { response } from './cors';
-import { getItem } from '../lib/dynamo';
+import { getItem, queryByPK } from '../lib/dynamo';
 import { withSentry } from '../lib/sentry';
+import { AgencyRecord, STARTER_USER_LIMIT } from '../lib/models';
 
 const authHandler = async (event: APIGatewayProxyEventV2) => {
   const headers = event.headers || {};
@@ -26,15 +27,40 @@ const authHandler = async (event: APIGatewayProxyEventV2) => {
     const session = parseSessionFromRequest(event);
     console.log('auth GET', { origin, cookie: cookieHeader, session });
     
-    // Fetch fresh agency settings from DB if we have an agencyId
+    // Fetch fresh agency settings and subscription info from DB if we have an agencyId
     if (session?.agencyId) {
       try {
-        const agency = await getItem({ PK: `AGENCY#${session.agencyId}`, SK: 'PROFILE' });
-        if (agency?.settings) {
-          session.agencySettings = agency.settings;
-          session.agencyLogo = agency.settings?.logoDataUrl || agency.logoUrl || session.agencyLogo;
+        const agency = await getItem({ PK: `AGENCY#${session.agencyId}`, SK: 'PROFILE' }) as AgencyRecord | undefined;
+        if (agency) {
+          // Merge agency settings
+          if (agency.settings) {
+            session.agencySettings = agency.settings;
+            session.agencyLogo = agency.settings?.logoDataUrl || (agency as any).logoUrl || session.agencyLogo;
+          }
+          
+          // Include subscription level (default to 'starter')
+          session.subscriptionLevel = agency.subscriptionLevel || 'starter';
+          
+          // Count active clients + agents for quota display
+          try {
+            const clients = await queryByPK(`AGENCY#${session.agencyId}`, 'CLIENT#');
+            const activeClients = clients.filter((c: any) => !c.deletedAt);
+            
+            const agents = await queryByPK(`AGENCY#${session.agencyId}`, 'AGENT#');
+            const activeAgents = agents.filter((a: any) => !a.deletedAt);
+            
+            session.currentUserCount = activeClients.length + activeAgents.length;
+          } catch (countErr) {
+            console.error('auth GET failed to count users', countErr);
+            session.currentUserCount = 0;
+          }
         }
-        console.log('auth GET merged fresh settings', { agencyId: session.agencyId, hasSettings: !!agency?.settings });
+        console.log('auth GET merged fresh settings', { 
+          agencyId: session.agencyId, 
+          hasSettings: !!agency?.settings,
+          subscriptionLevel: session.subscriptionLevel,
+          currentUserCount: session.currentUserCount
+        });
       } catch (e) {
         console.error('auth GET failed to fetch agency settings', e);
         // Continue with cached session data

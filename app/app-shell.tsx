@@ -6,7 +6,7 @@ import { usePathname } from 'next/navigation';
 import { useSession } from '@/features/auth/session';
 import { useImpersonation } from '@/hooks/useImpersonation';
 import { colors } from '@/theme/colors';
-import { IoAppsOutline, IoBarbellOutline, IoFlaskOutline, IoClipboardOutline, IoSchoolOutline } from 'react-icons/io5';
+import { IoAppsOutline, IoBarbellOutline, IoFlaskOutline, IoClipboardOutline, IoSchoolOutline, IoPeopleOutline } from 'react-icons/io5';
 import { IoNotificationsOutline } from 'react-icons/io5';
 import { useQuery } from '@tanstack/react-query';
 import { tasksDueSoon, Task } from '@/services/tasks';
@@ -48,6 +48,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     { href: '/dashboard', label: 'Dashboard', icon: <IoAppsOutline /> },
     ...(session?.role === 'parent' && !session?.impersonatedBy ? [{ href: '/agencies', label: 'Agencies', icon: <IoAppsOutline /> }] : []),
     { href: '/clients', label: 'Athletes', icon: <IoBarbellOutline /> },
+    // Only show Agents management to agency owners, not to agents themselves
+    ...(session?.role !== 'agent' ? [{ href: '/agents', label: 'Agents', icon: <IoPeopleOutline /> }] : []),
     { href: '/ai/prompts', label: 'Prompts', icon: <IoFlaskOutline /> },
     { href: '/lists', label: 'Lists', icon: <IoClipboardOutline /> },
     { href: '/tasks', label: 'Tasks', icon: <IoClipboardOutline /> },

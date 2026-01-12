@@ -10,6 +10,7 @@ import { useSession } from '@/features/auth/session';
 import { upsertClient } from '@/services/clients';
 import { useTour } from '@/features/tour/TourProvider';
 import { athletesSteps } from '@/features/tour/athletesSteps';
+import { SubscriptionQuota, useCanAddAthlete } from '@/features/settings/SubscriptionQuota';
 
 // FIX: Hardcode the fallback to your actual API domain to prevent localhost issues
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://api.myrecruiteragency.com';
@@ -18,6 +19,7 @@ export default function ClientsPage() {
   const { session, loading } = useSession();
   const queryClient = useQueryClient();
   const { startTour } = useTour();
+  const { canAdd, isAtLimit } = useCanAddAthlete();
 
   React.useEffect(() => {
     if (!loading && session) startTour('athletes', athletesSteps);
@@ -169,17 +171,31 @@ export default function ClientsPage() {
   // 5. Render
   return (
     <Stack spacing={2} sx={{ p: 2 }}>
-      <Stack direction="row" justifyContent="space-between" alignItems="center">
-        <Typography variant="h4">Athletes</Typography>
+      <Stack direction="row" justifyContent="space-between" alignItems="center" flexWrap="wrap" gap={1}>
+        <Stack direction="row" alignItems="center" spacing={2}>
+          <Typography variant="h4">Athletes</Typography>
+          <SubscriptionQuota compact showUpgradeButton={false} />
+        </Stack>
         <Stack direction="row" spacing={1}>
-          <Button data-tour="add-athlete-btn" LinkComponent={Link} href="/clients/new" variant="contained">
-            New
+          <Button 
+            data-tour="add-athlete-btn" 
+            LinkComponent={Link} 
+            href="/clients/new" 
+            variant="contained"
+            disabled={isAtLimit}
+            title={isAtLimit ? 'Upgrade to add more athletes' : 'Add new athlete'}
+          >
+            {isAtLimit ? 'Limit Reached' : 'New'}
           </Button>
-          <Button variant="outlined" onClick={handleGenerateLink} disabled={issuing}>
+          <Button variant="outlined" onClick={handleGenerateLink} disabled={issuing || isAtLimit}>
             {issuing ? 'Generating…' : 'Generate Form Link'}
           </Button>
         </Stack>
       </Stack>
+
+      {isAtLimit && (
+        <SubscriptionQuota showUpgradeButton />
+      )}
 
       {inviteUrl && (
         <Stack data-tour="invite-section" direction={{ xs: 'column', md: 'row' }} spacing={1} alignItems="center" sx={{ p: 2, bgcolor: '#f5f5f5', borderRadius: 1 }}>

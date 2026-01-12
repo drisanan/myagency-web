@@ -15,6 +15,7 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import Divider from '@mui/material/Divider';
 import { useSession } from '@/features/auth/session';
 import { updateAgencySettings, getAgencySettings } from '@/services/agencies';
+import { SubscriptionQuota } from '@/features/settings/SubscriptionQuota';
 
 // Default color palette
 const defaults = {
@@ -197,6 +198,14 @@ export function SettingsForm() {
 
   return (
     <Stack spacing={3}>
+      {/* Subscription Status */}
+      <Box>
+        <Typography variant="h6" gutterBottom>Subscription</Typography>
+        <SubscriptionQuota showUpgradeButton />
+      </Box>
+
+      <Divider />
+
       <Box>
         <Typography variant="h6" gutterBottom>White-Label Branding</Typography>
         <Typography variant="body2" color="text.secondary">

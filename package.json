@@ -24,7 +24,10 @@
     "test:selenium:login-ghl-negative": "node tests/selenium/login-ghl-negative.e2e.js",
     "test:selenium:intake-negative": "node tests/selenium/intake-negative.e2e.js",
     "test:selenium:athlete-profile-public": "node tests/selenium/athlete-profile-public.e2e.js",
-    "test:selenium:all": "npm-run-all --sequential test:selenium:intake test:selenium:intake-negative test:selenium:client-create test:selenium:agency-wizard test:selenium:recruiter-wizard test:selenium:ai-prompts test:selenium:lists test:selenium:athlete-profile test:selenium:athlete-profile-public test:selenium:login-ghl test:selenium:login-ghl-negative",
+    "test:selenium:tier-enforcement": "node tests/selenium/tier-enforcement.e2e.js",
+    "test:selenium:agents": "node tests/selenium/agents.e2e.js",
+    "test:selenium:agent-login": "node tests/selenium/agent-login.e2e.js",
+    "test:selenium:all": "npm-run-all --sequential test:selenium:intake test:selenium:intake-negative test:selenium:client-create test:selenium:agency-wizard test:selenium:recruiter-wizard test:selenium:ai-prompts test:selenium:lists test:selenium:athlete-profile test:selenium:athlete-profile-public test:selenium:tier-enforcement test:selenium:agents test:selenium:agent-login test:selenium:login-ghl test:selenium:login-ghl-negative",
     "infra:seed": "node scripts/seed-dynamo.mjs"
   },
   "dependencies": {

@@ -190,6 +190,12 @@ functions:
       - httpApi:
           path: /auth/client-login
           method: any
+  agentLogin:
+    handler: infra/src/handlers/auth-agent-login.handler
+    events:
+      - httpApi:
+          path: /auth/agent-login
+          method: any
   clientInterests:
     handler: infra/src/handlers/client-interests.handler
     events:
