@@ -131,7 +131,7 @@ export async function getAgencyAuditLog(
 /**
  * Helper to extract audit context from API event
  */
-export function extractAuditContext(event: { headers?: Record<string, string> }): {
+export function extractAuditContext(event: { headers?: Record<string, string | undefined> }): {
   ipAddress?: string;
   userAgent?: string;
 } {
