@@ -47,6 +47,36 @@ export async function queryGSI1(GSI1PK: string, beginsWith?: string) {
   return res.Items ?? [];
 }
 
+// Query GSI2 for agency slug lookups (friendly names)
+export async function queryGSI2(GSI2PK: string, beginsWith?: string) {
+  try {
+    const res = await docClient.send(
+      new QueryCommand({
+        TableName: TABLE_NAME,
+        IndexName: 'GSI2',
+        KeyConditionExpression: beginsWith ? 'GSI2PK = :g2pk AND begins_with(GSI2SK, :g2sk)' : 'GSI2PK = :g2pk',
+        ExpressionAttributeValues: beginsWith ? { ':g2pk': GSI2PK, ':g2sk': beginsWith } : { ':g2pk': GSI2PK },
+      }),
+    );
+    return res.Items ?? [];
+  } catch (e: any) {
+    // GSI2 may not exist yet, fallback to scan
+    console.warn('[queryGSI2] Index query failed, falling back to scan:', e.message);
+    return scanByGSI2PK(GSI2PK);
+  }
+}
+
+// Scan fallback for GSI2 if index doesn't exist yet
+export async function scanByGSI2PK(GSI2PK: string) {
+  const params: any = {
+    TableName: TABLE_NAME,
+    FilterExpression: 'GSI2PK = :g2pk',
+    ExpressionAttributeValues: { ':g2pk': GSI2PK },
+  };
+  const res = await docClient.send(new ScanCommand(params));
+  return res.Items ?? [];
+}
+
 // Fallback query without specifying IndexName (only works if GSI1PK exists on base table projection)
 // Fallback scan when GSI1 is misconfigured or absent; use sparingly (costly)
 export async function scanByGSI1PK(GSI1PK: string, beginsWith?: string) {

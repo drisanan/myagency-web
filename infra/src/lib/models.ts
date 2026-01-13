@@ -28,9 +28,12 @@ export type AgencyRecord = {
   SK: string;                          // PROFILE
   GSI1PK: string;                      // EMAIL#<email>
   GSI1SK: string;                      // AGENCY#<id>
+  GSI2PK?: string;                     // SLUG#<slug> for friendly name lookup
+  GSI2SK?: string;                     // AGENCY#<id>
   id: string;
   name: string;
   email: string;
+  slug?: string;                       // Friendly identifier (e.g., "myrecruiteragency")
   settings?: AgencySettings;
   subscriptionLevel?: SubscriptionLevel;  // Default: 'starter'
   deletedAt?: string;
@@ -88,6 +91,7 @@ export type AgentRecord = {
   email: string;           // Agent's email (used for login + sending)
   phone?: string;          // For login verification
   role?: string;           // e.g., "Recruiting Coordinator", "Head Coach"
+  isAdmin?: boolean;       // Can this agent manage other agents?
   accessCodeHash?: string; // Hashed access code for login
   authEnabled?: boolean;   // Can this agent log in?
   lastLoginAt?: number;    // Track login activity

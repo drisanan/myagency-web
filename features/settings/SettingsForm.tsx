@@ -101,6 +101,8 @@ function ColorPicker({
   );
 }
 
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || '';
+
 export function SettingsForm() {
   const { session, refreshSession } = useSession();
   
@@ -111,9 +113,38 @@ export function SettingsForm() {
   const [success, setSuccess] = React.useState<string | null>(null);
   const [loading, setLoading] = React.useState(false);
   const [initialLoading, setInitialLoading] = React.useState(true);
+  
+  // Agency slug state
+  const [agencySlug, setAgencySlug] = React.useState('');
+  const [slugError, setSlugError] = React.useState<string | null>(null);
+  const [slugSuccess, setSlugSuccess] = React.useState<string | null>(null);
+  const [savingSlug, setSavingSlug] = React.useState(false);
 
   const updateColor = (key: ColorKey, value: string) => {
     setColors(prev => ({ ...prev, [key]: value }));
+  };
+  
+  const saveSlug = async () => {
+    if (!agencySlug.trim()) return;
+    setSavingSlug(true);
+    setSlugError(null);
+    setSlugSuccess(null);
+    
+    try {
+      const res = await fetch(`${API_BASE}/agencies/slug`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ slug: agencySlug.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to save');
+      setSlugSuccess(`Agency name set to "${data.slug}". Agents can now use this to log in!`);
+    } catch (e: any) {
+      setSlugError(e?.message || 'Failed to save agency name');
+    } finally {
+      setSavingSlug(false);
+    }
   };
 
   // Load current settings
@@ -129,6 +160,7 @@ export function SettingsForm() {
           });
           setColors(loaded);
           if (settings.logoDataUrl) setLogoPreview(settings.logoDataUrl);
+          if (settings.slug) setAgencySlug(settings.slug);
         }
       })
       .catch(console.error)
@@ -202,6 +234,44 @@ export function SettingsForm() {
       <Box>
         <Typography variant="h6" gutterBottom>Subscription</Typography>
         <SubscriptionQuota showUpgradeButton />
+      </Box>
+
+      <Divider />
+
+      {/* Agency Name / Slug Section */}
+      <Box>
+        <Typography variant="h6" gutterBottom>Agency Name (for Agent Login)</Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          Set a friendly name for your agency. Agents will use this instead of the UUID to log in.
+        </Typography>
+        
+        <Stack direction="row" spacing={2} alignItems="flex-start">
+          <TextField
+            label="Agency Name"
+            value={agencySlug}
+            onChange={(e) => setAgencySlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
+            placeholder="e.g., myrecruiteragency"
+            size="small"
+            helperText="Letters, numbers, and hyphens only (3-50 chars)"
+            sx={{ minWidth: 280 }}
+          />
+          <Button
+            variant="contained"
+            onClick={saveSlug}
+            disabled={savingSlug || !agencySlug.trim() || agencySlug.length < 3}
+          >
+            {savingSlug ? 'Saving...' : 'Save Name'}
+          </Button>
+        </Stack>
+        
+        {slugError && <Alert severity="error" sx={{ mt: 1 }}>{slugError}</Alert>}
+        {slugSuccess && <Alert severity="success" sx={{ mt: 1 }}>{slugSuccess}</Alert>}
+        
+        {session?.agencyId && (
+          <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+            Fallback ID (can also be used): <code style={{ background: '#f5f5f5', padding: '2px 6px', borderRadius: 4 }}>{session.agencyId}</code>
+          </Typography>
+        )}
       </Box>
 
       <Divider />

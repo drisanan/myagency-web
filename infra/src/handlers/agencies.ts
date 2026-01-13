@@ -1,6 +1,6 @@
 import { APIGatewayProxyEventV2 } from 'aws-lambda';
 import { response } from './cors';
-import { getItem, putItem, queryGSI1 } from '../lib/dynamo';
+import { getItem, putItem, queryGSI1, queryGSI2 } from '../lib/dynamo';
 import { newId } from '../lib/ids';
 import { requireSession } from './common';
 import { withSentry } from '../lib/sentry';
@@ -62,6 +62,59 @@ const agenciesHandler = async (event: APIGatewayProxyEventV2) => {
       }
       
       return response(200, { ok: true, agencies: found || [] }, origin);
+    }
+
+    // --- PUT /agencies/slug ---
+    if (method === 'PUT' && event.rawPath?.endsWith('/agencies/slug')) {
+      if (!session) return response(401, { ok: false, error: 'Unauthorized' }, origin);
+      if (!event.body) return response(400, { ok: false, error: 'Missing body' }, origin);
+      
+      const { slug } = JSON.parse(event.body || '{}');
+      
+      if (!slug || typeof slug !== 'string') {
+        return response(400, { ok: false, error: 'Slug is required' }, origin);
+      }
+      
+      // Normalize slug: lowercase, alphanumeric + hyphens only
+      const normalizedSlug = slug.toLowerCase().trim().replace(/[^a-z0-9-]/g, '');
+      
+      if (normalizedSlug.length < 3 || normalizedSlug.length > 50) {
+        return response(400, { ok: false, error: 'Agency name must be 3-50 characters (letters, numbers, hyphens only)' }, origin);
+      }
+      
+      // Fetch agency record - try GSI1 (email) first, then PK fallback
+      let agency: AgencyRecord | undefined;
+      
+      // Try GSI1 lookup by email first
+      if (session.agencyEmail) {
+        const byEmail = await queryGSI1(`EMAIL#${session.agencyEmail}`, 'AGENCY#');
+        agency = byEmail?.[0] as AgencyRecord | undefined;
+      }
+      
+      // Fallback to PK lookup
+      if (!agency && session.agencyId) {
+        agency = await getItem({ PK: `AGENCY#${session.agencyId}`, SK: 'PROFILE' }) as AgencyRecord | undefined;
+      }
+      
+      if (!agency) return response(404, { ok: false, error: 'Agency not found' }, origin);
+      
+      // Check uniqueness via GSI2
+      const existing = await queryGSI2(`SLUG#${normalizedSlug}`);
+      if (existing.length > 0 && (existing[0] as AgencyRecord).id !== agency.id) {
+        return response(409, { ok: false, error: 'This agency name is already taken' }, origin);
+      }
+      
+      const updated = {
+        ...agency,
+        slug: normalizedSlug,
+        GSI2PK: `SLUG#${normalizedSlug}`,
+        GSI2SK: `AGENCY#${agency.id}`,
+      };
+      
+      await putItem(updated);
+      
+      console.log('agencies slug updated', { agencyId: agency.id, slug: normalizedSlug });
+      return response(200, { ok: true, slug: normalizedSlug }, origin);
     }
 
     // --- PUT /agencies/settings ---

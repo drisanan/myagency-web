@@ -29,12 +29,20 @@ const agentsHandler: Handler = async (event: APIGatewayProxyEventV2) => {
   const session = requireSession(event);
   if (!session) return response(401, { ok: false, error: 'Missing session' }, origin);
   
-  // Only agency owners can manage agents, not agents themselves
-  if (session.role === 'agent') {
-    return response(403, { ok: false, error: 'Agents cannot manage other agents' }, origin);
-  }
-
   const cleanAgencyId = session.agencyId.trim();
+  
+  // Only agency owners OR admin agents can manage other agents
+  if (session.role === 'agent') {
+    // Check if this agent has admin privileges
+    const currentAgent = await getItem({ 
+      PK: `AGENCY#${cleanAgencyId}`, 
+      SK: `AGENT#${session.agentId}` 
+    }) as AgentRecord | undefined;
+    
+    if (!currentAgent?.isAdmin) {
+      return response(403, { ok: false, error: 'Admin role required to manage agents' }, origin);
+    }
+  }
   const agentId = getAgentId(event);
 
   // Helper to strip sensitive fields
@@ -116,6 +124,7 @@ const agentsHandler: Handler = async (event: APIGatewayProxyEventV2) => {
       email: payload.email,
       phone: payload.phone,
       role: payload.role,
+      isAdmin: payload.isAdmin ?? false,
       accessCodeHash,
       authEnabled: payload.authEnabled ?? false,
       createdAt: now,

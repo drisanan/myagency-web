@@ -178,9 +178,11 @@ console.log('agencyId', agencyId);
 /**
  * Login as an agent (sub-account of agency)
  * Agent must have authEnabled=true and valid accessCode set by agency
+ * Can use either agencyId (UUID) or agencySlug (friendly name)
  */
 export async function agentLogin(input: { 
-  agencyId: string; 
+  agencyId?: string;
+  agencySlug?: string;
   email: string; 
   phone: string; 
   accessCode: string;
@@ -192,7 +194,8 @@ export async function agentLogin(input: {
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
     body: JSON.stringify({
-      agencyId: input.agencyId.trim(),
+      ...(input.agencyId ? { agencyId: input.agencyId.trim() } : {}),
+      ...(input.agencySlug ? { agencySlug: input.agencySlug.trim().toLowerCase() } : {}),
       email: input.email.trim(),
       phone: input.phone.trim(),
       accessCode: input.accessCode.trim(),

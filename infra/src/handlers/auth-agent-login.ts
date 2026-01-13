@@ -1,7 +1,7 @@
 import { APIGatewayProxyEventV2 } from 'aws-lambda';
 import { Handler } from './common';
 import { response } from './cors';
-import { queryByPK, getItem, putItem } from '../lib/dynamo';
+import { queryByPK, queryGSI2, getItem, putItem } from '../lib/dynamo';
 import { encodeSession, buildSessionCookie } from '../lib/session';
 import { verifyAccessCode } from '../lib/auth';
 import { withSentry } from '../lib/sentry';
@@ -31,11 +31,13 @@ const authAgentLoginHandler: Handler = async (event: APIGatewayProxyEventV2) => 
   if (method !== 'POST') return response(405, { ok: false, error: 'Method not allowed' }, origin);
   if (!event.body) return response(400, { ok: false, error: 'Missing body' }, origin);
 
-  const { email, accessCode, phone } = JSON.parse(event.body || '{}');
+  const { email, accessCode, phone, agencyId, agencySlug } = JSON.parse(event.body || '{}');
   console.log('[auth-agent-login] request', {
     email,
     phone: String(phone),
     accessLen: accessCode ? String(accessCode).length : 0,
+    agencyId,
+    agencySlug,
   });
   
   if (!email || !accessCode || !phone) {
@@ -46,30 +48,31 @@ const authAgentLoginHandler: Handler = async (event: APIGatewayProxyEventV2) => 
   const accessString = String(accessCode).trim();
   const phoneString = normalizePhone(phone);
 
-  // Find agent by email - need to scan all agencies' agents
-  // First, try to find which agency this agent belongs to via a broader search
-  // Since agents are stored under AGENCY#<id>/AGENT#<id>, we need to find the agent
+  // Resolve agency - accept either agencyId (UUID) OR agencySlug (friendly name)
+  let resolvedAgencyId = agencyId;
   
-  // For efficiency, we'll use a GSI or scan. For now, let's check if there's a way
-  // to find agents by email. Since there's no GSI on agent email, we'll need to
-  // check the request for agencyId or do a limited scan.
+  if (!resolvedAgencyId && agencySlug) {
+    // Look up agency by slug using GSI2
+    const normalizedSlug = String(agencySlug).toLowerCase().trim();
+    const slugResults = await queryGSI2(`SLUG#${normalizedSlug}`);
+    if (slugResults.length > 0) {
+      resolvedAgencyId = (slugResults[0] as AgencyRecord).id;
+      console.log('[auth-agent-login] resolved slug to agencyId', { agencySlug: normalizedSlug, resolvedAgencyId });
+    }
+  }
   
-  // Better approach: require agencyId in login request OR add GSI2 for agent email lookup
-  // For now, let's require agencyId in the request body
-  const { agencyId } = JSON.parse(event.body || '{}');
-  
-  if (!agencyId) {
-    return response(400, { ok: false, error: 'agencyId is required for agent login' }, origin);
+  if (!resolvedAgencyId) {
+    return response(400, { ok: false, error: 'Agency name or ID is required' }, origin);
   }
 
   // Query agents for this agency
-  const agents = await queryByPK(`AGENCY#${agencyId}`, 'AGENT#');
+  const agents = await queryByPK(`AGENCY#${resolvedAgencyId}`, 'AGENT#');
   const agent = (agents as AgentRecord[]).find(
     (a) => normalizeEmail(a.email) === normalizedEmail && a.authEnabled && !a.deletedAt
   );
 
   if (!agent) {
-    console.warn('[auth-agent-login] no agent found or auth not enabled', { email: normalizedEmail, agencyId });
+    console.warn('[auth-agent-login] no agent found or auth not enabled', { email: normalizedEmail, agencyId: resolvedAgencyId });
     return response(401, { ok: false, error: 'Invalid credentials' }, origin);
   }
 
@@ -104,7 +107,7 @@ const authAgentLoginHandler: Handler = async (event: APIGatewayProxyEventV2) => 
   let agencyEmail: string | undefined;
 
   try {
-    const agency = await getItem({ PK: `AGENCY#${agencyId}`, SK: 'PROFILE' }) as AgencyRecord | undefined;
+    const agency = await getItem({ PK: `AGENCY#${resolvedAgencyId}`, SK: 'PROFILE' }) as AgencyRecord | undefined;
     if (agency) {
       agencyLogo = agency.settings?.logoDataUrl;
       agencySettings = agency.settings;

@@ -39,11 +39,22 @@ export type Agent = {
   firstName: string;
   lastName: string;
   email: string;
+  phone?: string;
   role?: string;
+  isAdmin?: boolean;
+  authEnabled?: boolean;
   agencyId?: string;
   agencyEmail?: string;
   createdAt?: number;
   updatedAt?: number;
+};
+
+// Input type for creating/updating agents (includes accessCode for setting password)
+export type AgentInput = Partial<Agent> & { 
+  email: string; 
+  firstName: string; 
+  lastName: string;
+  accessCode?: string; // Only used when setting/updating password
 };
 
 /**
@@ -65,7 +76,7 @@ export async function getAgent(id: string): Promise<Agent | null> {
 /**
  * Create or update an agent
  */
-export async function upsertAgent(input: Partial<Agent> & { email: string; firstName: string; lastName: string }): Promise<Agent> {
+export async function upsertAgent(input: AgentInput): Promise<Agent> {
   if (input.id) {
     const data = await apiFetch(`/agents/${input.id}`, { 
       method: 'PUT', 

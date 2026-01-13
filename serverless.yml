@@ -13,6 +13,7 @@ provider:
     SESSION_SECRET: ${env:SESSION_SECRET, '37c9a436-7ea8-4422-9f26-85192414b923'}
     AWS_NODEJS_CONNECTION_REUSE_ENABLED: 1
     NODE_OPTIONS: --enable-source-maps
+    OPENAI_KEY: ${env:OPENAI_KEY}
     # Local development flag - empty in production, 'true' when running serverless-offline
     IS_OFFLINE: ${env:IS_OFFLINE, ''}
     FORMS_SECRET: ${env:FORMS_SECRET, 'ff58bc99-63a5-4493-83dc-6720cb3c7db7'}
@@ -108,6 +109,9 @@ functions:
           method: any
       - httpApi:
           path: /agencies/settings
+          method: any
+      - httpApi:
+          path: /agencies/slug
           method: any
   clients:
     handler: infra/src/handlers/clients.handler

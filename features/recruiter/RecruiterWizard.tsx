@@ -36,6 +36,7 @@ export function RecruiterWizard() {
   const [agents, setAgents] = React.useState<Agent[]>([]);
   const [selectedAgentId, setSelectedAgentId] = React.useState<string>('');
   const [agentEmailBody, setAgentEmailBody] = React.useState<string>('');
+  const [ccAgentIds, setCcAgentIds] = React.useState<Record<string, boolean>>({});
 
   // Step 2 - division/state/schools
   const [divisions, setDivisions] = React.useState<string[]>([]);
@@ -84,6 +85,45 @@ export function RecruiterWizard() {
 
   const currentClient = React.useMemo(() => clients.find(c => c.id === clientId) || null, [clients, clientId]);
   const currentAgent = React.useMemo(() => agents.find(a => a.id === selectedAgentId) || null, [agents, selectedAgentId]);
+
+  // Role-based agent visibility:
+  // - Agents can only see themselves
+  // - Agency owners see all agents PLUS themselves
+  // - Clients cannot access agent mode
+  const visibleAgents = React.useMemo(() => {
+    if (session?.role === 'agent' && session?.agentId) {
+      return agents.filter(a => a.id === session.agentId);
+    }
+    // Agency owners: include themselves at the top of the list
+    if (session?.role === 'agency' && session?.agencyId) {
+      const selfEntry: Agent = {
+        id: `agency-owner-${session.agencyId}`,
+        firstName: session.firstName || 'Agency',
+        lastName: session.lastName || 'Owner',
+        email: session.agencyEmail || session.email || '',
+        role: 'Agency Owner',
+      };
+      return [selfEntry, ...agents];
+    }
+    return agents;
+  }, [agents, session?.role, session?.agentId, session?.agencyId, session?.firstName, session?.lastName, session?.agencyEmail, session?.email]);
+
+  // Only agency owners and agents can use agent mode; clients cannot
+  const canUseAgentMode = session?.role === 'agency' || session?.role === 'agent';
+
+  // Get list of agents available for CC (all agents except the selected sender)
+  const ccableAgents = React.useMemo(() => {
+    return agents.filter(a => a.id !== selectedAgentId && a.email);
+  }, [agents, selectedAgentId]);
+
+  // Get CC email addresses from selected agents
+  const ccEmails = React.useMemo(() => {
+    return ccableAgents
+      .filter(a => ccAgentIds[a.id])
+      .map(a => a.email)
+      .filter(Boolean) as string[];
+  }, [ccableAgents, ccAgentIds]);
+
   const contact = React.useMemo(() => {
     const radar = (currentClient as any)?.radar ?? {};
     return {
@@ -391,11 +431,12 @@ export function RecruiterWizard() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ 
               clientId: id, 
-              to: [recipient], 
+              to: [recipient],
+              cc: ccEmails.length > 0 ? ccEmails : undefined,
               subject, 
               html: personalizedHtml, 
               tokens: savedTokens || undefined, 
-              agencyEmail: userEmail || ''  // FIX: Use safe email
+              agencyEmail: userEmail || ''
           }),
         });
         const data = await res.json();
@@ -597,6 +638,17 @@ CRITICAL INSTRUCTIONS:
       .catch(() => setLists([]));
   }, [userEmail, clientId]);
 
+  // Auto-select self when logged in as agent
+  React.useEffect(() => {
+    if (session?.role === 'agent' && session?.agentId && agents.length > 0) {
+      const selfAgent = agents.find(a => a.id === session.agentId);
+      if (selfAgent && !selectedAgentId) {
+        setSelectedAgentId(session.agentId);
+        setSenderType('agent');
+      }
+    }
+  }, [session?.role, session?.agentId, agents, selectedAgentId]);
+
   React.useEffect(() => {
     if (!division) {
       setStates([]);
@@ -762,15 +814,18 @@ CRITICAL INSTRUCTIONS:
               >
                 Client
               </Button>
-              <Button
-                variant={senderType === 'agent' ? 'contained' : 'outlined'}
-                size="small"
-                onClick={() => { setSenderType('agent'); setClientId(''); }}
-                sx={senderType === 'agent' ? { bgcolor: '#000', color: '#b7ff00' } : {}}
-                data-testid="agent-mode-btn"
-              >
-                Agent
-              </Button>
+              {/* Only show Agent option for agency owners and agents - not clients */}
+              {canUseAgentMode && (
+                <Button
+                  variant={senderType === 'agent' ? 'contained' : 'outlined'}
+                  size="small"
+                  onClick={() => { setSenderType('agent'); setClientId(''); }}
+                  sx={senderType === 'agent' ? { bgcolor: '#000', color: '#b7ff00' } : {}}
+                  data-testid="agent-mode-btn"
+                >
+                  Agent
+                </Button>
+              )}
             </Box>
 
             {/* Client Selection (existing) */}
@@ -795,7 +850,7 @@ CRITICAL INSTRUCTIONS:
               </Box>
             )}
 
-            {/* Agent Selection (new) */}
+            {/* Agent Selection - filtered by role */}
             {senderType === 'agent' && (
               <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 2 }}>
                 <TextField
@@ -806,9 +861,15 @@ CRITICAL INSTRUCTIONS:
                   onChange={(e) => setSelectedAgentId(e.target.value)}
                   SelectProps={{ MenuProps: { disablePortal: true } }}
                   inputProps={{ 'data-testid': 'recruiter-agent-select' }}
-                  helperText={agents.length === 0 ? 'No agents found. Add agents in Settings.' : ''}
+                  helperText={
+                    visibleAgents.length === 0 
+                      ? 'No agents available.' 
+                      : session?.role === 'agent' 
+                        ? 'Sending as yourself' 
+                        : ''
+                  }
                 >
-                  {agents.map((a) => (
+                  {visibleAgents.map((a) => (
                     <MenuItem key={a.id} value={a.id}>
                       {a.email} {a.firstName ? `- ${a.firstName} ${a.lastName}` : ''} {a.role ? `(${a.role})` : ''}
                     </MenuItem>
@@ -1107,6 +1168,34 @@ CRITICAL INSTRUCTIONS:
               </Box>
             )}
 
+            {/* CC Team Members Selection for Agent Mode */}
+            {ccableAgents.length > 0 && (
+              <Box sx={{ border: '1px solid #e0e0e0', borderRadius: 1, p: 2, bgcolor: '#f9f9f9' }}>
+                <Typography variant="subtitle2" sx={{ mb: 1 }}>CC Team Members (optional)</Typography>
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                  {ccableAgents.map((agent) => (
+                    <FormControlLabel
+                      key={agent.id}
+                      control={
+                        <Checkbox
+                          size="small"
+                          checked={Boolean(ccAgentIds[agent.id])}
+                          onChange={() => setCcAgentIds(prev => ({ ...prev, [agent.id]: !prev[agent.id] }))}
+                        />
+                      }
+                      label={`${agent.firstName || ''} ${agent.lastName || ''} (${agent.email})`}
+                      sx={{ '& .MuiFormControlLabel-label': { fontSize: '0.875rem' } }}
+                    />
+                  ))}
+                </Box>
+                {ccEmails.length > 0 && (
+                  <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+                    Will CC: {ccEmails.join(', ')}
+                  </Typography>
+                )}
+              </Box>
+            )}
+
             {/* Freeform Email Composer for Agent */}
             <Box sx={{ border: '1px solid #ddd', borderRadius: 1, p: 2, bgcolor: '#fafafa' }}>
               <Typography variant="h6" sx={{ mb: 2 }}>Compose Email</Typography>
@@ -1249,6 +1338,34 @@ CRITICAL INSTRUCTIONS:
                       </Card>
                     ))}
                   </Box>
+                </Box>
+              )}
+
+              {/* CC Team Members Selection */}
+              {ccableAgents.length > 0 && (
+                <Box sx={{ border: '1px solid #e0e0e0', borderRadius: 1, p: 2, bgcolor: '#f9f9f9' }}>
+                  <Typography variant="subtitle2" sx={{ mb: 1 }}>CC Team Members (optional)</Typography>
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                    {ccableAgents.map((agent) => (
+                      <FormControlLabel
+                        key={agent.id}
+                        control={
+                          <Checkbox
+                            size="small"
+                            checked={Boolean(ccAgentIds[agent.id])}
+                            onChange={() => setCcAgentIds(prev => ({ ...prev, [agent.id]: !prev[agent.id] }))}
+                          />
+                        }
+                        label={`${agent.firstName || ''} ${agent.lastName || ''} (${agent.email})`}
+                        sx={{ '& .MuiFormControlLabel-label': { fontSize: '0.875rem' } }}
+                      />
+                    ))}
+                  </Box>
+                  {ccEmails.length > 0 && (
+                    <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+                      Will CC: {ccEmails.join(', ')}
+                    </Typography>
+                  )}
                 </Box>
               )}
 

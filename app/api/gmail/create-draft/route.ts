@@ -107,9 +107,10 @@ function isValidEmail(s: string): boolean {
 
 export async function POST(req: NextRequest) {
   try {
-    const { clientId, to, subject, html, tokens: inlineTokens, agencyEmail, trackingId } = (await req.json()) as {
+    const { clientId, to, cc, subject, html, tokens: inlineTokens, agencyEmail, trackingId } = (await req.json()) as {
       clientId: string;
       to: string[];
+      cc?: string[];
       subject: string;
       html: string;
       tokens?: any;
@@ -151,6 +152,29 @@ export async function POST(req: NextRequest) {
     });
     if (!validRecipients.length) {
       return NextResponse.json({ ok: false, error: 'No valid recipient emails' }, { status: 400 });
+    }
+
+    // Process CC recipients using same validation logic as TO
+    const ccCandidates: string[] = [];
+    (cc || []).forEach((raw) => {
+      if (typeof raw !== 'string') return;
+      const angled = extractAngleBracketEmails(raw);
+      if (angled.length) {
+        angled.forEach((e) => ccCandidates.push(e));
+        return;
+      }
+      splitEmails(raw).forEach((tok) => {
+        const cleaned = stripMailto(tok.replace(/^["'()]+|["'()]+$/g, ''));
+        if (cleaned) ccCandidates.push(cleaned);
+      });
+    });
+    const validCcRecipients = Array.from(new Set(ccCandidates.filter(isValidEmail)));
+    if (validCcRecipients.length > 0) {
+      console.info('[gmail-draft:cc-recipients]', {
+        clientId,
+        requested: cc?.length || 0,
+        valid: validCcRecipients.length,
+      });
     }
 
     // Get cookies from request for backend API calls
@@ -231,8 +255,13 @@ export async function POST(req: NextRequest) {
       } catch {}
     }
 
+    // Build email headers, optionally including CC
+    const emailHeaders = [`To: ${toHeader}`];
+    if (validCcRecipients.length > 0) {
+      emailHeaders.push(`Cc: ${validCcRecipients.join(', ')}`);
+    }
     const raw = [
-      `To: ${toHeader}`,
+      ...emailHeaders,
       encodedSubjectHeader,
       'MIME-Version: 1.0',
       'Content-Type: text/html; charset=utf-8',

@@ -58,6 +58,7 @@ export type Agency = {
   ownerEmail?: string;
   ownerPhone?: string;
   active?: boolean;
+  slug?: string;
   settings?: AgencySettings;
 };
 
@@ -93,7 +94,8 @@ export async function getAgencySettings(email: string) {
   const data = await apiFetch(`/agencies?email=${encodeURIComponent(email)}`);
   const list = data?.agencies ?? [];
   const a = list.find((x: Agency) => x.email === email);
-  return a?.settings ?? {};
+  // Return settings plus slug for the settings form
+  return { ...(a?.settings ?? {}), slug: a?.slug };
 }
 
 export async function updateAgencySettings(email: string, settings: AgencySettings) {
