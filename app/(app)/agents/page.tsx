@@ -35,7 +35,7 @@ export default function AgentsPage() {
   const { data: agents = [], isLoading, refetch } = useQuery({
     queryKey: ['agents'],
     queryFn: listAgents,
-    enabled: Boolean(session?.email),
+    enabled: Boolean(session?.email || session?.agencyEmail),
   });
 
   const saveMutation = useMutation({
@@ -158,7 +158,7 @@ export default function AgentsPage() {
     );
   }
 
-  if (!session?.email) {
+  if (!session?.email && !session?.agencyEmail) {
     return (
       <Stack spacing={2} sx={{ py: 4 }}>
         <Typography>Please log in to view agents.</Typography>
