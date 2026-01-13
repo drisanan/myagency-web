@@ -17,6 +17,7 @@ import { EmailTemplate, listTemplates, saveTemplate, toTemplateHtml, applyTempla
 import { listLists, CoachList } from '@/services/lists';
 import { hasMailed, markMailed } from '@/services/mailStatus';
 import { listPrompts, PromptRecord } from '@/services/prompts';
+import { wrapLinksWithTracking, recordEmailSends } from '@/services/emailTracking';
 
 type ClientRow = { id: string; email: string; firstName?: string; lastName?: string; sport?: string };
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.API_BASE_URL || '';
@@ -421,10 +422,26 @@ export function RecruiterWizard() {
       const html = aiHtml || buildEmailPreview();
       const savedTokens = getClientGmailTokens(id);
 
+      // Track recipients for recording sends
+      const sentRecipients: Array<{ email: string; name?: string; university?: string }> = [];
+
       // Send one draft per recipient to avoid a single email with multiple TOs
       for (const recipient of to) {
         const coach = selectedCoaches.find((c: any) => (c.email || c.Email) === recipient) || {};
-        const personalizedHtml = personalizedHtmlForCoach(html, coach);
+        const coachName = `${coach.firstName || coach.FirstName || ''} ${coach.lastName || coach.LastName || ''}`.trim();
+        let personalizedHtml = personalizedHtmlForCoach(html, coach);
+        
+        // Wrap links with tracking URLs for analytics
+        if (session?.agencyId) {
+          personalizedHtml = wrapLinksWithTracking(personalizedHtml, {
+            agencyId: session.agencyId,
+            clientId: id,
+            athleteEmail: contact.email || '',
+            recipientEmail: recipient,
+            university: universityName || selectedList?.name || '',
+          });
+        }
+        
         const draftUrl = API_BASE_URL ? `${API_BASE_URL}/gmail/create-draft` : '/api/gmail/create-draft';
         const res = await fetch(draftUrl, {
           method: 'POST',
@@ -443,6 +460,14 @@ export function RecruiterWizard() {
         if (!res.ok || !data?.ok) {
           throw new Error(data?.error || 'Draft creation failed');
         }
+        
+        // Track this recipient for send recording
+        sentRecipients.push({
+          email: recipient,
+          name: coachName,
+          university: universityName || selectedList?.name || '',
+        });
+        
         if (data.openUrl) {
           window.open(data.openUrl, '_blank');
         }
@@ -452,6 +477,17 @@ export function RecruiterWizard() {
           }
         } catch {}
       }
+      
+      // Record the sends for analytics (fire and forget - don't block UI)
+      if (sentRecipients.length > 0) {
+        recordEmailSends({
+          clientId: id,
+          clientEmail: contact.email || '',
+          recipients: sentRecipients,
+          subject,
+        }).catch(err => console.error('[RecruiterWizard] Failed to record sends', err));
+      }
+      
       setSendMessage(`Sent to ${to.length} recipient${to.length === 1 ? '' : 's'}`);
     } catch (e: any) {
       console.error(e);

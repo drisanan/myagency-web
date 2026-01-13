@@ -257,6 +257,25 @@ functions:
       - httpApi:
           path: /uploads/presigned-url
           method: post
+  linkForward:
+    handler: infra/src/handlers/link-forward.handler
+    timeout: 10
+    events:
+      - httpApi:
+          path: /r
+          method: get
+      - httpApi:
+          path: /track/click
+          method: get
+  emailMetrics:
+    handler: infra/src/handlers/email-metrics.handler
+    events:
+      - httpApi:
+          path: /email-metrics/send
+          method: post
+      - httpApi:
+          path: /email-metrics/stats
+          method: get
 
 # NOTE: MediaBucket resources commented out - bucket already exists outside CloudFormation
 # To re-enable, import the existing bucket into the stack first
