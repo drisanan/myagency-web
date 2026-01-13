@@ -20,8 +20,9 @@ import {
   Tabs,
   Typography,
 } from '@mui/material';
-import { IoChevronDownOutline } from 'react-icons/io5';
+import { IoChevronDownOutline, IoPaperPlaneOutline, IoHandLeftOutline, IoTrendingUpOutline, IoPeopleOutline } from 'react-icons/io5';
 import { useParams, useRouter } from 'next/navigation';
+import { useQuery } from '@tanstack/react-query';
 import { getClient } from '@/services/clients';
 import { getMailEntries } from '@/services/mailStatus';
 import { NotesPanel } from '@/features/notes/NotesPanel';
@@ -29,6 +30,8 @@ import { TasksPanel } from '@/features/tasks/TasksPanel';
 import { listLists } from '@/services/lists';
 import { useSearchParams } from 'next/navigation';
 import { useSession } from '@/features/auth/session';
+import { fetchEmailMetrics } from '@/services/emailTracking';
+import { MetricCard } from '@/app/(app)/dashboard/MetricCard';
 
 type MailEntry = {
   id?: string;
@@ -46,6 +49,81 @@ type MailEntry = {
   date?: number;
   mailedAt?: number;
 };
+
+function EmailMetricsSection({ clientId }: { clientId: string }) {
+  const { data, isLoading } = useQuery({
+    queryKey: ['emailMetrics', clientId],
+    queryFn: () => fetchEmailMetrics({ clientId, days: 30 }),
+    enabled: Boolean(clientId),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const stats = data?.stats || { sentCount: 0, clickCount: 0, uniqueClickers: 0 };
+  const clickRate = stats.sentCount > 0 
+    ? Math.round((stats.clickCount / stats.sentCount) * 100) 
+    : 0;
+
+  if (isLoading) {
+    return (
+      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(4, 1fr)' }, gap: 2, mb: 3 }}>
+        {[1, 2, 3, 4].map((k) => (
+          <Box key={k} sx={{ height: 100, bgcolor: '#f5f5f5', borderRadius: '20px' }} />
+        ))}
+      </Box>
+    );
+  }
+
+  return (
+    <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(4, 1fr)' }, gap: 2, mb: 3 }}>
+      <MetricCard
+        title="Emails Sent"
+        value={stats.sentCount}
+        icon={<IoPaperPlaneOutline size={20} />}
+        footer={
+          <>
+            <IoTrendingUpOutline color="#15b79f" size={18} />
+            <Typography variant="body2" sx={{ color: '#667085' }}>
+              Last 30 days
+            </Typography>
+          </>
+        }
+      />
+      <MetricCard
+        title="Link Clicks"
+        value={stats.clickCount}
+        icon={<IoHandLeftOutline size={20} />}
+        footer={
+          <>
+            <IoTrendingUpOutline color="#15b79f" size={18} />
+            <Typography variant="body2" sx={{ color: '#667085' }}>
+              Coach engagement
+            </Typography>
+          </>
+        }
+      />
+      <MetricCard
+        title="Click Rate"
+        value={`${clickRate}%`}
+        icon={<IoTrendingUpOutline size={20} />}
+        footer={
+          <Typography variant="body2" sx={{ color: '#667085' }}>
+            {stats.clickCount} / {stats.sentCount} emails
+          </Typography>
+        }
+      />
+      <MetricCard
+        title="Coaches Engaged"
+        value={stats.uniqueClickers || 0}
+        icon={<IoPeopleOutline size={20} />}
+        footer={
+          <Typography variant="body2" sx={{ color: '#667085' }}>
+            Unique responders
+          </Typography>
+        }
+      />
+    </Box>
+  );
+}
 
 export default function ClientProfilePage() {
   const params = useParams();
@@ -173,6 +251,9 @@ export default function ClientProfilePage() {
       </Stack>
 
       <Divider sx={{ mb: 2 }} />
+
+      {/* Email Analytics Summary - Dashboard Style */}
+      <EmailMetricsSection clientId={client.id} />
 
       <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ mb: 1 }}>
         <Tab label="Emails" />

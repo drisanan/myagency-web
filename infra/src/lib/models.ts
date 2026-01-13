@@ -151,3 +151,52 @@ export type TaskRecord = {
   deletedAt?: string;
 };
 
+// ============================================
+// Email Analytics & Link Tracking Types
+// ============================================
+
+export type EmailSendRecord = {
+  PK: string;                    // AGENCY#<agencyId>
+  SK: string;                    // EMAIL_SEND#<timestamp>#<uuid>
+  GSI3PK?: string;               // CLIENT#<clientId>
+  GSI3SK?: string;               // EMAIL_SEND#<timestamp>
+  clientId: string;
+  clientEmail: string;
+  recipientEmail: string;
+  recipientName?: string;
+  university?: string;
+  subject?: string;
+  draftId?: string;
+  sentAt: number;
+  createdAt: number;
+};
+
+export type EmailClickRecord = {
+  PK: string;                    // AGENCY#<agencyId>
+  SK: string;                    // EMAIL_CLICK#<timestamp>#<uuid>
+  GSI3PK?: string;               // CLIENT#<clientId>
+  GSI3SK?: string;               // EMAIL_CLICK#<timestamp>
+  clientId: string;
+  clientEmail: string;
+  recipientEmail: string;
+  destination: string;
+  linkType?: 'profile' | 'hudl' | 'youtube' | 'instagram' | 'article' | 'other';
+  university?: string;
+  clickedAt: number;
+  userAgent?: string;
+  ipAddress?: string;
+  createdAt: number;
+};
+
+export type EmailStatsRecord = {
+  PK: string;                    // AGENCY#<agencyId>
+  SK: string;                    // EMAIL_STATS#<clientId>#<YYYY-MM>
+  clientId: string;
+  period: string;                // YYYY-MM
+  sentCount: number;
+  clickCount: number;
+  uniqueRecipients?: number;
+  uniqueClickers?: number;
+  topUniversities?: Array<{ name: string; sent: number; clicks: number }>;
+  updatedAt: number;
+};
