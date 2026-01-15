@@ -41,11 +41,18 @@ async function apiFetch(path: string, init?: RequestInit) {
   return res.json();
 }
 
+export type ProgramLevelConfig = {
+  value: string;
+  label: string;
+  color: string;
+};
+
 export type AgencySettings = {
   primaryColor?: string;
   secondaryColor?: string;
   logoDataUrl?: string;
   preferredSport?: string;
+  programLevels?: ProgramLevelConfig[];
 };
 
 export type Agency = {
