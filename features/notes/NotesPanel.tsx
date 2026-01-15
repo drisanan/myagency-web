@@ -14,6 +14,9 @@ import {
   TextField,
   Typography,
   Paper,
+  Snackbar,
+  Alert,
+  CircularProgress,
 } from '@mui/material';
 import { FaRegStickyNote, FaTrash, FaEdit } from 'react-icons/fa';
 import { useNotes } from './useNotes';
@@ -23,13 +26,19 @@ type Note = ReturnType<typeof useNotes>['notes'][number];
 
 export function NotesPanel({ athleteId }: { athleteId: string }) {
   const { session } = useSession();
-  const agencyEmail = session?.email || '';
+  // Use agencyEmail if available (for agents), otherwise fall back to email (for agency owners)
+  const agencyEmail = session?.agencyEmail || session?.email || '';
   const { notes, query, createNote, updateNote, deleteNote, creating, updating, deleting } = useNotes(athleteId, agencyEmail);
 
   const [open, setOpen] = React.useState(false);
   const [editing, setEditing] = React.useState<Note | null>(null);
   const [form, setForm] = React.useState<{ title?: string; body: string; type?: string }>({ body: '', type: 'other' });
   const [error, setError] = React.useState('');
+  const [snackbar, setSnackbar] = React.useState<{
+    open: boolean;
+    message: string;
+    severity: 'success' | 'error';
+  }>({ open: false, message: '', severity: 'success' });
 
   const resetForm = () => {
     setForm({ title: '', body: '', type: 'other' });
@@ -56,18 +65,26 @@ export function NotesPanel({ athleteId }: { athleteId: string }) {
     try {
       if (editing) {
         await updateNote({ id: editing.id, title: form.title, body: form.body, type: form.type as any });
+        setSnackbar({ open: true, message: 'Note updated successfully!', severity: 'success' });
       } else {
         await createNote({ title: form.title, body: form.body, type: form.type as any, author: session?.email });
+        setSnackbar({ open: true, message: 'Note created successfully!', severity: 'success' });
       }
       setOpen(false);
       resetForm();
     } catch (e: any) {
       setError(e?.message || 'Failed to save');
+      setSnackbar({ open: true, message: e?.message || 'Failed to save note', severity: 'error' });
     }
   };
 
   const handleDelete = async (id: string) => {
-    await deleteNote(id);
+    try {
+      await deleteNote(id);
+      setSnackbar({ open: true, message: 'Note deleted successfully!', severity: 'success' });
+    } catch (e: any) {
+      setSnackbar({ open: true, message: e?.message || 'Failed to delete note', severity: 'error' });
+    }
   };
 
   return (
@@ -189,11 +206,27 @@ export function NotesPanel({ athleteId }: { athleteId: string }) {
             onClick={handleSave}
             disabled={creating || updating}
             data-testid="note-save"
+            startIcon={(creating || updating) ? <CircularProgress size={16} color="inherit" /> : null}
           >
-            {editing ? 'Save changes' : 'Add note'}
+            {creating || updating ? 'Saving...' : editing ? 'Save changes' : 'Add note'}
           </Button>
         </DialogActions>
       </Dialog>
+
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={4000}
+        onClose={() => setSnackbar(s => ({ ...s, open: false }))}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert 
+          severity={snackbar.severity} 
+          onClose={() => setSnackbar(s => ({ ...s, open: false }))}
+          sx={{ width: '100%' }}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 }

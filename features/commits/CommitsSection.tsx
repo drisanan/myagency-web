@@ -1,8 +1,8 @@
 'use client';
 import React from 'react';
-import { Stack, Typography } from '@mui/material';
+import { Stack, Typography, CircularProgress, Box } from '@mui/material';
 import { CommitsTable } from './CommitsTable';
-import { Commit, listCommits } from '@/services/commits';
+import { Commit } from '@/services/commits';
 import { useQuery } from '@tanstack/react-query';
 
 async function fetchCommits(sport: 'Football' | 'Basketball', list: 'recent' | 'top') {
@@ -13,30 +13,39 @@ async function fetchCommits(sport: 'Football' | 'Basketball', list: 'recent' | '
 }
 
 export function CommitsSection({ sport }: { sport: 'Football' | 'Basketball' }) {
-  const initialRecent = React.useMemo(() => listCommits(sport, 'recent'), [sport]);
-  const initialTop = React.useMemo(() => listCommits(sport, 'top'), [sport]);
-
+  // Removed initialData/placeholderData - always fetch fresh from API
+  // This ensures we never show client-side placeholder data
   const baseQueryOpts = {
-    staleTime: 24 * 60 * 60 * 1000, // 24h
-    gcTime: 25 * 60 * 60 * 1000,
+    staleTime: 5 * 60 * 1000, // 5 minutes (reduced from 24h)
+    gcTime: 10 * 60 * 1000,   // 10 minutes
     refetchOnWindowFocus: false,
-    refetchOnMount: 'always' as const,
+    refetchOnMount: true,
   };
 
   const recentQ = useQuery<Commit[]>({
     queryKey: ['commits', sport, 'recent'],
     queryFn: () => fetchCommits(sport, 'recent'),
-    initialData: initialRecent,
-    placeholderData: initialRecent,
     ...baseQueryOpts,
   });
   const topQ = useQuery<Commit[]>({
     queryKey: ['commits', sport, 'top'],
     queryFn: () => fetchCommits(sport, 'top'),
-    initialData: initialTop,
-    placeholderData: initialTop,
     ...baseQueryOpts,
   });
+
+  const isLoading = recentQ.isLoading || topQ.isLoading;
+
+  if (isLoading) {
+    return (
+      <Stack spacing={2}>
+        <Typography variant="h5">{sport} Commits</Typography>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 2 }}>
+          <CircularProgress size={20} />
+          <Typography color="text.secondary">Loading recruits...</Typography>
+        </Box>
+      </Stack>
+    );
+  }
 
   return (
     <Stack spacing={2}>

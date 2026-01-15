@@ -54,8 +54,10 @@ async function apiFetch(path: string, init?: RequestInit) {
 }
 
 export async function listNotes(athleteId: string, agencyEmail: string): Promise<Note[]> {
-  // GET /notes?athleteId=...&agencyEmail=...
-  const params = new URLSearchParams({ athleteId, agencyEmail });
+  // GET /notes?athleteId=...
+  // Backend uses session for auth, agencyEmail param optional for legacy
+  const params = new URLSearchParams({ athleteId });
+  if (agencyEmail) params.set('agencyEmail', agencyEmail);
   const data = await apiFetch(`/notes?${params.toString()}`);
   return (data?.notes as Note[]) ?? [];
 }
@@ -71,8 +73,6 @@ export async function createNote(input: Partial<Note> & { athleteId: string; age
 
 export async function updateNote(id: string, patch: Partial<Note>, agencyEmail: string): Promise<Note | null> {
   // PATCH /notes/:id
-  // We can pass agencyEmail in the body for backend verification if needed, 
-  // though the session cookie usually handles auth.
   const data = await apiFetch(`/notes/${id}`, {
     method: 'PATCH',
     body: JSON.stringify({ ...patch, agencyEmail })

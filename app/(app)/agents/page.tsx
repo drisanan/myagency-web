@@ -6,7 +6,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { 
   Typography, Button, Stack, Box, CircularProgress, 
   Dialog, DialogTitle, DialogContent, DialogActions,
-  TextField, Alert, Chip, FormControlLabel, Checkbox
+  TextField, Alert, Chip, FormControlLabel, Checkbox,
+  Snackbar,
 } from '@mui/material';
 import { DataGrid, GridColDef } from '@mui/x-data-grid';
 
@@ -31,6 +32,13 @@ export default function AgentsPage() {
     isAdmin: false,
   });
   const [error, setError] = React.useState<string | null>(null);
+  const [snackbar, setSnackbar] = React.useState<{
+    open: boolean;
+    message: string;
+    severity: 'success' | 'error';
+  }>({ open: false, message: '', severity: 'success' });
+  const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
+  const [agentToDelete, setAgentToDelete] = React.useState<Agent | null>(null);
 
   const { data: agents = [], isLoading, refetch } = useQuery({
     queryKey: ['agents'],
@@ -40,12 +48,19 @@ export default function AgentsPage() {
 
   const saveMutation = useMutation({
     mutationFn: (data: Parameters<typeof upsertAgent>[0]) => upsertAgent(data),
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['agents'] });
       handleCloseDialog();
+      const isEdit = Boolean(variables.id);
+      setSnackbar({ 
+        open: true, 
+        message: isEdit ? 'Agent updated successfully!' : 'Agent created successfully!', 
+        severity: 'success' 
+      });
     },
     onError: (err: any) => {
       setError(err?.message || 'Failed to save agent');
+      setSnackbar({ open: true, message: err?.message || 'Failed to save agent', severity: 'error' });
     }
   });
 
@@ -53,6 +68,14 @@ export default function AgentsPage() {
     mutationFn: (id: string) => deleteAgent(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['agents'] });
+      setDeleteDialogOpen(false);
+      setAgentToDelete(null);
+      setSnackbar({ open: true, message: 'Agent deleted successfully!', severity: 'success' });
+    },
+    onError: (err: any) => {
+      setDeleteDialogOpen(false);
+      setAgentToDelete(null);
+      setSnackbar({ open: true, message: err?.message || 'Failed to delete agent', severity: 'error' });
     }
   });
 
@@ -111,9 +134,14 @@ export default function AgentsPage() {
     });
   };
 
-  const handleDelete = (id: string) => {
-    if (confirm('Are you sure you want to delete this agent?')) {
-      deleteMutation.mutate(id);
+  const handleDeleteClick = (agent: Agent) => {
+    setAgentToDelete(agent);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleConfirmDelete = () => {
+    if (agentToDelete) {
+      deleteMutation.mutate(agentToDelete.id);
     }
   };
 
@@ -143,7 +171,7 @@ export default function AgentsPage() {
       renderCell: (params) => (
         <Stack direction="row" spacing={1}>
           <Button size="small" onClick={() => handleOpenEdit(params.row)}>Edit</Button>
-          <Button size="small" color="error" onClick={() => handleDelete(params.row.id)}>Delete</Button>
+          <Button size="small" color="error" onClick={() => handleDeleteClick(params.row)}>Delete</Button>
         </Stack>
       ),
     },
@@ -285,11 +313,60 @@ export default function AgentsPage() {
             onClick={handleSave} 
             variant="contained"
             disabled={saveMutation.isPending}
+            startIcon={saveMutation.isPending ? <CircularProgress size={16} color="inherit" /> : null}
           >
             {saveMutation.isPending ? 'Saving...' : 'Save'}
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog 
+        open={deleteDialogOpen} 
+        onClose={() => { setDeleteDialogOpen(false); setAgentToDelete(null); }}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle>Delete Agent</DialogTitle>
+        <DialogContent>
+          <Typography>
+            Are you sure you want to delete <strong>{agentToDelete?.firstName} {agentToDelete?.lastName}</strong>?
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+            This action cannot be undone.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => { setDeleteDialogOpen(false); setAgentToDelete(null); }}>
+            Cancel
+          </Button>
+          <Button 
+            color="error" 
+            variant="contained" 
+            onClick={handleConfirmDelete}
+            disabled={deleteMutation.isPending}
+            startIcon={deleteMutation.isPending ? <CircularProgress size={16} color="inherit" /> : null}
+          >
+            {deleteMutation.isPending ? 'Deleting...' : 'Delete'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Success/Error Snackbar */}
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={4000}
+        onClose={() => setSnackbar(s => ({ ...s, open: false }))}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert 
+          severity={snackbar.severity} 
+          onClose={() => setSnackbar(s => ({ ...s, open: false }))}
+          sx={{ width: '100%' }}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Stack>
   );
 }

@@ -188,9 +188,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </Typography>
         </Box>
         <Divider />
-        <MenuItem component={Link} href="/settings" onClick={handleUserClose}>
-          Settings
-        </MenuItem>
+        {/* Settings only visible to agency owners, not agents */}
+        {session?.role !== 'agent' && (
+          <MenuItem component={Link} href="/settings" onClick={handleUserClose}>
+            Settings
+          </MenuItem>
+        )}
         <MenuItem component={Link} href="/profile" onClick={handleUserClose}>
           Profile
         </MenuItem>

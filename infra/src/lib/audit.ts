@@ -27,6 +27,25 @@ export type AuditAction =
   | 'settings_update'
   | 'prompt_update'
   | 'recruiter_action'
+  // Coach Notes
+  | 'coach_note_create'
+  | 'coach_note_update'
+  | 'coach_note_delete'
+  // Task Templates
+  | 'task_template_create'
+  | 'task_template_update'
+  | 'task_template_delete'
+  | 'task_template_apply'
+  // Communications
+  | 'communication_send'
+  // Meetings
+  | 'meeting_request'
+  | 'meeting_update'
+  | 'meeting_confirmed'
+  | 'meeting_declined'
+  | 'meeting_cancelled'
+  | 'meeting_completed'
+  | 'meeting_cancel'
   | 'other';
 
 export type AuditRecord = {

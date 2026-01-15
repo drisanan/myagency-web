@@ -27,6 +27,13 @@ import { getClient } from '@/services/clients';
 import { getMailEntries } from '@/services/mailStatus';
 import { NotesPanel } from '@/features/notes/NotesPanel';
 import { TasksPanel } from '@/features/tasks/TasksPanel';
+import { CoachNotesPanel } from '@/features/coachNotes';
+import { TaskTemplatesPanel } from '@/features/taskTemplates';
+import { CommunicationsPanel } from '@/features/communications';
+import { ProfileViewsPanel } from '@/features/profileViews';
+import { MeetingsPanel } from '@/features/meetings';
+import { ActivityReportPanel } from '@/features/activity';
+import { AccountStatusPanel } from '@/features/accountStatus';
 import { listLists } from '@/services/lists';
 import { useSearchParams } from 'next/navigation';
 import { useSession } from '@/features/auth/session';
@@ -255,11 +262,17 @@ export default function ClientProfilePage() {
       {/* Email Analytics Summary - Dashboard Style */}
       <EmailMetricsSection clientId={client.id} />
 
-      <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ mb: 1 }}>
+      <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ mb: 1 }} variant="scrollable" scrollButtons="auto">
         <Tab label="Emails" />
         <Tab label="Notes" data-testid="notes-tab" />
         <Tab label="Tasks" data-testid="tasks-tab" />
+        <Tab label="Coach Notes" data-testid="coach-notes-tab" />
+        <Tab label="Communications" data-testid="comms-tab" />
+        <Tab label="Profile Views" data-testid="views-tab" />
+        <Tab label="Meetings" data-testid="meetings-tab" />
+        <Tab label="Activity" data-testid="activity-tab" />
         <Tab label="Interests" />
+        <Tab label="Account" data-testid="account-tab" />
       </Tabs>
 
       {tab === 0 && (
@@ -345,6 +358,31 @@ export default function ClientProfilePage() {
         </Box>
       )}
       {tab === 3 && (
+        <Box sx={{ mt: 2 }}>
+          <CoachNotesPanel athleteId={client.id} />
+        </Box>
+      )}
+      {tab === 4 && (
+        <Box sx={{ mt: 2 }}>
+          <CommunicationsPanel athleteId={client.id} />
+        </Box>
+      )}
+      {tab === 5 && (
+        <Box sx={{ mt: 2 }}>
+          <ProfileViewsPanel clientId={client.id} showDigest />
+        </Box>
+      )}
+      {tab === 6 && (
+        <Box sx={{ mt: 2 }}>
+          <MeetingsPanel clientId={client.id} />
+        </Box>
+      )}
+      {tab === 7 && (
+        <Box sx={{ mt: 2 }}>
+          <ActivityReportPanel clientId={client.id} />
+        </Box>
+      )}
+      {tab === 8 && (
         <Card variant="outlined" sx={{ borderRadius: 2, mt: 2 }}>
           <CardContent>
             <Typography variant="h6" gutterBottom>Interests</Typography>
@@ -373,6 +411,11 @@ export default function ClientProfilePage() {
             </List>
           </CardContent>
         </Card>
+      )}
+      {tab === 9 && (
+        <Box sx={{ mt: 2 }}>
+          <AccountStatusPanel client={client as any} />
+        </Box>
       )}
     </Box>
   );

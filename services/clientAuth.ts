@@ -21,6 +21,17 @@ export async function clientLogin(input: { email: string; phone: string; accessC
     const text = await res.text().catch(() => '');
     throw new Error(text || `Login failed ${res.status}`);
   }
+  
+  // LOCAL DEV WORKAROUND: If API sent custom header, manually set cookie
+  const localCookie = res.headers.get('X-Local-Set-Cookie');
+  if (localCookie && typeof document !== 'undefined') {
+    const jsCompatibleCookie = localCookie
+      .replace(/;\s*HttpOnly/gi, '')
+      .replace(/;\s*Secure/gi, '');
+    document.cookie = jsCompatibleCookie;
+    console.log('[Local Auth] Client cookie manually set from X-Local-Set-Cookie header');
+  }
+  
   return res.json();
 }
 

@@ -2,6 +2,12 @@ export type SubscriptionLevel = 'starter' | 'unlimited';
 
 export const STARTER_USER_LIMIT = 25;
 
+export type ProgramLevelConfig = {
+  value: string;      // Internal key (e.g., 'bronze', 'tier1')
+  label: string;      // Display name (e.g., 'Bronze', 'Basic Plan')
+  color: string;      // Hex color for UI
+};
+
 export type AgencySettings = {
   primaryColor?: string;
   secondaryColor?: string;
@@ -21,6 +27,9 @@ export type AgencySettings = {
   borderColor?: string;
   dividerColor?: string;
   logoDataUrl?: string;
+  preferredSport?: string;
+  // Program level customization
+  programLevels?: ProgramLevelConfig[];
 };
 
 export type AgencyRecord = {
@@ -76,8 +85,17 @@ export type ClientRecord = {
   radar?: Record<string, unknown>; // Extended profile data
   accessCodeHash?: string;
   authEnabled?: boolean;
+  // --- NEW CRM FIELDS ---
+  programLevel?: ProgramLevel;    // Service tier: bronze, silver, gold, platinum
+  accountStatus?: AccountStatus;  // active, paused, suspended
+  pausedAt?: string;              // When account was paused
+  pausedReason?: string;          // Why account was paused
+  agentGmailLinked?: boolean;     // Agent's Gmail linked during setup
+  lastActivityAt?: number;        // Last login/action timestamp
+  profileViewCount?: number;      // Cached count of profile views
   createdAt: string;
   updatedAt: string;
+  deletedAt?: string;
 };
 
 export type AgentRecord = {
@@ -143,7 +161,8 @@ export type TaskRecord = {
   description?: string;
   status: 'todo' | 'in-progress' | 'done';
   dueAt?: number;
-  assigneeClientId?: string | null;
+  assigneeClientId?: string | null;   // Assign to athlete/client
+  assigneeAgentId?: string | null;    // Assign to agent
   agencyId: string;
   agencyEmail?: string;
   createdAt: number;
@@ -199,4 +218,278 @@ export type EmailStatsRecord = {
   uniqueClickers?: number;
   topUniversities?: Array<{ name: string; sent: number; clicks: number }>;
   updatedAt: number;
+};
+
+// ============================================
+// Program Levels & Account Status
+// ============================================
+
+export type ProgramLevel = 'bronze' | 'silver' | 'gold' | 'platinum';
+export type AccountStatus = 'active' | 'paused' | 'suspended';
+
+// ============================================
+// Coach Notes - Associated with Coach/School
+// ============================================
+
+export type CoachNoteRecord = {
+  PK: string;                    // AGENCY#<agencyId>
+  SK: string;                    // COACH_NOTE#<noteId>
+  GSI2PK?: string;               // COACH#<coachEmail> for coach lookup
+  GSI2SK?: string;               // COACH_NOTE#<noteId>
+  id: string;
+  agencyId: string;
+  agencyEmail?: string;
+  coachEmail: string;            // Coach this note is about
+  coachName?: string;
+  university?: string;           // School/university name
+  athleteId?: string;            // Optional: link to specific athlete context
+  author: string;                // Agent email who created note
+  title?: string;
+  body: string;
+  type?: 'call' | 'email' | 'meeting' | 'other';
+  createdAt: number;
+  updatedAt: number;
+  deletedAt?: string;            // Soft delete timestamp
+};
+
+// ============================================
+// Task Templates - Reusable Task Groups
+// ============================================
+
+export type TaskTemplateItem = {
+  title: string;
+  description?: string;
+  daysFromAssignment?: number;   // Due X days after template is applied
+  priority?: number;             // 1-5, higher = more important
+};
+
+export type TaskTemplateRecord = {
+  PK: string;                    // AGENCY#<agencyId>
+  SK: string;                    // TASK_TEMPLATE#<templateId>
+  id: string;
+  agencyId: string;
+  agencyEmail?: string;
+  name: string;                  // e.g., "Gold Program Onboarding"
+  description?: string;
+  programLevel?: ProgramLevel;   // Auto-assign when client joins this level
+  tasks: TaskTemplateItem[];
+  createdAt: number;
+  updatedAt: number;
+  deletedAt?: string;
+};
+
+// ============================================
+// Communication Hub - Agent/Athlete/Coach
+// ============================================
+
+export type CommunicationType = 'agent_to_athlete' | 'athlete_to_agent' | 'agent_to_coach' | 'coach_to_athlete' | 'athlete_to_coach';
+
+export type CommunicationRecord = {
+  PK: string;                    // AGENCY#<agencyId>
+  SK: string;                    // COMM#<timestamp>#<uuid>
+  GSI2PK?: string;               // For thread lookups: THREAD#<threadId>
+  GSI2SK?: string;               // COMM#<timestamp>
+  GSI3PK?: string;               // CLIENT#<clientId> for athlete comm lookup
+  GSI3SK?: string;               // COMM#<timestamp>
+  id: string;
+  agencyId: string;
+  threadId?: string;             // Groups related messages
+  type: CommunicationType;
+  fromEmail: string;
+  fromName?: string;
+  toEmail: string;
+  toName?: string;
+  athleteId?: string;            // Link to athlete if applicable
+  coachEmail?: string;           // Coach involved if applicable
+  university?: string;
+  subject?: string;
+  body: string;
+  isRead?: boolean;
+  attachments?: string[];
+  createdAt: number;
+};
+
+// ============================================
+// Email Drip Campaigns
+// ============================================
+
+export type DripEmailStep = {
+  id: string;
+  dayOffset: number;             // Days from campaign start
+  subject: string;
+  body: string;
+  templateId?: string;           // Reference to email template
+};
+
+export type EmailDripRecord = {
+  PK: string;                    // AGENCY#<agencyId>
+  SK: string;                    // EMAIL_DRIP#<dripId>
+  id: string;
+  agencyId: string;
+  agencyEmail?: string;
+  name: string;
+  description?: string;
+  isActive: boolean;
+  triggerEvent?: 'signup' | 'program_change' | 'manual';
+  programLevel?: ProgramLevel;   // Auto-start for this program level
+  steps: DripEmailStep[];
+  createdAt: number;
+  updatedAt: number;
+};
+
+export type DripEnrollmentRecord = {
+  PK: string;                    // AGENCY#<agencyId>
+  SK: string;                    // DRIP_ENROLL#<dripId>#<clientId>
+  dripId: string;
+  clientId: string;
+  agencyId: string;
+  currentStepIndex: number;
+  startedAt: number;
+  lastSentAt?: number;
+  nextSendAt?: number;
+  completedAt?: number;
+  pausedAt?: number;
+};
+
+// ============================================
+// Profile Views Tracking
+// ============================================
+
+export type ProfileViewRecord = {
+  PK: string;                    // AGENCY#<agencyId>
+  SK: string;                    // PROFILE_VIEW#<timestamp>#<uuid>
+  GSI3PK?: string;               // CLIENT#<clientId>
+  GSI3SK?: string;               // PROFILE_VIEW#<timestamp>
+  id: string;
+  agencyId: string;
+  clientId: string;              // Athlete whose profile was viewed
+  viewerEmail?: string;          // Coach email if known
+  viewerName?: string;
+  university?: string;
+  position?: string;             // Coach position
+  viewedAt: number;
+  source?: 'email_link' | 'direct' | 'search';
+  referrer?: string;
+};
+
+// ============================================
+// Meeting Requests
+// ============================================
+
+export type MeetingStatus = 'pending' | 'confirmed' | 'declined' | 'cancelled' | 'completed';
+
+export type MeetingRequestRecord = {
+  PK: string;                    // AGENCY#<agencyId>
+  SK: string;                    // MEETING#<meetingId>
+  GSI3PK?: string;               // CLIENT#<clientId>
+  GSI3SK?: string;               // MEETING#<scheduledAt>
+  id: string;
+  agencyId: string;
+  clientId: string;              // Athlete involved
+  requestedBy: 'agent' | 'athlete';
+  agentEmail?: string;
+  athleteEmail?: string;
+  title: string;
+  description?: string;
+  scheduledAt?: number;          // Confirmed time
+  proposedTimes?: number[];      // Options for scheduling
+  duration?: number;             // Minutes
+  meetingLink?: string;          // Zoom/Google Meet link
+  status: MeetingStatus;
+  notes?: string;
+  createdAt: number;
+  updatedAt: number;
+};
+
+// ============================================
+// Activity Logging
+// ============================================
+
+export type ActivityType = 
+  | 'login'
+  | 'profile_update'
+  | 'task_completed'
+  | 'email_sent'
+  | 'email_opened'
+  | 'profile_viewed_by_coach'
+  | 'list_created'
+  | 'meeting_requested'
+  | 'form_submitted';
+
+export type ActivityLogRecord = {
+  PK: string;                    // AGENCY#<agencyId>
+  SK: string;                    // ACTIVITY#<timestamp>#<uuid>
+  GSI3PK?: string;               // CLIENT#<clientId>
+  GSI3SK?: string;               // ACTIVITY#<timestamp>
+  id: string;
+  agencyId: string;
+  clientId?: string;             // Athlete if applicable
+  agentId?: string;              // Agent if applicable
+  actorEmail: string;
+  actorType: 'agent' | 'athlete' | 'coach' | 'system';
+  activityType: ActivityType;
+  description: string;
+  metadata?: Record<string, unknown>;
+  createdAt: number;
+};
+
+// ============================================
+// Automated Campaign Follow-ups
+// ============================================
+
+export type CampaignFollowupRecord = {
+  PK: string;                    // AGENCY#<agencyId>
+  SK: string;                    // CAMPAIGN_FOLLOWUP#<campaignId>
+  id: string;
+  agencyId: string;
+  clientId: string;
+  campaignName?: string;
+  emailsSent: number;
+  openRate?: number;
+  clickRate?: number;
+  profileViews?: number;
+  scheduledFor: number;          // 48 hours after campaign
+  sentAt?: number;
+  status: 'pending' | 'sent' | 'failed';
+  createdAt: number;
+};
+
+// ============================================
+// Update Form Submissions
+// ============================================
+
+export type UpdateFormRecord = {
+  PK: string;                    // AGENCY#<agencyId>
+  SK: string;                    // UPDATE_FORM#<timestamp>#<clientId>
+  GSI3PK?: string;               // CLIENT#<clientId>
+  GSI3SK?: string;               // UPDATE_FORM#<timestamp>
+  id: string;
+  agencyId: string;
+  clientId: string;
+  size?: {
+    height?: string;
+    weight?: string;
+    wingspan?: string;
+  };
+  speed?: {
+    fortyYard?: string;
+    shuttle?: string;
+    vertical?: string;
+  };
+  academics?: {
+    gpa?: string;
+    satScore?: string;
+    actScore?: string;
+    classRank?: string;
+  };
+  upcomingEvents?: Array<{
+    name: string;
+    date: string;
+    location?: string;
+  }>;
+  highlightVideo?: string;
+  notes?: string;
+  submittedAt: number;
+  reviewedAt?: number;
+  reviewedBy?: string;
 };

@@ -446,6 +446,7 @@ export function RecruiterWizard() {
         const res = await fetch(draftUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
           body: JSON.stringify({ 
               clientId: id, 
               to: [recipient],
@@ -574,9 +575,13 @@ CRITICAL INSTRUCTIONS:
 
       // Merge AI intro with the rest of the composed email
       const base = buildEmailPreview();
-      const stripped = base.replace(/^<p>Hello Coach[\s\S]*?<\/p>\s*<p>[\s\S]*?<\/p>/, '');
-      const rest = stripped || base;
-      const improved = `<p>Hello Coach ${coachLast},</p><p>${introFixed}</p>${rest}`;
+      // Strip the greeting paragraph AND the generic intro paragraph from base
+      const stripped = base
+        .replace(/^<p>(Hello|Hey|Hi|Dear)\s+Coach[^<]*<\/p>\s*/i, '') // Remove greeting paragraph
+        .replace(/^<p>[^<]{0,100}<\/p>\s*/i, ''); // Remove short generic intro paragraph (< 100 chars)
+      
+      // Use stripped content - don't fall back to base which would duplicate greeting
+      const improved = `<p>Hello Coach ${coachLast},</p><p>${introFixed}</p>${stripped}`;
       setAiHtml(improved);
     } catch (e: any) {
       setError(e?.message || 'AI generation failed');
@@ -633,9 +638,15 @@ CRITICAL INSTRUCTIONS:
       .trim();
 
     const base = buildEmailPreview();
-    const stripped = base.replace(/^<[^>]*>Hello\s+Coach[\s\S]*?<\/p>\s*<p>[\s\S]*?<\/p>/i, "");
-    const rest = stripped || base;
-    return `<p>${randomGreeting} Coach ${coachLast},</p><p>${introFixed}</p>${rest}`;
+    // Strip the greeting paragraph AND the generic intro paragraph from base
+    // The regex matches: <p>Hello/Hey/Hi Coach X,</p><p>generic intro</p>
+    // We use a more robust pattern that handles various greeting formats
+    const stripped = base
+      .replace(/^<p>(Hello|Hey|Hi|Dear)\s+Coach[^<]*<\/p>\s*/i, '') // Remove greeting paragraph
+      .replace(/^<p>[^<]{0,100}<\/p>\s*/i, ''); // Remove short generic intro paragraph (< 100 chars)
+    
+    // Use stripped content - don't fall back to base which would duplicate greeting
+    return `<p>${randomGreeting} Coach ${coachLast},</p><p>${introFixed}</p>${stripped}`;
   }
 
   // FIX: Load Initial Data using safe userEmail

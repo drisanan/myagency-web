@@ -53,11 +53,16 @@ const authAgentLoginHandler: Handler = async (event: APIGatewayProxyEventV2) => 
   
   if (!resolvedAgencyId && agencySlug) {
     // Look up agency by slug using GSI2
-    const normalizedSlug = String(agencySlug).toLowerCase().trim();
+    const normalizedSlug = String(agencySlug).toLowerCase().trim().replace(/[^a-z0-9-]/g, '');
+    console.log('[auth-agent-login] looking up slug', { originalSlug: agencySlug, normalizedSlug });
+    
     const slugResults = await queryGSI2(`SLUG#${normalizedSlug}`);
     if (slugResults.length > 0) {
       resolvedAgencyId = (slugResults[0] as AgencyRecord).id;
       console.log('[auth-agent-login] resolved slug to agencyId', { agencySlug: normalizedSlug, resolvedAgencyId });
+    } else {
+      console.warn('[auth-agent-login] no agency found for slug', { agencySlug: normalizedSlug });
+      return response(401, { ok: false, error: 'Agency not found. Please check the agency name and try again.' }, origin);
     }
   }
   

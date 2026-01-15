@@ -1,0 +1,1 @@
+export { CoachNotesPanel } from './CoachNotesPanel';

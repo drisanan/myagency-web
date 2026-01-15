@@ -1,0 +1,1 @@
+export { GoogleCalendarWidget } from './GoogleCalendarWidget';

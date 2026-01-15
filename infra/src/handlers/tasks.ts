@@ -35,17 +35,23 @@ const tasksHandler: Handler = async (event: APIGatewayProxyEventV2) => {
   if (method === 'GET') {
     if (taskId) {
       const item = await getItem({ PK: `AGENCY#${session.agencyId}`, SK: `TASK#${taskId}` });
+      // Don't return deleted items
+      if (item?.deletedAt) {
+        return response(404, { ok: false, error: 'Not found' }, origin);
+      }
       if (session.role === 'client' && item?.assigneeClientId !== session.clientId) {
         return response(403, { ok: false, error: 'Forbidden' }, origin);
       }
       return response(200, { ok: true, task: item ?? null }, origin);
     }
     const items = await queryByPK(`AGENCY#${session.agencyId}`, 'TASK#');
+    // Filter out soft-deleted tasks
+    const activeTasks = (items || []).filter((t: any) => !t.deletedAt);
     if (session.role === 'client') {
-      const mine = (items || []).filter((t: any) => t.assigneeClientId === session.clientId);
+      const mine = activeTasks.filter((t: any) => t.assigneeClientId === session.clientId);
       return response(200, { ok: true, tasks: mine }, origin);
     }
-    return response(200, { ok: true, tasks: items }, origin);
+    return response(200, { ok: true, tasks: activeTasks }, origin);
   }
 
   if (method === 'POST') {
@@ -69,6 +75,7 @@ const tasksHandler: Handler = async (event: APIGatewayProxyEventV2) => {
       status: payload.status ?? 'todo',
       dueAt: Number.isFinite(payload.dueAt) ? Number(payload.dueAt) : undefined,
       assigneeClientId: payload.assigneeClientId ?? null,
+      assigneeAgentId: payload.assigneeAgentId ?? null,
       agencyId: session.agencyId,
       agencyEmail: session.agencyEmail,
       createdAt: now,
@@ -94,6 +101,7 @@ const tasksHandler: Handler = async (event: APIGatewayProxyEventV2) => {
       ...payload,
       dueAt: payload.dueAt === null ? undefined : payload.dueAt ?? existing.dueAt,
       assigneeClientId: payload.assigneeClientId === undefined ? existing.assigneeClientId : payload.assigneeClientId ?? null,
+      assigneeAgentId: payload.assigneeAgentId === undefined ? existing.assigneeAgentId : payload.assigneeAgentId ?? null,
       updatedAt: now,
     };
     await putItem(merged);

@@ -32,7 +32,16 @@ export default function AgentLoginPage() {
       setError(null);
       setLoading(true);
       
-      const result = await agentLogin({ agencyId, email, phone, accessCode });
+      // Determine if user entered a UUID (agency-xxx) or a friendly slug/name
+      const trimmed = agencyId.trim();
+      const isUuid = trimmed.startsWith('agency-');
+      
+      const result = await agentLogin({ 
+        ...(isUuid ? { agencyId: trimmed } : { agencySlug: trimmed.toLowerCase() }),
+        email, 
+        phone, 
+        accessCode 
+      });
       
       if (!result.ok) {
         setError(result.error || 'Login failed');
@@ -74,14 +83,14 @@ export default function AgentLoginPage() {
             <form onSubmit={submit}>
               <Stack spacing={2}>
                 <TextField
-                  label="Agency ID"
+                  label="Agency Name or ID"
                   value={agencyId}
                   onChange={(e) => setAgencyId(e.target.value)}
                   required
                   fullWidth
                   size="small"
-                  placeholder="Your agency's ID"
-                  helperText="Provided by your agency administrator"
+                  placeholder="Your agency's name or ID"
+                  helperText="Enter your agency's name (e.g., 'myagency') or the full ID (agency-xxx)"
                 />
                 
                 <TextField

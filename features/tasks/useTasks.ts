@@ -7,6 +7,7 @@ type CreateInput = {
   status?: TaskStatus;
   dueAt?: number;
   assigneeClientId?: string | null;
+  assigneeAgentId?: string | null;
 };
 
 type UpdateInput = {
@@ -16,6 +17,7 @@ type UpdateInput = {
   status?: TaskStatus;
   dueAt?: number;
   assigneeClientId?: string | null;
+  assigneeAgentId?: string | null;
 };
 
 export function useTasks(_agencyEmail: string, assigneeClientId?: string | null) {

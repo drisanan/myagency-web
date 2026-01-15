@@ -12,6 +12,8 @@ const FRONTEND_URL = process.env.FRONTEND_URL || 'https://www.myrecruiteragency.
 
 const SCOPES = [
   'https://www.googleapis.com/auth/gmail.compose',
+  'https://www.googleapis.com/auth/calendar.readonly',  // Read calendar events
+  'https://www.googleapis.com/auth/calendar.events',     // Create/edit calendar events
   'email',
   'openid'
 ];

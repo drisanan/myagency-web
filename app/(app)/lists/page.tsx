@@ -1,7 +1,11 @@
 'use client';
 
 import React from 'react';
-import { Box, Button, Card, CardContent, Divider, FormControlLabel, Checkbox, MenuItem, Paper, Stack, TextField, Typography } from '@mui/material';
+import { 
+  Box, Button, Card, CardContent, Divider, FormControlLabel, Checkbox, MenuItem, 
+  Paper, Stack, TextField, Typography, Snackbar, Alert, Dialog, DialogTitle, 
+  DialogContent, DialogActions, CircularProgress 
+} from '@mui/material';
 import { useSession } from '@/features/auth/session';
 import { getStates } from '@/services/recruiterMeta';
 import { getDivisions } from '@/services/recruiterMeta';
@@ -38,6 +42,14 @@ export default function ListsPage() {
   const [saved, setSaved] = React.useState<CoachList[]>([]);
   const [error, setError] = React.useState<string | null>(null);
   const [saveError, setSaveError] = React.useState<string | null>(null);
+  const [saving, setSaving] = React.useState(false);
+  const [snackbar, setSnackbar] = React.useState<{
+    open: boolean;
+    message: string;
+    severity: 'success' | 'error';
+  }>({ open: false, message: '', severity: 'success' });
+  const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
+  const [listToDelete, setListToDelete] = React.useState<CoachList | null>(null);
 
   const sports = React.useMemo(() => getSports(), []);
 
@@ -137,7 +149,7 @@ export default function ListsPage() {
   }
 
   async function saveCurrent() {
-    if (loading) return;
+    if (loading || saving) return;
     // FIX: Use userEmail check
     if (!userEmail) {
       setSaveError(`You must be logged in to save a list.`);
@@ -151,26 +163,37 @@ export default function ListsPage() {
       setSaveError('Add at least one coach before saving.');
       return;
     }
-    if (editingId) {
-      const updated = await updateList({ id: editingId, name: currentName.trim(), items: currentItems });
-      if (updated) {
-        setSaved((p) => {
-          const idx = p.findIndex(x => x.id === updated.id);
-          if (idx < 0) return p;
-          const next = [...p];
-          next[idx] = updated;
-          return next.sort((a, b) => b.updatedAt - a.updatedAt);
-        });
-      }
-      setSaveError(null);
-    } else {
-      // FIX: Use userEmail for saving
-      const rec = await saveList({ agencyEmail: userEmail, name: currentName.trim(), items: currentItems });
-      if (rec) {
-        setSaved((p) => [rec, ...p]);
-        setEditingId(rec.id);
+    
+    setSaving(true);
+    try {
+      if (editingId) {
+        const updated = await updateList({ id: editingId, name: currentName.trim(), items: currentItems });
+        if (updated) {
+          setSaved((p) => {
+            const idx = p.findIndex(x => x.id === updated.id);
+            if (idx < 0) return p;
+            const next = [...p];
+            next[idx] = updated;
+            return next.sort((a, b) => b.updatedAt - a.updatedAt);
+          });
+          setSnackbar({ open: true, message: 'List updated successfully!', severity: 'success' });
+        }
         setSaveError(null);
+      } else {
+        // FIX: Use userEmail for saving
+        const rec = await saveList({ agencyEmail: userEmail, name: currentName.trim(), items: currentItems });
+        if (rec) {
+          setSaved((p) => [rec, ...p]);
+          setEditingId(rec.id);
+          setSaveError(null);
+          setSnackbar({ open: true, message: 'List saved successfully!', severity: 'success' });
+        }
       }
+    } catch (e: any) {
+      setSaveError(e?.message || 'Failed to save list');
+      setSnackbar({ open: true, message: e?.message || 'Failed to save list', severity: 'error' });
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -180,10 +203,20 @@ export default function ListsPage() {
     setCurrentItems(l.items);
   }
 
-  function deleteListRow(id: string) {
-    deleteList(id);
-    setSaved((p) => p.filter(x => x.id !== id));
-    if (editingId === id) resetCurrent();
+  function handleDeleteClick(list: CoachList) {
+    setListToDelete(list);
+    setDeleteDialogOpen(true);
+  }
+
+  function handleConfirmDelete() {
+    if (listToDelete) {
+      deleteList(listToDelete.id);
+      setSaved((p) => p.filter(x => x.id !== listToDelete.id));
+      if (editingId === listToDelete.id) resetCurrent();
+      setSnackbar({ open: true, message: 'List deleted successfully!', severity: 'success' });
+    }
+    setDeleteDialogOpen(false);
+    setListToDelete(null);
   }
 
   const [manualName, setManualName] = React.useState('');
@@ -301,7 +334,15 @@ export default function ListsPage() {
             )}
           </Paper>
           <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
-            <Button data-tour="save-list-btn" variant="contained" onClick={saveCurrent} disabled={!currentName.trim() || currentItems.length === 0}>{editingId ? 'Update List' : 'Save List'}</Button>
+            <Button 
+              data-tour="save-list-btn" 
+              variant="contained" 
+              onClick={saveCurrent} 
+              disabled={!currentName.trim() || currentItems.length === 0 || saving}
+              startIcon={saving ? <CircularProgress size={16} color="inherit" /> : null}
+            >
+              {saving ? 'Saving...' : editingId ? 'Update List' : 'Save List'}
+            </Button>
             <Button variant="text" onClick={resetCurrent}>New</Button>
           </Stack>
           {saveError && (
@@ -325,7 +366,7 @@ export default function ListsPage() {
                   </Box>
                   <Box sx={{ display: 'flex', gap: 1 }}>
                     <Button size="small" variant="outlined" onClick={() => loadList(l)}>Edit</Button>
-                    <Button size="small" color="error" onClick={() => deleteListRow(l.id)}>Delete</Button>
+                    <Button size="small" color="error" onClick={() => handleDeleteClick(l)}>Delete</Button>
                   </Box>
                 </Box>
               ))
@@ -333,6 +374,48 @@ export default function ListsPage() {
           </Paper>
         </Box>
       </Box>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog 
+        open={deleteDialogOpen} 
+        onClose={() => { setDeleteDialogOpen(false); setListToDelete(null); }}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle>Delete List</DialogTitle>
+        <DialogContent>
+          <Typography>
+            Are you sure you want to delete the list <strong>"{listToDelete?.name}"</strong>?
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+            This will remove {listToDelete?.items?.length || 0} coach{(listToDelete?.items?.length || 0) !== 1 ? 'es' : ''} from this list.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => { setDeleteDialogOpen(false); setListToDelete(null); }}>
+            Cancel
+          </Button>
+          <Button color="error" variant="contained" onClick={handleConfirmDelete}>
+            Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Success/Error Snackbar */}
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={4000}
+        onClose={() => setSnackbar(s => ({ ...s, open: false }))}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert 
+          severity={snackbar.severity} 
+          onClose={() => setSnackbar(s => ({ ...s, open: false }))}
+          sx={{ width: '100%' }}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 }

@@ -10,6 +10,12 @@ function requireApiBase() {
   return API_BASE_URL;
 }
 
+export type ProgramLevelConfig = {
+  value: string;      // Internal key (e.g., 'bronze', 'tier1')
+  label: string;      // Display name (e.g., 'Bronze', 'Basic Plan')
+  color: string;      // Hex color for UI
+};
+
 export type AgencySettings = {
   primaryColor?: string;
   secondaryColor?: string;
@@ -30,6 +36,8 @@ export type AgencySettings = {
   dividerColor?: string;
   logoDataUrl?: string;
   preferredSport?: string;
+  // Program level customization
+  programLevels?: ProgramLevelConfig[];
 };
 
 export type SubscriptionLevel = 'starter' | 'unlimited';
@@ -100,7 +108,18 @@ export async function fetchSession(): Promise<Session | null> {
     const res = await fetch(`${base}/auth/session`, { method: 'GET', credentials: 'include' });
     if (!res.ok) return null;
     const data = await res.json();
-    return data?.session ?? null;
+    const session = data?.session;
+    if (!session) return null;
+    
+    // Ensure 'email' field is populated (backend may send agentEmail/agencyEmail separately)
+    // For agents: use agentEmail (their own email)
+    // For agencies: use agencyEmail (which is their email)
+    // Fallback chain: email -> agentEmail -> agencyEmail
+    if (!session.email) {
+      session.email = session.agentEmail || session.agencyEmail || '';
+    }
+    
+    return session as Session;
   } catch {
     return null;
   }

@@ -12,6 +12,7 @@ import { IoMailOpenOutline, IoPaperPlaneOutline, IoPersonAddOutline, IoTrendingU
 import { MetricCard } from './MetricCard';
 import { RecruitingCalendarCard } from '@/features/recruiter/RecruitingCalendarCard';
 import { CommitsSection } from '@/features/commits/CommitsSection';
+import { GoogleCalendarWidget } from '@/features/calendar';
 import { computeEmailMetrics, computeOpenRateMetrics, countAddedThisMonth, formatDelta, type MetricsResponse } from './metrics';
 import { useTour } from '@/features/tour/TourProvider';
 import { dashboardSteps } from '@/features/tour/dashboardSteps';
@@ -111,6 +112,13 @@ export default function DashboardPage() {
       <Box data-tour="calendar-widget">
         <RecruitingCalendarCard />
       </Box>
+      )}
+
+      {/* Google Calendar Widget - My Schedule */}
+      {!isLoading && !isParent && (
+        <Box sx={{ mb: 3 }} data-tour="google-calendar">
+          <GoogleCalendarWidget />
+        </Box>
       )}
 
       {isLoading ? (

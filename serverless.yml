@@ -276,6 +276,96 @@ functions:
       - httpApi:
           path: /email-metrics/stats
           method: get
+  notes:
+    handler: infra/src/handlers/notes.handler
+    events:
+      - httpApi:
+          path: /notes
+          method: any
+      - httpApi:
+          path: /notes/{id}
+          method: any
+  coachNotes:
+    handler: infra/src/handlers/coach-notes.handler
+    events:
+      - httpApi:
+          path: /coach-notes
+          method: any
+      - httpApi:
+          path: /coach-notes/{id}
+          method: any
+  taskTemplates:
+    handler: infra/src/handlers/task-templates.handler
+    events:
+      - httpApi:
+          path: /task-templates
+          method: any
+      - httpApi:
+          path: /task-templates/{id}
+          method: any
+  applyTaskTemplate:
+    handler: infra/src/handlers/task-templates.applyHandler
+    events:
+      - httpApi:
+          path: /task-templates/apply
+          method: post
+  communications:
+    handler: infra/src/handlers/communications.handler
+    events:
+      - httpApi:
+          path: /communications
+          method: any
+      - httpApi:
+          path: /communications/{id}
+          method: any
+  communicationThreads:
+    handler: infra/src/handlers/communications.getThreadsHandler
+    events:
+      - httpApi:
+          path: /communications/threads
+          method: get
+  profileViews:
+    handler: infra/src/handlers/profile-views.handler
+    events:
+      - httpApi:
+          path: /profile-views
+          method: any
+  profileViewsDigest:
+    handler: infra/src/handlers/profile-views.digestHandler
+    events:
+      - httpApi:
+          path: /profile-views/digest
+          method: get
+  activity:
+    handler: infra/src/handlers/activity.handler
+    events:
+      - httpApi:
+          path: /activity
+          method: any
+  activityReport:
+    handler: infra/src/handlers/activity.reportHandler
+    events:
+      - httpApi:
+          path: /activity/report
+          method: get
+  meetings:
+    handler: infra/src/handlers/meetings.handler
+    events:
+      - httpApi:
+          path: /meetings
+          method: any
+      - httpApi:
+          path: /meetings/{id}
+          method: any
+  googleCalendar:
+    handler: infra/src/handlers/google-calendar.handler
+    events:
+      - httpApi:
+          path: /google/calendar/events
+          method: any
+      - httpApi:
+          path: /google/calendar/events/{eventId}
+          method: any
 
 # NOTE: MediaBucket resources commented out - bucket already exists outside CloudFormation
 # To re-enable, import the existing bucket into the stack first

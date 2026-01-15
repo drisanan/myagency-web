@@ -46,6 +46,16 @@ const defaults = {
 
 type ColorKey = keyof typeof defaults;
 
+// Helper to determine if a hex color is light (needs dark text)
+function isColorLight(hexColor: string): boolean {
+  const hex = hexColor.replace('#', '');
+  const r = parseInt(hex.substring(0, 2), 16);
+  const g = parseInt(hex.substring(2, 4), 16);
+  const b = parseInt(hex.substring(4, 6), 16);
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  return luminance > 0.5;
+}
+
 function ColorPicker({ 
   label, 
   value, 
@@ -119,6 +129,16 @@ export function SettingsForm() {
   const [slugError, setSlugError] = React.useState<string | null>(null);
   const [slugSuccess, setSlugSuccess] = React.useState<string | null>(null);
   const [savingSlug, setSavingSlug] = React.useState(false);
+  
+  // Program levels state
+  type ProgramLevel = { value: string; label: string; color: string };
+  const defaultProgramLevels: ProgramLevel[] = [
+    { value: 'bronze', label: 'Bronze', color: '#cd7f32' },
+    { value: 'silver', label: 'Silver', color: '#c0c0c0' },
+    { value: 'gold', label: 'Gold', color: '#ffd700' },
+    { value: 'platinum', label: 'Platinum', color: '#e5e4e2' },
+  ];
+  const [programLevels, setProgramLevels] = React.useState<ProgramLevel[]>(defaultProgramLevels);
 
   const updateColor = (key: ColorKey, value: string) => {
     setColors(prev => ({ ...prev, [key]: value }));
@@ -161,6 +181,10 @@ export function SettingsForm() {
           setColors(loaded);
           if (settings.logoDataUrl) setLogoPreview(settings.logoDataUrl);
           if (settings.slug) setAgencySlug(settings.slug);
+          // Load custom program levels if set
+          if (settings.programLevels?.length) {
+            setProgramLevels(settings.programLevels);
+          }
         }
       })
       .catch(console.error)
@@ -203,6 +227,7 @@ export function SettingsForm() {
       await updateAgencySettings(session.agencyEmail, {
         ...colors,
         logoDataUrl: logoDataUrl || undefined,
+        programLevels: programLevels,
       });
       
       setSuccess('Settings saved! Refreshing...');
@@ -468,6 +493,112 @@ export function SettingsForm() {
               defaultValue={defaults.dividerColor}
             />
           </Stack>
+        </AccordionDetails>
+      </Accordion>
+
+      {/* Program Levels */}
+      <Accordion>
+        <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+          <Typography fontWeight={600}>Program Levels</Typography>
+        </AccordionSummary>
+        <AccordionDetails>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Customize the service tier names and colors for your athletes. These appear when managing athlete accounts.
+          </Typography>
+          <Stack spacing={2}>
+            {programLevels.map((level, index) => (
+              <Stack key={index} direction="row" spacing={1} alignItems="center">
+                <TextField
+                  size="small"
+                  label={`Level ${index + 1} Name`}
+                  value={level.label}
+                  onChange={(e) => {
+                    const updated = [...programLevels];
+                    updated[index] = { ...level, label: e.target.value };
+                    setProgramLevels(updated);
+                  }}
+                  sx={{ flex: 1 }}
+                />
+                <TextField
+                  size="small"
+                  label="Key"
+                  value={level.value}
+                  onChange={(e) => {
+                    const updated = [...programLevels];
+                    updated[index] = { ...level, value: e.target.value.toLowerCase().replace(/[^a-z0-9]/g, '') };
+                    setProgramLevels(updated);
+                  }}
+                  sx={{ width: 100 }}
+                  helperText="Internal ID"
+                />
+                <Box>
+                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
+                    Color
+                  </Typography>
+                  <input
+                    type="color"
+                    value={level.color}
+                    onChange={(e) => {
+                      const updated = [...programLevels];
+                      updated[index] = { ...level, color: e.target.value };
+                      setProgramLevels(updated);
+                    }}
+                    style={{ width: 40, height: 32, border: 'none', cursor: 'pointer', borderRadius: 4 }}
+                  />
+                </Box>
+                {programLevels.length > 1 && (
+                  <Button
+                    size="small"
+                    color="error"
+                    onClick={() => setProgramLevels(prev => prev.filter((_, i) => i !== index))}
+                  >
+                    Remove
+                  </Button>
+                )}
+              </Stack>
+            ))}
+            <Stack direction="row" spacing={1}>
+              <Button
+                size="small"
+                variant="outlined"
+                onClick={() => setProgramLevels(prev => [...prev, { value: `tier${prev.length + 1}`, label: `Tier ${prev.length + 1}`, color: '#666666' }])}
+              >
+                Add Level
+              </Button>
+              <Button
+                size="small"
+                variant="text"
+                onClick={() => setProgramLevels(defaultProgramLevels)}
+              >
+                Reset to Defaults
+              </Button>
+            </Stack>
+          </Stack>
+          
+          {/* Preview */}
+          <Box sx={{ mt: 2, p: 1.5, bgcolor: '#f5f5f5', borderRadius: 1 }}>
+            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
+              Preview:
+            </Typography>
+            <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+              {programLevels.map(level => (
+                <Box
+                  key={level.value}
+                  sx={{
+                    px: 1.5,
+                    py: 0.5,
+                    borderRadius: 2,
+                    bgcolor: level.color,
+                    color: isColorLight(level.color) ? '#000' : '#fff',
+                    fontSize: 13,
+                    fontWeight: 500,
+                  }}
+                >
+                  {level.label}
+                </Box>
+              ))}
+            </Stack>
+          </Box>
         </AccordionDetails>
       </Accordion>
 

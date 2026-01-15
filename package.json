@@ -27,7 +27,11 @@
     "test:selenium:tier-enforcement": "node tests/selenium/tier-enforcement.e2e.js",
     "test:selenium:agents": "node tests/selenium/agents.e2e.js",
     "test:selenium:agent-login": "node tests/selenium/agent-login.e2e.js",
-    "test:selenium:all": "npm-run-all --sequential test:selenium:intake test:selenium:intake-negative test:selenium:client-create test:selenium:agency-wizard test:selenium:recruiter-wizard test:selenium:ai-prompts test:selenium:lists test:selenium:athlete-profile test:selenium:athlete-profile-public test:selenium:tier-enforcement test:selenium:agents test:selenium:agent-login test:selenium:login-ghl test:selenium:login-ghl-negative",
+    "test:selenium:agency-slug": "node tests/selenium/agency-slug.e2e.js",
+    "test:selenium:admin-agent": "node tests/selenium/admin-agent.e2e.js",
+    "test:selenium:crm-features": "node tests/selenium/crm-features.e2e.js",
+    "test:selenium:crm-crud": "node tests/selenium/crm-crud.e2e.js",
+    "test:selenium:all": "npm-run-all --sequential test:selenium:intake test:selenium:intake-negative test:selenium:client-create test:selenium:agency-wizard test:selenium:recruiter-wizard test:selenium:ai-prompts test:selenium:lists test:selenium:athlete-profile test:selenium:athlete-profile-public test:selenium:tier-enforcement test:selenium:agents test:selenium:agent-login test:selenium:agency-slug test:selenium:admin-agent test:selenium:login-ghl test:selenium:login-ghl-negative test:selenium:crm-features",
     "infra:seed": "node scripts/seed-dynamo.mjs"
   },
   "dependencies": {
@@ -37,6 +41,10 @@
     "@aws-sdk/s3-request-presigner": "^3.966.0",
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
+    "@fullcalendar/daygrid": "^6.1.20",
+    "@fullcalendar/interaction": "^6.1.20",
+    "@fullcalendar/react": "^6.1.20",
+    "@fullcalendar/timegrid": "^6.1.20",
     "@mui/icons-material": "^7.3.5",
     "@mui/material": "^7.3.5",
     "@mui/system": "^7.3.5",

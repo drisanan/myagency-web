@@ -97,6 +97,14 @@ export function basketballScrapeStatus() {
   return { scraped: SCRAPED_BASKETBALL };
 }
 
+/**
+ * Check if scraping has completed for a given sport.
+ * Used by cache to avoid caching placeholder data.
+ */
+export function isScrapingComplete(sport: Commit['sport']): boolean {
+  return sport === 'Football' ? SCRAPED_FOOTBALL : SCRAPED_BASKETBALL;
+}
+
 export function listCommitsServer(sport: Commit['sport'], list: Commit['list']) {
   // server-side version that does not touch localStorage
   const filtered = COMMITS.filter((c) => c.sport === sport && c.list === list);
@@ -143,6 +151,13 @@ async function loadFootballFromScrape() {
       // Merge: keep basketball from current store (may be scraped), replace football
       const existing = COMMITS.filter((c) => c.sport === 'Basketball');
       COMMITS = [...existing, ...topMapped, ...recent];
+      
+      // Clear cache so fresh data is served immediately
+      try {
+        const { clearCommitsCache } = await import('./commitsCache');
+        clearCommitsCache();
+        console.log('[commits] Football scrape complete, cache cleared');
+      } catch { /* ignore if cache not available */ }
     } else {
       // mark placeholders so tests can detect non-live data
       COMMITS = COMMITS.map((c) =>
@@ -186,6 +201,13 @@ async function loadBasketballFromScrape() {
       // Merge: keep football from current store (may be scraped), replace basketball
       const existing = COMMITS.filter((c) => c.sport === 'Football');
       COMMITS = [...existing, ...topMapped, ...recent];
+      
+      // Clear cache so fresh data is served immediately
+      try {
+        const { clearCommitsCache } = await import('./commitsCache');
+        clearCommitsCache();
+        console.log('[commits] Basketball scrape complete, cache cleared');
+      } catch { /* ignore if cache not available */ }
     } else {
       COMMITS = COMMITS.map((c) =>
         c.sport === 'Basketball' ? { ...c, name: `${c.name} (placeholder)` } : c

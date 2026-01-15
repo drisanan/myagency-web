@@ -6,6 +6,7 @@ export type Task = {
   agencyId?: string;
   athleteId?: string | null; // legacy
   assigneeClientId?: string | null;
+  assigneeAgentId?: string | null;
   title: string;
   description?: string;
   status: TaskStatus;
@@ -62,11 +63,13 @@ export async function createTask(input: {
   status?: TaskStatus;
   dueAt?: number;
   assigneeClientId?: string | null;
+  assigneeAgentId?: string | null;
   athleteId?: string | null; // legacy alias
 }) {
   const payload = {
     ...input,
     assigneeClientId: input.assigneeClientId ?? input.athleteId ?? null,
+    assigneeAgentId: input.assigneeAgentId ?? null,
   };
   const data = await apiFetch('/tasks', { method: 'POST', body: JSON.stringify(payload) });
   return data?.task as Task;
@@ -76,6 +79,7 @@ export async function updateTask(id: string, patch: Partial<Omit<Task, 'id' | 'c
   const payload = {
     ...patch,
     assigneeClientId: (patch as any).assigneeClientId ?? (patch as any).athleteId ?? patch.assigneeClientId,
+    assigneeAgentId: patch.assigneeAgentId,
   };
   const data = await apiFetch(`/tasks/${id}`, { method: 'PATCH', body: JSON.stringify(payload) });
   return data?.task as Task;

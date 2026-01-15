@@ -65,19 +65,34 @@ function shortDate(day: Date) {
 }
 
 export function RecruitingCalendarCard() {
-  const { session } = useSession();
+  const { session, loading: sessionLoading } = useSession();
   const sports = getSports();
+  
   // Use saved preference from agency settings, fallback to first sport or 'Football'
   const savedPreference = session?.agencySettings?.preferredSport;
-  const defaultSport = savedPreference && sports.includes(savedPreference) ? savedPreference : (sports[0] || 'Football');
-  const [sport, setSport] = React.useState(defaultSport);
+  const fallbackSport = sports[0] || 'Football';
   
-  // Update sport when session loads with a saved preference
+  // Track the last applied preference to detect changes
+  const [lastAppliedPref, setLastAppliedPref] = React.useState<string | null>(null);
+  const [sport, setSport] = React.useState(fallbackSport);
+  
+  // Sync sport with saved preference whenever it changes
   React.useEffect(() => {
+    // Wait for session to finish loading
+    if (sessionLoading) return;
+    
+    // If there's a saved preference and it's different from what we last applied
     if (savedPreference && sports.includes(savedPreference)) {
-      setSport(savedPreference);
+      if (savedPreference !== lastAppliedPref) {
+        console.log('[RecruitingCalendar] Applying saved preference:', savedPreference);
+        setSport(savedPreference);
+        setLastAppliedPref(savedPreference);
+      }
+    } else if (!savedPreference && lastAppliedPref === null) {
+      // No saved preference on initial load, mark as checked
+      setLastAppliedPref('__none__');
     }
-  }, [savedPreference, sports]);
+  }, [savedPreference, sports, sessionLoading, lastAppliedPref]);
   
   const { data = [], isLoading } = useRecruitingPeriods(sport);
   const today = new Date();
