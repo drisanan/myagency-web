@@ -41,8 +41,8 @@ function hasCalendarScopes(tokenScope: string | undefined): boolean {
 async function getAuthenticatedClient(
   agencyId: string,
   clientId: string,
-  oauth2Client: ReturnType<typeof google.auth.OAuth2>
-): Promise<{ client: ReturnType<typeof google.auth.OAuth2>; error?: string; needsReconnect?: boolean }> {
+  oauth2Client: InstanceType<typeof google.auth.OAuth2>
+): Promise<{ client: InstanceType<typeof google.auth.OAuth2>; error?: string; needsReconnect?: boolean }> {
   // Token storage key: GMAIL_TOKEN# is used for all Google OAuth tokens (Gmail + Calendar)
   const item = await getItem({
     PK: `AGENCY#${agencyId}`,
