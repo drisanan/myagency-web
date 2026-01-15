@@ -116,7 +116,7 @@ const googleCalendarHandler = async (event: APIGatewayProxyEventV2) => {
   if (!session.agencyId) {
     console.error('Calendar API called without agencyId in session', { 
       role: session.role, 
-      email: session.email 
+      agencyEmail: session.agencyEmail 
     });
     return response(400, { 
       ok: false, 
@@ -134,7 +134,7 @@ const googleCalendarHandler = async (event: APIGatewayProxyEventV2) => {
   );
 
   // Determine clientId from query or session
-  const clientId = event.queryStringParameters?.clientId || session.clientId || session.email;
+  const clientId = event.queryStringParameters?.clientId || session.clientId || session.agencyEmail;
 
   // =========================================================================
   // GET /google/calendar/events - List upcoming events
