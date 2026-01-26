@@ -7,13 +7,15 @@ import {
   Typography, Button, Stack, Box, CircularProgress, 
   Dialog, DialogTitle, DialogContent, DialogActions,
   TextField, Alert, Chip, FormControlLabel, Checkbox,
-  Snackbar,
+  Snackbar, Paper, Table, TableHead, TableRow, TableCell, TableBody, TablePagination,
+  IconButton,
 } from '@mui/material';
-import { DataGrid, GridColDef } from '@mui/x-data-grid';
+import CloseIcon from '@mui/icons-material/Close';
 
 import { useSession } from '@/features/auth/session';
 import { listAgents, upsertAgent, deleteAgent, Agent } from '@/services/agents';
 import { SubscriptionQuota, useCanAddAthlete } from '@/features/settings/SubscriptionQuota';
+import { dashboardTablePaperSx, dashboardTableSx } from '@/components/tableStyles';
 
 export default function AgentsPage() {
   const { session, loading } = useSession();
@@ -39,6 +41,8 @@ export default function AgentsPage() {
   }>({ open: false, message: '', severity: 'success' });
   const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
   const [agentToDelete, setAgentToDelete] = React.useState<Agent | null>(null);
+  const [page, setPage] = React.useState(0);
+  const [rowsPerPage, setRowsPerPage] = React.useState(10);
 
   const { data: agents = [], isLoading, refetch } = useQuery({
     queryKey: ['agents'],
@@ -145,37 +149,8 @@ export default function AgentsPage() {
     }
   };
 
-  const columns: GridColDef[] = [
-    { field: 'firstName', headerName: 'First Name', flex: 1 },
-    { field: 'lastName', headerName: 'Last Name', flex: 1 },
-    { field: 'email', headerName: 'Email', flex: 1.5 },
-    { field: 'phone', headerName: 'Phone', flex: 1 },
-    { field: 'role', headerName: 'Role', flex: 1 },
-    { 
-      field: 'authEnabled', 
-      headerName: 'Can Login', 
-      width: 100,
-      renderCell: (params) => params.row.authEnabled ? '✓' : '—',
-    },
-    { 
-      field: 'isAdmin', 
-      headerName: 'Admin', 
-      width: 80,
-      renderCell: (params) => params.row.isAdmin ? '✓' : '—',
-    },
-    {
-      field: 'actions',
-      headerName: 'Actions',
-      width: 180,
-      sortable: false,
-      renderCell: (params) => (
-        <Stack direction="row" spacing={1}>
-          <Button size="small" onClick={() => handleOpenEdit(params.row)}>Edit</Button>
-          <Button size="small" color="error" onClick={() => handleDeleteClick(params.row)}>Delete</Button>
-        </Stack>
-      ),
-    },
-  ];
+  const totalRows = agents.length;
+  const pagedAgents = agents.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
 
   if (loading || isLoading) {
     return (
@@ -208,7 +183,7 @@ export default function AgentsPage() {
           disabled={isAtLimit}
           title={isAtLimit ? 'Upgrade to add more users' : 'Add new agent'}
         >
-          {isAtLimit ? 'Limit Reached' : 'New Agent'}
+          {isAtLimit ? 'Limit Reached' : 'Add +'}
         </Button>
       </Stack>
 
@@ -231,21 +206,88 @@ export default function AgentsPage() {
         <SubscriptionQuota showUpgradeButton />
       )}
 
-      <Box sx={{ height: 500, width: '100%' }}>
-        <DataGrid 
-          rows={agents} 
-          columns={columns} 
-          disableRowSelectionOnClick
-          initialState={{
-            pagination: { paginationModel: { pageSize: 10 } },
-          }}
-          pageSizeOptions={[10, 25, 50]}
-        />
-      </Box>
+      <Paper variant="outlined" sx={{ height: 500, width: '100%', p: 0, ...dashboardTablePaperSx }}>
+        <Box sx={{ height: '100%', overflow: 'auto' }}>
+          <Table size="small" stickyHeader sx={dashboardTableSx}>
+            <TableHead>
+              <TableRow>
+                <TableCell>First Name</TableCell>
+                <TableCell>Last Name</TableCell>
+                <TableCell>Email</TableCell>
+                <TableCell>Phone</TableCell>
+                <TableCell>Role</TableCell>
+                <TableCell>Can Login</TableCell>
+                <TableCell>Admin</TableCell>
+                <TableCell>Actions</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {pagedAgents.map((agent) => (
+                <TableRow key={agent.id}>
+                  <TableCell>{agent.firstName || '-'}</TableCell>
+                  <TableCell>{agent.lastName || '-'}</TableCell>
+                  <TableCell>{agent.email || '-'}</TableCell>
+                  <TableCell>{agent.phone || '-'}</TableCell>
+                  <TableCell>{agent.role || '-'}</TableCell>
+                  <TableCell>{agent.authEnabled ? '✓' : '—'}</TableCell>
+                  <TableCell>{agent.isAdmin ? '✓' : '—'}</TableCell>
+                  <TableCell>
+                    <Stack direction="row" spacing={1}>
+                      <Button size="small" onClick={() => handleOpenEdit(agent)}>Edit</Button>
+                      <Button size="small" color="error" onClick={() => handleDeleteClick(agent)}>Delete</Button>
+                    </Stack>
+                  </TableCell>
+                </TableRow>
+              ))}
+              {totalRows === 0 && (
+                <TableRow>
+                  <TableCell colSpan={8} align="center">
+                    No agents found.
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+          <TablePagination
+            component="div"
+            count={totalRows}
+            page={page}
+            onPageChange={(_, nextPage) => setPage(nextPage)}
+            rowsPerPage={rowsPerPage}
+            onRowsPerPageChange={(event) => {
+              setRowsPerPage(Number(event.target.value));
+              setPage(0);
+            }}
+            rowsPerPageOptions={[10, 25, 50]}
+            sx={{
+              position: 'sticky',
+              bottom: 0,
+              backgroundColor: 'rgba(255, 255, 255, 0.92)',
+              borderTop: '1px solid #eaecf0',
+              boxShadow: '0 -6px 12px rgba(16, 24, 40, 0.08)',
+              zIndex: 1,
+            }}
+          />
+        </Box>
+      </Paper>
 
       {/* Add/Edit Dialog */}
       <Dialog open={dialogOpen} onClose={handleCloseDialog} maxWidth="sm" fullWidth>
-        <DialogTitle>{editingAgent ? 'Edit Agent' : 'New Agent'}</DialogTitle>
+        <DialogTitle sx={{ pr: 6 }}>
+          {editingAgent ? 'Edit Agent' : 'New Agent'}
+          <IconButton
+            aria-label="Close"
+            onClick={handleCloseDialog}
+            sx={{
+              position: 'absolute',
+              right: 12,
+              top: 12,
+              color: (theme) => theme.palette.grey[500],
+            }}
+          >
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ mt: 1 }}>
             {error && <Alert severity="error">{error}</Alert>}
