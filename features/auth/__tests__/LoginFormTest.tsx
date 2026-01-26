@@ -1,23 +1,22 @@
 import React from 'react';
-import { View, Text, StyleSheet, ViewStyle } from 'react-native';
 
 interface LoginFormTestProps {
-  style?: ViewStyle;
+  style?: React.CSSProperties;
   children?: React.ReactNode;
 }
 
 export const LoginFormTest: React.FC<LoginFormTestProps> = ({ style, children }) => {
   return (
-    <View style={[styles.container, style]}>
-      {children || <Text>LoginFormTest</Text>}
-    </View>
+    <div style={{ ...styles.container, ...style }}>
+      {children || <span>LoginFormTest</span>}
+    </div>
   );
 };
 
-const styles = StyleSheet.create({
+const styles: { container: React.CSSProperties } = {
   container: {
     // Add your styles here
   },
-});
+};
 
 export default LoginFormTest;
