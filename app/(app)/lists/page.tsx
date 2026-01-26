@@ -33,7 +33,7 @@ export default function ListsPage() {
   const [stateCode, setStateCode] = React.useState('');
   const [states, setStates] = React.useState<Array<{ code: string; name: string }>>([]);
   const [divisions, setDivisions] = React.useState<string[]>([]);
-  const [schools, setSchools] = React.useState<Array<{ name: string }>>([]);
+  const [schools, setSchools] = React.useState<Array<{ name: string; logo?: string }>>([]);
   const [selectedSchool, setSelectedSchool] = React.useState<string>('');
   const [schoolDetails, setSchoolDetails] = React.useState<any>(null);
   const [loadingSchools, setLoadingSchools] = React.useState(false);

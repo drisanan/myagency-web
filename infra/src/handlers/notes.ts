@@ -2,7 +2,7 @@
  * Lambda handler for athlete notes (general notes, not coach-specific)
  */
 import { APIGatewayProxyEventV2 } from 'aws-lambda';
-import { v4 as uuidv4 } from 'uuid';
+import { randomUUID } from 'crypto';
 import { Handler } from './common';
 import { response } from './cors';
 import { putItem, getItem, queryByPK, deleteItem } from '../lib/dynamo';
@@ -88,7 +88,7 @@ const notesHandler: Handler = async (event: APIGatewayProxyEventV2) => {
       return response(400, { ok: false, error: 'athleteId and body are required' }, origin);
     }
     
-    const id = uuidv4();
+    const id = randomUUID();
     const now = Date.now();
     
     const note: NoteRecord = {
