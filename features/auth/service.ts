@@ -19,6 +19,7 @@ export type ProgramLevelConfig = {
 export type AgencySettings = {
   primaryColor?: string;
   secondaryColor?: string;
+  headerBg?: string;
   buttonText?: string;
   textPrimary?: string;
   textSecondary?: string;
