@@ -71,7 +71,7 @@ export function ListAssignmentsPanel({ clientId }: { clientId: string }) {
                     variant="outlined"
                     color="error"
                     onClick={() => unassignMutation.mutate(list.id)}
-                    disabled={unassignMutation.isLoading}
+                    disabled={unassignMutation.isPending}
                     data-testid={`unassign-list-${list.id}`}
                   >
                     Remove {list.name}
@@ -82,7 +82,7 @@ export function ListAssignmentsPanel({ clientId }: { clientId: string }) {
                     size="small"
                     variant="contained"
                     onClick={() => assignMutation.mutate(list.id)}
-                    disabled={assignMutation.isLoading}
+                    disabled={assignMutation.isPending}
                     data-testid={`assign-list-${list.id}`}
                   >
                     Assign {list.name}
