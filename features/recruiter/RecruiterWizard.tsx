@@ -458,7 +458,7 @@ export function RecruiterWizard() {
       }
       const athleteName = `${contact.firstName || ''} ${contact.lastName || ''}`.trim();
       const gradYear = String((currentClient as any)?.radar?.graduationYear || (currentClient as any)?.graduationYear || '').trim();
-      const positionOrSport = String((currentClient as any)?.radar?.position || (currentClient as any)?.position || contact.sport || '').trim();
+      const positionOrSport = String((currentClient as any)?.radar?.position || (currentClient as any)?.position || '').trim();
       const html = aiHtml || buildEmailPreview();
       const savedTokens = getClientGmailTokens(id);
       const campaignName = resolvedCollegeName || selectedList?.name || universityName || 'Coach Outreach';
