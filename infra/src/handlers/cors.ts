@@ -1,9 +1,16 @@
+import { getApiBaseUrl } from '@/config/env';
+
+const envOrigins = (process.env.WEB_APP_ORIGINS || process.env.ALLOWED_ORIGINS || '')
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
 export const ALLOWED_ORIGINS = [
   'https://master.d2yp6hyv6u0efd.amplifyapp.com',
   'https://myrecruiteragency.com',
   'https://www.myrecruiteragency.com',
-  'http://localhost:3000',
-  'http://localhost:3001',
+  ...envOrigins,
+  getApiBaseUrl(),
 ];
 
 export function buildCors(origin?: string) {
