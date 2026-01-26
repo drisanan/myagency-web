@@ -4,8 +4,10 @@ import React from 'react';
 import { 
   Box, Button, Card, CardContent, Divider, FormControlLabel, Checkbox, MenuItem, 
   Paper, Stack, TextField, Typography, Snackbar, Alert, Dialog, DialogTitle, 
-  DialogContent, DialogActions, CircularProgress 
+  DialogContent, DialogActions, CircularProgress, Skeleton
 } from '@mui/material';
+import { MetricCard } from '@/app/(app)/dashboard/MetricCard';
+import { IoListOutline, IoSchoolOutline, IoPieChartOutline } from 'react-icons/io5';
 import { useSession } from '@/features/auth/session';
 import { getStates } from '@/services/recruiterMeta';
 import { getDivisions } from '@/services/recruiterMeta';
@@ -34,12 +36,15 @@ export default function ListsPage() {
   const [schools, setSchools] = React.useState<Array<{ name: string }>>([]);
   const [selectedSchool, setSelectedSchool] = React.useState<string>('');
   const [schoolDetails, setSchoolDetails] = React.useState<any>(null);
+  const [loadingSchools, setLoadingSchools] = React.useState(false);
+  const [loadingSchoolDetails, setLoadingSchoolDetails] = React.useState(false);
 
   const [currentName, setCurrentName] = React.useState('');
   const [currentItems, setCurrentItems] = React.useState<CoachEntry[]>([]);
   const [editingId, setEditingId] = React.useState<string>('');
 
   const [saved, setSaved] = React.useState<CoachList[]>([]);
+  const [loadingLists, setLoadingLists] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [saveError, setSaveError] = React.useState<string | null>(null);
   const [saving, setSaving] = React.useState(false);
@@ -77,18 +82,22 @@ export default function ListsPage() {
       return;
     }
     const divisionSlug = DIVISION_API_MAPPING[division] || division;
+    setLoadingSchools(true);
     listUniversities({ sport, division: divisionSlug, state: stateCode })
       .then(setSchools)
-      .catch((e) => { setError(e?.message || 'Failed to load universities'); setSchools([]); });
+      .catch((e) => { setError(e?.message || 'Failed to load universities'); setSchools([]); })
+      .finally(() => setLoadingSchools(false));
   }, [sport, division, stateCode]);
 
   React.useEffect(() => {
     if (!selectedSchool) { setSchoolDetails(null); return; }
     if (!sport || !division || !stateCode) return;
     const divisionSlug = DIVISION_API_MAPPING[division] || division;
+    setLoadingSchoolDetails(true);
     getUniversityDetails({ sport, division: divisionSlug, state: stateCode, school: selectedSchool })
       .then(setSchoolDetails)
-      .catch((e) => { setError(e?.message || 'Failed to load school'); setSchoolDetails(null); });
+      .catch((e) => { setError(e?.message || 'Failed to load school'); setSchoolDetails(null); })
+      .finally(() => setLoadingSchoolDetails(false));
   }, [selectedSchool, sport, division, stateCode]);
 
   // FIX: Use userEmail in dependency array and logic
@@ -97,9 +106,11 @@ export default function ListsPage() {
     if (!userEmail) return;
 
     let cancelled = false;
+    setLoadingLists(true);
     listLists(userEmail)
       .then((l) => { if (!cancelled) setSaved(l || []); })
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setLoadingLists(false); });
     return () => { cancelled = true; };
   }, [userEmail, loading]);
 
@@ -148,6 +159,23 @@ export default function ListsPage() {
     setSaveError(null);
   }
 
+  function resetListBuilder() {
+    setEditingId('');
+    setCurrentName('');
+    setCurrentItems([]);
+    setSaveError(null);
+    setSport('');
+    setDivision('');
+    setStateCode('');
+    setSchools([]);
+    setSelectedSchool('');
+    setSchoolDetails(null);
+    setManualName('');
+    setManualEmail('');
+    setManualTitle('');
+    setManualSchool('');
+  }
+
   async function saveCurrent() {
     if (loading || saving) return;
     // FIX: Use userEmail check
@@ -184,9 +212,9 @@ export default function ListsPage() {
         const rec = await saveList({ agencyEmail: userEmail, name: currentName.trim(), items: currentItems });
         if (rec) {
           setSaved((p) => [rec, ...p]);
-          setEditingId(rec.id);
           setSaveError(null);
           setSnackbar({ open: true, message: 'List saved successfully!', severity: 'success' });
+          resetListBuilder();
         }
       }
     } catch (e: any) {
@@ -224,6 +252,31 @@ export default function ListsPage() {
   const [manualTitle, setManualTitle] = React.useState('');
   const [manualSchool, setManualSchool] = React.useState('');
 
+  const totalLists = saved.length;
+  const totalUniversities = React.useMemo(() => {
+    const unique = new Set<string>();
+    saved.forEach((list) => {
+      (list.items || []).forEach((item: any) => {
+        const name = item.school || item.university || item.name;
+        if (name) unique.add(String(name));
+      });
+    });
+    return unique.size;
+  }, [saved]);
+  const divisionCounts = React.useMemo(() => {
+    const order = ['D1', 'D1AA', 'D2', 'D3', 'JUCO', 'NAIA'];
+    const counts: Record<string, number> = {};
+    saved.forEach((list) => {
+      (list.items || []).forEach((item: any) => {
+        const div = String(item.division || item.Division || '').trim();
+        if (!div) return;
+        counts[div] = (counts[div] || 0) + 1;
+      });
+    });
+    order.forEach((div) => { if (counts[div] == null) counts[div] = 0; });
+    return { order, counts };
+  }, [saved]);
+
   return (
     <Box sx={{ display: 'grid', gap: 2 }}>
       {loading && (
@@ -236,12 +289,54 @@ export default function ListsPage() {
           Please log in to view and save lists.
         </Typography>
       )}
-      <Typography variant="h5">Lists</Typography>
+      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(3, 1fr)' }, gap: 2 }}>
+        <MetricCard
+          title="Total Lists"
+          value={loadingLists ? '—' : totalLists}
+          icon={<IoListOutline size={20} />}
+          bgColor="#EFF4FF"
+          textColor="#1D4ED8"
+        />
+        <MetricCard
+          title="Universities Targeted"
+          value={loadingLists ? '—' : totalUniversities}
+          icon={<IoSchoolOutline size={20} />}
+          bgColor="#ECFDF3"
+          textColor="#027A48"
+        />
+        <MetricCard
+          title="Breakdown by Division"
+          value={loadingLists ? '—' : ''}
+          icon={<IoPieChartOutline size={20} />}
+          footer={
+            loadingLists ? (
+              <Typography variant="body2" sx={{ color: '#667085' }}>
+                Loading breakdown…
+              </Typography>
+            ) : (
+              <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 1, width: '100%' }}>
+                {divisionCounts.order.map((div) => (
+                  <Typography key={div} variant="body2" sx={{ color: '#667085' }}>
+                    {div} - {divisionCounts.counts[div] ?? 0}
+                  </Typography>
+                ))}
+              </Box>
+            )
+          }
+        />
+      </Box>
       {error && <Typography color="error">{error}</Typography>}
 
       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '2fr 1fr' }, gap: 3 }}>
-        <Box>
-          <Box data-tour="list-filters" sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(3, 1fr)' }, gap: 2, mb: 2 }}>
+        <Paper variant="outlined" sx={{ p: 2.5 }}>
+          <Stack spacing={2}>
+            <Box>
+              <Typography variant="h6" sx={{ mb: 0.5 }}>Search for Universities</Typography>
+              <Typography variant="body2" color="text.secondary">
+                Select a sport and division then you can either search by state or use the search box.
+              </Typography>
+            </Box>
+            <Box data-tour="list-filters" sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(3, 1fr)' }, gap: 2 }}>
             <TextField size="small" select label="Sport" value={sport} onChange={(e) => setSport(e.target.value)} SelectProps={{ MenuProps: { disablePortal: true } }}>
               {sports.map(s => <MenuItem key={s} value={s}>{formatSportLabel(s)}</MenuItem>)}
             </TextField>
@@ -253,17 +348,52 @@ export default function ListsPage() {
             </TextField>
           </Box>
 
-          <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>Universities</Typography>
-          <Stack data-tour="school-selector" direction="row" spacing={2} sx={{ flexWrap: 'wrap', mb: 2 }}>
-            {schools.map(u => (
-              <Card key={u.name} onClick={() => setSelectedSchool(u.name)} sx={{ width: 240, cursor: 'pointer', outline: selectedSchool === u.name ? '2px solid #1976d2' : 'none' }}>
-                <CardContent><Typography>{u.name}</Typography></CardContent>
+          <Typography variant="subtitle2" color="text.secondary">Universities</Typography>
+          <Box data-tour="school-selector" sx={{ display: 'grid', gridTemplateColumns: { xs: 'repeat(1, 1fr)', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)' }, gap: 1 }}>
+            {loadingSchools && Array.from({ length: 6 }).map((_, idx) => (
+              <Card key={`school-skeleton-${idx}`} variant="outlined">
+                <CardContent>
+                  <Skeleton variant="rectangular" height={48} sx={{ mb: 1 }} />
+                  <Skeleton height={18} />
+                </CardContent>
               </Card>
             ))}
-          </Stack>
+            {!loadingSchools && schools.map(u => (
+              <Card
+                key={u.name}
+                variant="outlined"
+                onClick={() => setSelectedSchool(u.name)}
+                sx={{
+                  cursor: 'pointer',
+                  borderColor: selectedSchool === u.name ? '#2563EB' : '#eaecf0',
+                  boxShadow: selectedSchool === u.name ? '0 0 0 2px rgba(37, 99, 235, 0.12)' : 'none',
+                }}
+              >
+                <CardContent sx={{ display: 'grid', gap: 1, alignItems: 'center' }}>
+                  <Box sx={{ height: 48, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    {u.logo ? (
+                      <img src={u.logo} alt={`${u.name} logo`} style={{ maxHeight: 40, maxWidth: '100%', objectFit: 'contain' }} />
+                    ) : (
+                      <Skeleton variant="rectangular" height={40} width="100%" />
+                    )}
+                  </Box>
+                  <Typography variant="body2">{u.name}</Typography>
+                </CardContent>
+              </Card>
+            ))}
+            {!loadingSchools && schools.length === 0 && (
+              <Typography color="text.secondary">No universities found. Select filters above.</Typography>
+            )}
+          </Box>
 
-          {schoolDetails && (
-            <Box sx={{ mb: 2 }}>
+          {loadingSchoolDetails && (
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <CircularProgress size={18} />
+              <Typography variant="body2" color="text.secondary">Loading school details…</Typography>
+            </Box>
+          )}
+          {schoolDetails && !loadingSchoolDetails && (
+            <Box>
               <Typography variant="subtitle1" sx={{ mb: 1 }}>
                 {schoolDetails?.schoolInfo?.School || schoolDetails?.name || selectedSchool}
               </Typography>
@@ -303,7 +433,12 @@ export default function ListsPage() {
 
           <Divider sx={{ my: 2 }} />
 
-          <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>Add coach manually</Typography>
+          <Box>
+            <Typography variant="h6" sx={{ mb: 0.5 }}>Manual Entry</Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+              Add a coach manually to your list. This can also be a seed account that you are tracking.
+            </Typography>
+          </Box>
           <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '2fr 2fr 1fr 2fr auto' }, gap: 1, alignItems: 'center' }}>
             <TextField size="small" label="Full name" value={manualName} onChange={(e) => setManualName(e.target.value)} />
             <TextField size="small" label="Email" value={manualEmail} onChange={(e) => setManualEmail(e.target.value)} />
@@ -313,32 +448,36 @@ export default function ListsPage() {
               Add
             </Button>
           </Box>
-        </Box>
+          <Divider sx={{ my: 2 }} />
 
-        <Box>
-          <Typography variant="h6" sx={{ mb: 1 }}>Current List</Typography>
+          <Box>
+            <Typography variant="h6" sx={{ mb: 0.5 }}>Name Your List</Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+              Name your list so you can keep track of it.
+            </Typography>
+          </Box>
           <TextField fullWidth size="small" label="List name" value={currentName} onChange={(e) => setCurrentName(e.target.value)} sx={{ mb: 1 }} />
-          <Paper variant="outlined" sx={{ p: 1, maxHeight: 360, overflow: 'auto' }}>
-            {currentItems.length === 0 ? (
-              <Typography variant="body2" color="text.secondary">No coaches added yet.</Typography>
-            ) : (
-              currentItems.map((c, i) => (
-                <Box key={`${c.email}-${i}`} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #eee', py: 1 }}>
-                  <Box>
-                    <Typography variant="body2">{[c.firstName, c.lastName].filter(Boolean).join(' ')} {c.title ? `— ${c.title}` : ''}</Typography>
-                    <Typography variant="caption" color="text.secondary">{c.email} · {c.school} · {c.division} · {c.state}</Typography>
-                  </Box>
-                  <Button size="small" color="error" onClick={() => removeCoach(i)}>Remove</Button>
+
+          <Paper variant="outlined" sx={{ p: 1, maxHeight: 360, overflow: 'auto', display: 'flex', flexDirection: 'column' }}>
+            {currentItems.length > 0 && currentItems.map((c, i) => (
+              <Box key={`${c.email}-${i}`} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #eee', py: 1 }}>
+                <Box>
+                  <Typography variant="body2">{[c.firstName, c.lastName].filter(Boolean).join(' ')} {c.title ? `— ${c.title}` : ''}</Typography>
+                  <Typography variant="caption" color="text.secondary">{c.email} · {c.school} · {c.division} · {c.state}</Typography>
                 </Box>
-              ))
+                <Button size="small" color="error" onClick={() => removeCoach(i)}>Remove</Button>
+              </Box>
+            ))}
+            {currentItems.length === 0 && (
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 'auto' }}>No coaches added yet.</Typography>
             )}
           </Paper>
+
           <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
             <Button 
               data-tour="save-list-btn" 
               variant="contained" 
-              onClick={saveCurrent} 
-              disabled={!currentName.trim() || currentItems.length === 0 || saving}
+              onClick={saveCurrent}
               startIcon={saving ? <CircularProgress size={16} color="inherit" /> : null}
             >
               {saving ? 'Saving...' : editingId ? 'Update List' : 'Save List'}
@@ -350,11 +489,12 @@ export default function ListsPage() {
               {saveError}
             </Typography>
           )}
+        </Stack>
+        </Paper>
 
-          <Divider sx={{ my: 2 }} />
-
+        <Paper sx={{ p: 2.5 }} variant="outlined">
           <Typography variant="h6" sx={{ mb: 1 }}>Saved Lists</Typography>
-          <Paper data-tour="saved-lists" variant="outlined" sx={{ p: 1, maxHeight: 320, overflow: 'auto' }}>
+          <Paper data-tour="saved-lists" variant="outlined" sx={{ p: 1, maxHeight: 420, overflow: 'auto' }}>
             {saved.length === 0 ? (
               <Typography variant="body2" color="text.secondary">No saved lists.</Typography>
             ) : (
@@ -372,7 +512,7 @@ export default function ListsPage() {
               ))
             )}
           </Paper>
-        </Box>
+        </Paper>
       </Box>
 
       {/* Delete Confirmation Dialog */}
