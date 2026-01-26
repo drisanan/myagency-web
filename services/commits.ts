@@ -222,4 +222,14 @@ async function loadBasketballFromScrape() {
 loadFootballFromScrape();
 loadBasketballFromScrape();
 
+export async function scrapeAndPersistCommits() {
+  await loadFootballFromScrape();
+  await loadBasketballFromScrape();
+  return {
+    footballScraped: SCRAPED_FOOTBALL,
+    basketballScraped: SCRAPED_BASKETBALL,
+    totalCommits: COMMITS.length,
+  };
+}
+
 

@@ -580,7 +580,7 @@ export function RecruiterWizard() {
           clientId: id,
           clientEmail: contact.email || '',
           recipients: sentRecipients,
-          subject,
+          subject: subjectBase,
           campaignId,
         }).catch(err => console.error('[RecruiterWizard] Failed to record sends', err));
       }

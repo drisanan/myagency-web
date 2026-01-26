@@ -53,6 +53,7 @@ export type AgencyRecord = {
 export type SessionContext = {
   agencyId: string;
   agencyEmail?: string;
+  email?: string;
   role: 'agency' | 'athlete' | 'admin' | 'client' | 'agent';
   userId?: string;
   clientId?: string;
@@ -202,6 +203,7 @@ export type EmailClickRecord = {
   destination: string;
   linkType?: 'profile' | 'hudl' | 'youtube' | 'instagram' | 'article' | 'other';
   university?: string;
+  campaignId?: string;
   clickedAt: number;
   userAgent?: string;
   ipAddress?: string;
@@ -331,6 +333,7 @@ export type EmailDripRecord = {
   name: string;
   description?: string;
   isActive: boolean;
+  senderClientId?: string;
   triggerEvent?: 'signup' | 'program_change' | 'manual';
   programLevel?: ProgramLevel;   // Auto-start for this program level
   steps: DripEmailStep[];
