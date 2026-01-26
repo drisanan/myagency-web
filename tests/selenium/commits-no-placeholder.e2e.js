@@ -146,7 +146,8 @@ async function run() {
   // Step 2: Check UI shows real data
   console.log('📝 Step 2: Checking UI rendering...');
   const options = new chrome.Options();
-  options.addArguments('--headless=new', '--disable-gpu', '--no-sandbox');
+  // options.addArguments('--headless=new'); // DISABLED for debugging - run with visible browser
+  options.addArguments('--disable-gpu', '--no-sandbox', '--window-size=1920,1080');
   const driver = await new Builder().forBrowser('chrome').setChromeOptions(options).build();
 
   try {

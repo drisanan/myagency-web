@@ -1,6 +1,6 @@
 'use client';
 import React from 'react';
-import { Box, Button, Typography } from '@mui/material';
+import { Box, Button, Typography, Paper } from '@mui/material';
 import { DataGrid, GridColDef } from '@mui/x-data-grid';
 import Link from 'next/link';
 import { getAgencies } from '@/services/agencies';
@@ -8,6 +8,7 @@ type AgencyRow = { id: string; name: string; email: string; active?: boolean };
 import { useSession } from '@/features/auth/session';
 import { useRouter } from 'next/navigation';
 import { logImpersonationStart } from '@/services/audit';
+import { dashboardDataGridSx, dashboardTablePaperSx } from '@/components/tableStyles';
 
 export default function AgenciesPage() {
   const { session, setSession } = useSession();
@@ -57,9 +58,9 @@ export default function AgenciesPage() {
         <Typography variant="h5">Agencies</Typography>
         <Button data-testid="agencies-new" LinkComponent={Link} href="/agencies/new" variant="contained">New Agency</Button>
       </Box>
-      <div style={{ height: 440, width: 800 }}>
-        <DataGrid rows={rows} columns={columns} disableRowSelectionOnClick />
-      </div>
+      <Paper sx={{ height: 440, width: 800, ...dashboardTablePaperSx }}>
+        <DataGrid rows={rows} columns={columns} disableRowSelectionOnClick sx={dashboardDataGridSx} />
+      </Paper>
     </Box>
   );
 }

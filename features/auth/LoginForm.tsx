@@ -42,7 +42,7 @@ export function LoginForm({ onSubmit }: Props) {
   };
 
   return (
-    <form onSubmit={handleSubmit} noValidate>
+    <form onSubmit={handleSubmit} noValidate autoComplete="off">
       <Stack spacing={2} sx={{ maxWidth: 480 }}>
         {(errors.email || errors.phone || errors.accessCode) && (
           <Alert severity="error" data-testid="error-list">
@@ -57,6 +57,7 @@ export function LoginForm({ onSubmit }: Props) {
         <TextField
           label="Email"
           type="email"
+          autoComplete="off"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           error={Boolean(errors.email)}
@@ -65,6 +66,7 @@ export function LoginForm({ onSubmit }: Props) {
         <TextField
           label="Phone"
           type="tel"
+          autoComplete="off"
           value={phone}
           onChange={(e) => setPhone(e.target.value)}
           error={Boolean(errors.phone)}
@@ -72,9 +74,11 @@ export function LoginForm({ onSubmit }: Props) {
         />
         <TextField
           label="Access Code"
-        type="text"
+          type="password"
+          autoComplete="new-password"
+          inputProps={{ inputMode: 'numeric', pattern: '[0-9]*' }}
           value={accessCode}
-          onChange={(e) => setAccessCode(e.target.value)}
+          onChange={(e) => setAccessCode(e.target.value.replace(/\D+/g, ''))}
           error={Boolean(errors.accessCode)}
           helperText={errors.accessCode}
         />

@@ -5,6 +5,7 @@ import { queryGSI1, scanByGSI1PK, getItem } from '../lib/dynamo';
 import { encodeSession, buildSessionCookie } from '../lib/session';
 import { verifyAccessCode } from '../lib/auth';
 import { withSentry } from '../lib/sentry';
+import { logActivity } from '../lib/activity';
 
 function mask(value?: string) {
   if (!value) return '';
@@ -80,6 +81,10 @@ const authClientLoginHandler: Handler = async (event: APIGatewayProxyEventV2) =>
   });
   if (!phoneMatch || !codeOk) return response(401, { ok: false, error: 'Invalid credentials' }, origin);
 
+  if ((client as any).accountStatus === 'suspended') {
+    return response(403, { ok: false, error: 'Account suspended' }, origin);
+  }
+
   // Fetch agency settings for white-label branding
   let agencyLogo: string | undefined;
   let agencySettings: { primaryColor?: string; secondaryColor?: string } | undefined;
@@ -112,7 +117,20 @@ const authClientLoginHandler: Handler = async (event: APIGatewayProxyEventV2) =>
 
   const cookie = buildSessionCookie(token, secureCookie, isLocal);
   // response() now handles both local (multiValueHeaders) and prod (cookies array)
-  return response(200, { ok: true }, origin, {}, [cookie]);
+  const res = response(200, { ok: true }, origin, {}, [cookie]);
+  try {
+    await logActivity({
+      agencyId: client.agencyId,
+      clientId: client.id,
+      actorEmail: client.email,
+      actorType: 'athlete',
+      activityType: 'login',
+      description: 'Athlete logged in',
+    });
+  } catch (e) {
+    console.warn('[auth-client-login] Failed to log activity', e);
+  }
+  return res;
 };
 
 export const handler = withSentry(authClientLoginHandler);

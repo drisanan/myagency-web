@@ -16,7 +16,8 @@ const API_BASE_URL = process.env.API_BASE_URL || 'http://localhost:3001';
 
 async function run() {
   const options = new chrome.Options();
-  options.addArguments('--headless=new', '--no-sandbox', '--disable-dev-shm-usage');
+  // options.addArguments('--headless=new'); // DISABLED for debugging - run with visible browser
+  options.addArguments('--no-sandbox', '--disable-dev-shm-usage', '--window-size=1920,1080');
   
   const driver = await new Builder()
     .forBrowser('chrome')

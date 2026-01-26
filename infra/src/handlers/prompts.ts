@@ -2,7 +2,7 @@ import { APIGatewayProxyEventV2 } from 'aws-lambda';
 import { response } from './cors';
 import { requireSession } from './common';
 import { newId } from '../lib/ids';
-import { putItem, queryByPK, getItem, deleteItem } from '../lib/dynamo';
+import { putItem, queryByPK, getItem, deleteItem, updateItem } from '../lib/dynamo';
 import { withSentry } from '../lib/sentry';
 
 // NOTE: In Node 18+ on AWS Lambda, 'fetch' is global. 
@@ -61,6 +61,32 @@ const promptsHandler = async (event: APIGatewayProxyEventV2) => {
   }
   const agencyEmail = (session as any).agencyEmail || '';
 
+  async function incrementMetrics(delta: { generated?: number; used?: number; deleted?: number }) {
+    const key = { PK: `AGENCY#${session.agencyId}`, SK: 'PROMPT_METRICS' };
+    const now = Date.now();
+    const generated = delta.generated ?? 0;
+    const used = delta.used ?? 0;
+    const deleted = delta.deleted ?? 0;
+    const res = await updateItem({
+      key,
+      updateExpression: [
+        'SET generated = if_not_exists(generated, :zero) + :generated',
+        'used = if_not_exists(used, :zero) + :used',
+        'deleted = if_not_exists(deleted, :zero) + :deleted',
+        'updatedAt = :now',
+        'createdAt = if_not_exists(createdAt, :now)',
+      ].join(', '),
+      expressionAttributeValues: {
+        ':zero': 0,
+        ':generated': generated,
+        ':used': used,
+        ':deleted': deleted,
+        ':now': now,
+      },
+    });
+    return res;
+  }
+
 
   // =========================================================================
   // ROUTE: AI Generation (Used by "Run" button)
@@ -95,6 +121,7 @@ const promptsHandler = async (event: APIGatewayProxyEventV2) => {
         { role: 'system', content: systemMsg },
         { role: 'user', content: userMsg }
       ]);
+      await incrementMetrics({ generated: 1 });
       return response(200, { ok: true, intro }, origin);
     } catch (err: any) {
       console.error('AI Gen Error:', err);
@@ -129,6 +156,23 @@ const promptsHandler = async (event: APIGatewayProxyEventV2) => {
     }
 
     return response(200, { ok: true, prompts }, origin);
+  }
+
+  // =========================================================================
+  // ROUTE: Metrics
+  // GET /prompts/metrics
+  // =========================================================================
+  if (method === 'GET' && path.endsWith('/prompts/metrics')) {
+    const existing = await getItem({ PK: `AGENCY#${session.agencyId}`, SK: 'PROMPT_METRICS' });
+    return response(200, {
+      ok: true,
+      metrics: {
+        generated: existing?.generated ?? 0,
+        used: existing?.used ?? 0,
+        deleted: existing?.deleted ?? 0,
+        updatedAt: existing?.updatedAt ?? null,
+      },
+    }, origin);
   }
 
 
@@ -170,6 +214,7 @@ const promptsHandler = async (event: APIGatewayProxyEventV2) => {
     };
 
     await putItem(rec);
+    await incrementMetrics({ used: 1 });
     return response(200, { ok: true, prompt: rec }, origin);
   }
 
@@ -185,6 +230,7 @@ const promptsHandler = async (event: APIGatewayProxyEventV2) => {
     const existing = await getItem({ PK: `AGENCY#${session.agencyId}`, SK: `PROMPT#${id}` });
     if (existing) {
       await deleteItem({ PK: `AGENCY#${session.agencyId}`, SK: `PROMPT#${id}` });
+      await incrementMetrics({ deleted: 1 });
     }
     return response(200, { ok: true }, origin);
   }

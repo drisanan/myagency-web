@@ -36,7 +36,8 @@ const TEST_AGENT = {
 
 async function setupDriver() {
   const options = new chrome.Options();
-  options.addArguments('--headless=new');
+  // options.addArguments('--headless=new'); // DISABLED for debugging - run with visible browser
+  options.addArguments('--no-sandbox', '--disable-gpu', '--window-size=1920,1080');
   options.addArguments('--no-sandbox');
   options.addArguments('--disable-dev-shm-usage');
   

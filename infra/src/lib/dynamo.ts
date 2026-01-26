@@ -126,6 +126,16 @@ export async function deleteItem(key: { PK: string; SK: string }) {
   await docClient.send(new DeleteCommand({ TableName: TABLE_NAME, Key: key }));
 }
 
+export async function scanBySKPrefix(prefix: string) {
+  const params: any = {
+    TableName: TABLE_NAME,
+    FilterExpression: 'begins_with(SK, :sk)',
+    ExpressionAttributeValues: { ':sk': prefix },
+  };
+  const res = await docClient.send(new ScanCommand(params));
+  return res.Items ?? [];
+}
+
 // Query GSI3 for username lookups (vanity URLs)
 export async function queryGSI3(GSI3PK: string, beginsWith?: string) {
   const res = await docClient.send(

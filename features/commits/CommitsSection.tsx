@@ -51,7 +51,7 @@ export function CommitsSection({ sport }: { sport: 'Football' | 'Basketball' }) 
     <Stack spacing={2}>
       <Typography variant="h5">{sport} Commits</Typography>
       <CommitsTable
-        title="Recent Commits (last 365 days)"
+        title="Recent Commits"
         rows={recentQ.data || []}
         showRank={false}
         dataTestId={`commits-${sport.toLowerCase()}-recent-table`}

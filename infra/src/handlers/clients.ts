@@ -1,7 +1,7 @@
 import { APIGatewayProxyEventV2 } from 'aws-lambda';
 import { Handler, requireSession } from './common';
 import { newId } from '../lib/ids';
-import { ClientRecord, AgencyRecord, STARTER_USER_LIMIT } from '../lib/models';
+import { ClientRecord, AgencyRecord, STARTER_USER_LIMIT, EmailDripRecord, DripEnrollmentRecord } from '../lib/models';
 import { hashAccessCode } from '../lib/auth';
 import { getItem, putItem, queryByPK, queryGSI3, scanByGSI3PK } from '../lib/dynamo';
 import { response } from './cors';
@@ -14,6 +14,10 @@ function badRequest(origin: string, msg: string) {
 
 function getClientId(event: APIGatewayProxyEventV2) {
   return event.pathParameters?.id;
+}
+
+function enrollmentKey(dripId: string, clientId: string) {
+  return `DRIP_ENROLL#${dripId}#${clientId}`;
 }
 
 const clientsHandler: Handler = async (event: APIGatewayProxyEventV2) => {
@@ -176,6 +180,36 @@ const clientsHandler: Handler = async (event: APIGatewayProxyEventV2) => {
       targetName: `${payload.firstName} ${payload.lastName}`,
       ...extractAuditContext(event),
     });
+
+    // Auto-enroll in signup drips (best-effort)
+    try {
+      const drips = await queryByPK(`AGENCY#${cleanAgencyId}`, 'EMAIL_DRIP#') as EmailDripRecord[];
+      const signupDrips = (drips || []).filter((d) => d.isActive && d.triggerEvent === 'signup');
+      for (const drip of signupDrips) {
+        if (!drip.steps?.length) continue;
+        const existing = await getItem({
+          PK: `AGENCY#${cleanAgencyId}`,
+          SK: enrollmentKey(drip.id, id),
+        });
+        if (existing) continue;
+        const nowMs = Date.now();
+        const firstStep = drip.steps[0];
+        const nextSendAt = nowMs + Math.max(0, Number(firstStep.dayOffset || 0)) * 24 * 60 * 60 * 1000;
+        const enrollRec: DripEnrollmentRecord = {
+          PK: `AGENCY#${cleanAgencyId}`,
+          SK: enrollmentKey(drip.id, id),
+          dripId: drip.id,
+          clientId: id,
+          agencyId: cleanAgencyId,
+          currentStepIndex: 0,
+          startedAt: nowMs,
+          nextSendAt,
+        };
+        await putItem(enrollRec);
+      }
+    } catch (e) {
+      console.error('[clients] auto-enroll signup drips failed', e);
+    }
     
     return response(200, { ok: true, client: rec }, origin);
   }

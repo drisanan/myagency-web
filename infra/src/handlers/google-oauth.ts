@@ -193,12 +193,29 @@ const googleOauthHandler = async (event: APIGatewayProxyEventV2) => {
       const expiryDate = item?.tokens?.expiry_date;
       const isExpired = expiryDate ? Date.now() > expiryDate : !hasTokens;
 
+      let email: string | undefined;
+      if (hasTokens) {
+        try {
+          const oauth = new google.auth.OAuth2(
+            process.env.GOOGLE_CLIENT_ID,
+            process.env.GOOGLE_CLIENT_SECRET,
+            REDIRECT_URI,
+          );
+          oauth.setCredentials(item?.tokens);
+          const oauth2 = google.oauth2({ version: 'v2', auth: oauth });
+          const profile = await oauth2.userinfo.get();
+          email = profile?.data?.email || undefined;
+        } catch (e) {
+          console.warn('[google/status] Failed to fetch user email', e);
+        }
+      }
       return response(200, {
         ok: true,
         connected: hasTokens && hasRefreshToken,
         expired: hasTokens && isExpired,
         canRefresh: hasRefreshToken,
         expiryDate,
+        email,
       }, origin);
     } catch (e: any) {
       console.error('google-status error', e);

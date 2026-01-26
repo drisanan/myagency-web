@@ -4,7 +4,7 @@ import { useSession } from '@/features/auth/session';
 import { useQuery } from '@tanstack/react-query';
 import { listAgencies } from '@/services/agencies';
 import { listClientsByAgencyEmail } from '@/services/clients';
-import { Typography, Box, Skeleton, Stack } from '@mui/material';
+import { Typography, Box, Skeleton, Stack, Paper } from '@mui/material';
 import { DataGrid, GridColDef } from '@mui/x-data-grid';
 import { getMailEntries } from '@/services/mailStatus';
 import { getScholarships, setScholarships } from '@/services/scholarships';
@@ -16,6 +16,7 @@ import { GoogleCalendarWidget } from '@/features/calendar';
 import { computeEmailMetrics, computeOpenRateMetrics, countAddedThisMonth, formatDelta, type MetricsResponse } from './metrics';
 import { useTour } from '@/features/tour/TourProvider';
 import { dashboardSteps } from '@/features/tour/dashboardSteps';
+import { dashboardDataGridSx, dashboardTablePaperSx } from '@/components/tableStyles';
 
 type MailEntry = { clientId?: string };
 
@@ -59,14 +60,15 @@ export default function DashboardPage() {
     return (
       <>
         <Typography variant="h4" gutterBottom>Dashboard</Typography>
-        <div style={{ height: 520 }}>
+        <Paper sx={{ height: 520, ...dashboardTablePaperSx }}>
           <DataGrid
             rows={rows as any[]}
             columns={columns}
             getRowId={(r)=>r.id}
             loading={isLoading}
+            sx={dashboardDataGridSx}
           />
-        </div>
+        </Paper>
       </>
     );
   }

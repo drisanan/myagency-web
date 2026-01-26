@@ -30,6 +30,7 @@ const defaults = {
   // Backgrounds
   contentBg: '#F9FAFB',
   cardBg: '#FFFFFF',
+  headerBg: '#FFFFFF',
   // Navigation
   navText: '#999DAA',
   navActiveText: '#14151E',
@@ -422,6 +423,12 @@ export function SettingsForm() {
         </AccordionSummary>
         <AccordionDetails>
           <Stack spacing={2}>
+            <ColorPicker 
+              label="Header Background" 
+              value={colors.headerBg || ''} 
+              onChange={(v) => updateColor('headerBg', v)}
+              defaultValue={defaults.headerBg}
+            />
             <ColorPicker 
               label="Nav Item Text" 
               value={colors.navText || ''} 

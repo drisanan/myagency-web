@@ -3,7 +3,6 @@ import React from 'react';
 import { listLists, saveList } from '@/services/lists';
 import { listUniversities, DIVISION_API_MAPPING } from '@/services/recruiter';
 import { useSession } from '@/features/auth/session';
-import AppLayout from '@/app/(app)/layout';
 import { useTour } from '@/features/tour/TourProvider';
 import { clientListsSteps } from '@/features/tour/clientSteps';
 import { getDivisions, getStates } from '@/services/recruiterMeta';
@@ -17,7 +16,6 @@ import {
   CardHeader,
   Checkbox,
   CircularProgress,
-  Container,
   Divider,
   FormControlLabel,
   Stack,
@@ -49,9 +47,15 @@ export default function ClientListsPage() {
   const [states, setStates] = React.useState<Array<{ code: string; name: string }>>([]);
   const [universities, setUniversities] = React.useState<Uni[]>([]);
   const [selected, setSelected] = React.useState<Record<string, boolean>>({});
+  const [schoolSearch, setSchoolSearch] = React.useState('');
   const [loadingUnis, setLoadingUnis] = React.useState(false);
   const [saving, setSaving] = React.useState(false);
   const [clientProfile, setClientProfile] = React.useState<any>(null);
+  const visibleUniversities = React.useMemo(() => {
+    const term = schoolSearch.trim().toLowerCase();
+    if (!term) return universities;
+    return universities.filter((u) => u.name.toLowerCase().includes(term));
+  }, [universities, schoolSearch]);
 
   React.useEffect(() => {
     (async () => {
@@ -158,131 +162,139 @@ export default function ClientListsPage() {
   };
 
   return (
-    <AppLayout>
-      <Box sx={{ bgcolor: '#121212', minHeight: '100vh', py: 6 }}>
-        <Container maxWidth="md">
-          <Stack spacing={3}>
-            <Card>
-            <CardHeader title="Create Interest List" subheader="Select universities and save your list" />
-            <Divider />
-            <CardContent>
-              <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 2 }}>
-                <TextField
-                  size="small"
-                  label="List Name"
-                  fullWidth
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                />
-                <Box />
-                <TextField
-                  size="small"
-                  select
-                  label="Sport"
-                  fullWidth
-                  value={sport}
-                  disabled
-                  helperText="Sport is set from your profile"
-                >
-                  {sports.map((s) => (
-                    <MenuItem key={s} value={s}>
-                      {s}
-                    </MenuItem>
-                  ))}
-                </TextField>
-                <TextField size="small" select label="Division" fullWidth value={division} onChange={(e) => setDivision(e.target.value)}>
-                  {divisions.map((d) => (
-                    <MenuItem key={d} value={d}>
-                      {d}
-                    </MenuItem>
-                  ))}
-                </TextField>
-                <TextField size="small" select label="State" fullWidth value={state} onChange={(e) => setState(e.target.value)}>
-                  {states.map((s) => (
-                    <MenuItem key={s.code} value={s.code}>
-                      {s.name}
-                    </MenuItem>
-                  ))}
-                </TextField>
-              </Box>
+    <Box sx={{ maxWidth: 1200, mx: 'auto' }}>
+      <Stack spacing={3}>
+        <Card variant="outlined" sx={{ borderRadius: 2 }}>
+          <CardHeader
+            title="Create Interest List"
+            subheader="Select universities and save your list"
+            sx={{ px: 3, pt: 3, pb: 2 }}
+          />
+          <Divider />
+          <CardContent sx={{ px: 3, pb: 3 }}>
+            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 2 }}>
+              <TextField
+                size="small"
+                label="List Name"
+                fullWidth
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+              />
+              <Box />
+              <TextField
+                size="small"
+                select
+                label="Sport"
+                fullWidth
+                value={sport}
+                disabled
+                helperText="Sport is set from your profile"
+              >
+                {sports.map((s) => (
+                  <MenuItem key={s} value={s}>
+                    {s}
+                  </MenuItem>
+                ))}
+              </TextField>
+              <TextField size="small" select label="Division" fullWidth value={division} onChange={(e) => setDivision(e.target.value)}>
+                {divisions.map((d) => (
+                  <MenuItem key={d} value={d}>
+                    {d}
+                  </MenuItem>
+                ))}
+              </TextField>
+              <TextField size="small" select label="State" fullWidth value={state} onChange={(e) => setState(e.target.value)}>
+                {states.map((s) => (
+                  <MenuItem key={s.code} value={s.code}>
+                    {s.name}
+                  </MenuItem>
+                ))}
+              </TextField>
+            </Box>
+            <Box sx={{ mt: 2 }}>
+              <Button variant="contained" onClick={loadUniversities} disabled={loadingUnis}>
+                {loadingUnis ? <CircularProgress size={18} /> : 'Load Universities'}
+              </Button>
+            </Box>
+            {universities.length > 0 && (
               <Box sx={{ mt: 2 }}>
-                <Button variant="contained" onClick={loadUniversities} disabled={loadingUnis}>
-                  {loadingUnis ? <CircularProgress size={18} /> : 'Load Universities'}
-                </Button>
-              </Box>
-              {universities.length > 0 && (
-                <Box sx={{ mt: 2 }}>
-                  <Typography variant="subtitle1" gutterBottom>
-                    Select universities
-                  </Typography>
-                  <Box sx={{ maxHeight: 280, overflow: 'auto', border: '1px solid #eee', p: 1, borderRadius: 1 }}>
-                    <Stack spacing={1}>
-                      {universities.map((u) => (
-                        <FormControlLabel
-                          key={u.name}
-                          control={
-                            <Checkbox
-                              checked={!!selected[u.name]}
-                              onChange={() => toggleUni(u.name)}
-                            />
-                          }
-                          label={u.name}
-                        />
-                      ))}
-                    </Stack>
-                  </Box>
-                  <Box sx={{ mt: 2, display: 'flex', gap: 1, alignItems: 'center' }}>
-                    <Button variant="contained" onClick={doSave} disabled={saving}>
-                      {saving ? <CircularProgress size={18} /> : 'Save List'}
-                    </Button>
-                    {error ? <Typography color="error">{error}</Typography> : null}
-                  </Box>
-                </Box>
-              )}
-              {!universities.length && error ? (
-                <Typography color="error" sx={{ mt: 2 }}>
-                  {error}
+                <Typography variant="subtitle1" gutterBottom>
+                  Select universities
                 </Typography>
-              ) : null}
-            </CardContent>
-          </Card>
-
-            <Card data-tour="client-lists">
-            <CardHeader title="Your Interest Lists" />
-            <Divider />
-            <CardContent>
-              {loading ? (
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <CircularProgress size={18} />
-                  <Typography>Loading…</Typography>
+                <TextField
+                  size="small"
+                  label="Search school"
+                  value={schoolSearch}
+                  onChange={(e) => setSchoolSearch(e.target.value)}
+                  placeholder="Type a school name"
+                  sx={{ mb: 2 }}
+                />
+                <Box sx={{ maxHeight: 280, overflow: 'auto', border: '1px solid #eee', p: 1, borderRadius: 1 }}>
+                  <Stack spacing={1}>
+                    {visibleUniversities.map((u) => (
+                      <FormControlLabel
+                        key={u.name}
+                        control={
+                          <Checkbox
+                            checked={!!selected[u.name]}
+                            onChange={() => toggleUni(u.name)}
+                          />
+                        }
+                        label={u.name}
+                      />
+                    ))}
+                  </Stack>
                 </Box>
-              ) : (
-                <Stack spacing={1}>
-                  {lists.map((l) => (
-                    <Box key={l.id} sx={{ border: '1px solid #eee', borderRadius: 1, p: 1.5 }}>
-                      <Typography variant="subtitle1">{l.name}</Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        {(l.items || []).length} universities
+                <Box sx={{ mt: 2, display: 'flex', gap: 1, alignItems: 'center' }}>
+                  <Button variant="contained" onClick={doSave} disabled={saving}>
+                    {saving ? <CircularProgress size={18} /> : 'Save List'}
+                  </Button>
+                  {error ? <Typography color="error">{error}</Typography> : null}
+                </Box>
+              </Box>
+            )}
+            {!universities.length && error ? (
+              <Typography color="error" sx={{ mt: 2 }}>
+                {error}
+              </Typography>
+            ) : null}
+          </CardContent>
+        </Card>
+
+        <Card data-tour="client-lists" variant="outlined" sx={{ borderRadius: 2 }}>
+          <CardHeader title="Your Interest Lists" sx={{ px: 3, pt: 3, pb: 2 }} />
+          <Divider />
+          <CardContent sx={{ px: 3, pb: 3 }}>
+            {loading ? (
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <CircularProgress size={18} />
+                <Typography>Loading…</Typography>
+              </Box>
+            ) : (
+              <Stack spacing={1}>
+                {lists.map((l) => (
+                  <Box key={l.id} sx={{ border: '1px solid #eee', borderRadius: 1, p: 1.5 }}>
+                    <Typography variant="subtitle1">{l.name}</Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      {(l.items || []).length} universities
+                    </Typography>
+                    {(l.items || []).length > 0 && (
+                      <Typography variant="body2" sx={{ mt: 0.5 }}>
+                        {(l.items || [])
+                          .map((it: any) => it.school || it.university || it.name || '')
+                          .filter(Boolean)
+                          .join(', ')}
                       </Typography>
-                      {(l.items || []).length > 0 && (
-                        <Typography variant="body2" sx={{ mt: 0.5 }}>
-                          {(l.items || [])
-                            .map((it: any) => it.school || it.university || it.name || '')
-                            .filter(Boolean)
-                            .join(', ')}
-                        </Typography>
-                      )}
-                    </Box>
-                  ))}
-                  {!lists.length ? <Typography>No lists yet.</Typography> : null}
-                </Stack>
-              )}
-            </CardContent>
-            </Card>
-          </Stack>
-        </Container>
-      </Box>
-    </AppLayout>
+                    )}
+                  </Box>
+                ))}
+                {!lists.length ? <Typography>No lists yet.</Typography> : null}
+              </Stack>
+            )}
+          </CardContent>
+        </Card>
+      </Stack>
+    </Box>
   );
 }
 

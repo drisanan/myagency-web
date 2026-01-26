@@ -2,6 +2,7 @@
 import React from 'react';
 import { Paper, Table, TableHead, TableRow, TableCell, TableBody, TextField, Stack, Typography, Box } from '@mui/material';
 import { Commit, filterCommits } from '@/services/commits';
+import { dashboardTablePaperSx, dashboardTableSx } from '@/components/tableStyles';
 
 export function CommitsTable({
   title,
@@ -20,28 +21,30 @@ export function CommitsTable({
   const filtered = filterCommits(rows, { position, university });
 
   return (
-    <Paper variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
-      <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
-        <Typography variant="h6">{title}</Typography>
-        <Stack direction="row" spacing={1}>
-          <TextField
-            size="small"
-            label="Position"
-            value={position}
-            onChange={(e) => setPosition(e.target.value)}
-            data-testid={`${dataTestId}-filter-position`}
-          />
-          <TextField
-            size="small"
-            label="University"
-            value={university}
-            onChange={(e) => setUniversity(e.target.value)}
-            data-testid={`${dataTestId}-filter-university`}
-          />
+    <Paper variant="outlined" sx={{ p: 0, ...dashboardTablePaperSx }}>
+      <Box sx={{ px: 2, pt: 2, pb: 1.5 }}>
+        <Stack direction="row" justifyContent="space-between" alignItems="center">
+          <Typography variant="subtitle1">{title}</Typography>
+          <Stack direction="row" spacing={1}>
+            <TextField
+              size="small"
+              label="Position"
+              value={position}
+              onChange={(e) => setPosition(e.target.value)}
+              data-testid={`${dataTestId}-filter-position`}
+            />
+            <TextField
+              size="small"
+              label="University"
+              value={university}
+              onChange={(e) => setUniversity(e.target.value)}
+              data-testid={`${dataTestId}-filter-university`}
+            />
+          </Stack>
         </Stack>
-      </Stack>
+      </Box>
       <Box sx={{ maxHeight: 420, overflow: 'auto' }}>
-        <Table size="small" stickyHeader data-testid={dataTestId}>
+        <Table size="small" stickyHeader data-testid={dataTestId} sx={dashboardTableSx}>
           <TableHead>
             <TableRow>
               {showRank && <TableCell>Rank</TableCell>}

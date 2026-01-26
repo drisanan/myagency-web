@@ -5,6 +5,7 @@ import { TaskRecord } from '../lib/models';
 import { getItem, putItem, queryByPK } from '../lib/dynamo';
 import { response } from './cors';
 import { withSentry } from '../lib/sentry';
+import { logActivity } from '../lib/activity';
 
 type TaskStatus = 'todo' | 'in-progress' | 'done';
 
@@ -96,6 +97,7 @@ const tasksHandler: Handler = async (event: APIGatewayProxyEventV2) => {
     const existing = await getItem({ PK: `AGENCY#${session.agencyId}`, SK: `TASK#${taskId}` });
     if (!existing) return response(404, { ok: false, error: 'Not found' }, origin);
     const now = Date.now();
+    const wasDone = (existing as any).status === 'done';
     const merged: TaskRecord = {
       ...existing,
       ...payload,
@@ -105,6 +107,23 @@ const tasksHandler: Handler = async (event: APIGatewayProxyEventV2) => {
       updatedAt: now,
     };
     await putItem(merged);
+    if (!wasDone && merged.status === 'done') {
+      try {
+        const actorEmail = session.agentEmail || session.agencyEmail || session.email || 'agent';
+        await logActivity({
+          agencyId: session.agencyId,
+          clientId: merged.assigneeClientId || undefined,
+          agentId: merged.assigneeAgentId || (session.role === 'agent' ? session.agentId : undefined),
+          actorEmail,
+          actorType: session.role === 'client' ? 'athlete' : 'agent',
+          activityType: 'task_completed',
+          description: `Task completed: ${merged.title}`,
+          metadata: { taskId: merged.id },
+        });
+      } catch (e) {
+        console.warn('[tasks] Failed to log activity', e);
+      }
+    }
     return response(200, { ok: true, task: merged }, origin);
   }
 

@@ -4303,8 +4303,10 @@ chrome-trace-event@^1.0.2:
   resolved "https://registry.npmjs.org/chrome-trace-event/-/chrome-trace-event-1.0.4.tgz"
   integrity sha512-rNjApaLzuwaOTjCiT8lSDdGN1APCiqkChLMJxJPWLunPAt5fy8xgU9/jNOchV84wfIxrA0lRQB7oCT8jrn/wrQ==
 
-chromedriver@142:
-  version "142.0.3"
+chromedriver@^144.0.0:
+  version "144.0.0"
+  resolved "https://registry.npmjs.org/chromedriver/-/chromedriver-144.0.0.tgz"
+  integrity sha512-/tJRUsIroqvqlOMstecDXYIJpq0r441tIOnk951rAbT7OCMRZB98StG+NWp0m31TIKwuizOZobr/PP7ekVaSig==
   dependencies:
     "@testim/chrome-version" "^1.1.4"
     axios "^1.12.0"

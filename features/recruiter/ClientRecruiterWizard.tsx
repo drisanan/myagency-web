@@ -27,7 +27,8 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { generateIntro } from '@/services/aiRecruiter';
 import { useSession } from '@/features/auth/session';
 import { getClient, setClientGmailTokens, getClientGmailTokens } from '@/services/clients';
-import { listLists, CoachList } from '@/services/lists';
+import { CoachList } from '@/services/lists';
+import { listAssignments } from '@/services/listAssignments';
 import { hasMailed, markMailed } from '@/services/mailStatus';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.API_BASE_URL || '';
@@ -37,7 +38,6 @@ const STEPS = ['Select List', 'Select Coach', 'Compose & Send'];
 export function ClientRecruiterWizard() {
   const { session, loading } = useSession();
   const clientId = session?.clientId || '';
-  const agencyEmail = session?.agencyEmail || '';
 
   const [activeStep, setActiveStep] = React.useState(0);
   const [error, setError] = React.useState<string | null>(null);
@@ -46,6 +46,25 @@ export function ClientRecruiterWizard() {
   // Client profile
   const [clientProfile, setClientProfile] = React.useState<any>(null);
   const [loadingProfile, setLoadingProfile] = React.useState(true);
+  const missingProfileFields = React.useMemo(() => {
+    const missing: string[] = [];
+    const email = String(clientProfile?.email || '').trim();
+    if (!email || email.toLowerCase() === 'admin@example.com') missing.push('Email');
+    if (!clientProfile?.firstName) missing.push('First Name');
+    if (!clientProfile?.lastName) missing.push('Last Name');
+    if (!clientProfile?.phone) missing.push('Phone');
+    if (!clientProfile?.sport) missing.push('Sport');
+    if (!clientProfile?.username) {
+      missing.push('Profile Username');
+      missing.push('Profile URL');
+    }
+    const hasAccessCode = Boolean(clientProfile?.accessCodeHash || clientProfile?.accessCode || clientProfile?.authEnabled);
+    if (!hasAccessCode) missing.push('Access Code');
+    const hasPhoto = Boolean(clientProfile?.radar?.profileImage || clientProfile?.profileImageUrl || clientProfile?.photoUrl);
+    if (!hasPhoto) missing.push('Add Photo');
+    return missing;
+  }, [clientProfile]);
+  const profileIncomplete = missingProfileFields.length > 0;
 
   // Lists (assigned by agency)
   const [lists, setLists] = React.useState<CoachList[]>([]);
@@ -137,20 +156,16 @@ export function ClientRecruiterWizard() {
     setLoadingProfile(true);
     Promise.all([
       getClient(clientId),
-      listLists(agencyEmail),
+      listAssignments({ clientId, includeLists: true }),
     ])
-      .then(([profile, allLists]) => {
+      .then(([profile, assignmentData]) => {
         setClientProfile(profile);
-        // Show agency-created lists (not CLIENT_INTEREST type)
-        // CLIENT_INTEREST lists are created by clients themselves and should not appear here
-        const filtered = (allLists || []).filter(
-          (l) => l.type !== 'CLIENT_INTEREST'
-        );
-        setLists(filtered);
+        const listsFromAssignments = (assignmentData?.lists || []) as CoachList[];
+        setLists(listsFromAssignments);
       })
       .catch((e) => setError(e?.message || 'Failed to load data'))
       .finally(() => setLoadingProfile(false));
-  }, [clientId, agencyEmail]);
+  }, [clientId]);
 
   // Check Gmail connection status
   React.useEffect(() => {
@@ -391,9 +406,10 @@ CRITICAL INSTRUCTIONS:
   }
 
   const canNext =
-    (activeStep === 0 && Boolean(selectedListId)) ||
-    (activeStep === 1 && Boolean(selectedCoachId)) ||
-    activeStep === 2;
+    !profileIncomplete &&
+    ((activeStep === 0 && Boolean(selectedListId)) ||
+      (activeStep === 1 && Boolean(selectedCoachId)) ||
+      activeStep === 2);
 
   const handleNext = () => {
     if (activeStep === 1 && !emailHtml) {
@@ -426,6 +442,16 @@ CRITICAL INSTRUCTIONS:
 
   return (
     <Box>
+      {missingProfileFields.length > 0 && (
+        <Alert severity="warning" sx={{ mb: 2 }}>
+          <Typography variant="subtitle2" sx={{ mb: 0.5 }}>
+            Complete your profile to use the Recruiter Wizard.
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Missing: {missingProfileFields.join(', ')}
+          </Typography>
+        </Alert>
+      )}
       <Stepper activeStep={activeStep} alternativeLabel sx={{ mb: 3 }}>
         {STEPS.map((label) => (
           <Step key={label}>
@@ -609,7 +635,7 @@ CRITICAL INSTRUCTIONS:
                 <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
                   <Button
                     onClick={handleGenerateAI}
-                    disabled={aiLoading || !selectedCoach}
+                    disabled={profileIncomplete || aiLoading || !selectedCoach}
                     startIcon={aiLoading ? <CircularProgress size={16} color="inherit" /> : null}
                     sx={{
                       bgcolor: '#000',
@@ -628,7 +654,7 @@ CRITICAL INSTRUCTIONS:
                   <Button
                     variant="contained"
                     onClick={handleConnectGmail}
-                    disabled={gmailConnecting}
+                    disabled={profileIncomplete || gmailConnecting}
                     startIcon={gmailConnecting ? <CircularProgress size={16} color="inherit" /> : null}
                     sx={{ bgcolor: '#4285f4', '&:hover': { bgcolor: '#3367d6' } }}
                   >
@@ -644,7 +670,7 @@ CRITICAL INSTRUCTIONS:
                   <Button
                     variant="contained"
                     onClick={handleCreateDraft}
-                    disabled={!selectedCoach?.email || isCreatingDraft}
+                    disabled={profileIncomplete || !selectedCoach?.email || isCreatingDraft}
                     startIcon={isCreatingDraft ? <CircularProgress size={16} color="inherit" /> : null}
                     sx={{ bgcolor: '#b7ff00', color: '#000', '&:hover': { bgcolor: '#a0e600' } }}
                   >

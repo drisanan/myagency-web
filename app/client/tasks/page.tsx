@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Box, Typography, List, ListItem, ListItemText, Chip, Button, CircularProgress } from '@mui/material';
+import { Box, Typography, List, ListItem, ListItemText, Chip, Button, CircularProgress, Paper } from '@mui/material';
 import { useSession } from '@/features/auth/session';
 import { listTasks, updateTask, Task } from '@/services/tasks';
 import { useTour } from '@/features/tour/TourProvider';
@@ -56,40 +56,42 @@ export default function ClientTasksPage() {
   }
 
   return (
-    <Box sx={{ p: 2 }}>
-      <Typography variant="h5" gutterBottom>
+    <Box sx={{ maxWidth: 1200, mx: 'auto' }}>
+      <Typography variant="h4" gutterBottom>
         Tasks
       </Typography>
-      {fetching && (
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-          <CircularProgress size={18} />
-          <Typography variant="body2">Loading tasks…</Typography>
-        </Box>
-      )}
-      {error && (
-        <Typography color="error" variant="body2" sx={{ mb: 1 }}>
-          {error}
-        </Typography>
-      )}
-      {!fetching && tasks.length === 0 && (
-        <Typography color="text.secondary">No tasks assigned to you yet.</Typography>
-      )}
-      <List data-tour="client-tasks-list">
-        {tasks.map((t) => (
-          <ListItem key={t.id} divider alignItems="flex-start">
-            <ListItemText
-              primary={t.title}
-              secondary={t.dueAt ? `Due ${new Date(t.dueAt).toLocaleString()}` : 'No due date'}
-            />
-            <Chip size="small" label={t.status || 'open'} sx={{ mr: 1 }} />
-            {t.status !== 'done' && (
-              <Button size="small" onClick={() => markDone(t.id)}>
-                Mark done
-              </Button>
-            )}
-          </ListItem>
-        ))}
-      </List>
+      <Paper variant="outlined" sx={{ p: 3, borderRadius: 2, mt: 2 }}>
+        {fetching && (
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+            <CircularProgress size={18} />
+            <Typography variant="body2">Loading tasks…</Typography>
+          </Box>
+        )}
+        {error && (
+          <Typography color="error" variant="body2" sx={{ mb: 1 }}>
+            {error}
+          </Typography>
+        )}
+        {!fetching && tasks.length === 0 && (
+          <Typography color="text.secondary">No tasks assigned to you yet.</Typography>
+        )}
+        <List data-tour="client-tasks-list">
+          {tasks.map((t) => (
+            <ListItem key={t.id} divider alignItems="flex-start">
+              <ListItemText
+                primary={t.title}
+                secondary={t.dueAt ? `Due ${new Date(t.dueAt).toLocaleString()}` : 'No due date'}
+              />
+              <Chip size="small" label={t.status || 'open'} sx={{ mr: 1 }} />
+              {t.status !== 'done' && (
+                <Button size="small" onClick={() => markDone(t.id)}>
+                  Mark done
+                </Button>
+              )}
+            </ListItem>
+          ))}
+        </List>
+      </Paper>
     </Box>
   );
 }

@@ -11,7 +11,9 @@ const client = new DynamoDBClient({
   region: process.env.AWS_REGION || 'us-west-1',
   credentials: IS_OFFLINE ? fromIni({ profile: process.env.AWS_PROFILE || 'myagency' }) : undefined
 });
-export const docClient = DynamoDBDocumentClient.from(client);
+export const docClient = DynamoDBDocumentClient.from(client, {
+  marshallOptions: { removeUndefinedValues: true },
+});
 
 const DEBUG_SESSION = process.env.DEBUG_SESSION === 'true';
 

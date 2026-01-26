@@ -854,12 +854,14 @@ type ClientWizardProps = {
   initialClient?: any;
   mode?: 'create' | 'edit';
   onSaved?: () => void;
+  redirectOnSave?: boolean;
 };
 
 export function ClientWizard({
   initialClient,
   mode = 'create',
   onSaved,
+  redirectOnSave = true,
   publicMode = false,
   publicSubmit,
   overrideAgencyEmail,
@@ -1090,8 +1092,11 @@ export function ClientWizard({
         onSubmitSuccess?.();
         if (publicMode) {
           setSubmitSuccess('Submitted!');
-        } else {
+        } else if (redirectOnSave) {
           router.push('/clients');
+        } else {
+          setActiveStep(0);
+          setSubmitSuccess('Profile updated!');
         }
         return;
       } catch (e: any) {

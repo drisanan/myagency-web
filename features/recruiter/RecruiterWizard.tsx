@@ -17,7 +17,8 @@ import { EmailTemplate, listTemplates, saveTemplate, toTemplateHtml, applyTempla
 import { listLists, CoachList } from '@/services/lists';
 import { hasMailed, markMailed } from '@/services/mailStatus';
 import { listPrompts, PromptRecord } from '@/services/prompts';
-import { wrapLinksWithTracking, recordEmailSends } from '@/services/emailTracking';
+import { wrapLinksWithTracking, recordEmailSends, createOpenPixelUrl } from '@/services/emailTracking';
+import { createCampaign, updateCampaign } from '@/services/campaigns';
 
 type ClientRow = { id: string; email: string; firstName?: string; lastName?: string; sport?: string };
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.API_BASE_URL || '';
@@ -45,6 +46,7 @@ export function RecruiterWizard() {
   const [states, setStates] = React.useState<Array<{ code: string; name: string }>>([]);
   const [state, setState] = React.useState<string>('');
   const [schools, setSchools] = React.useState<Array<{ name: string }>>([]);
+  const [schoolSearch, setSchoolSearch] = React.useState('');
   const [lists, setLists] = React.useState<CoachList[]>([]);
   const [selectedListId, setSelectedListId] = React.useState<string>('');
   const [selectedList, setSelectedList] = React.useState<CoachList | null>(null);
@@ -180,6 +182,11 @@ export function RecruiterWizard() {
     return all.filter((c) => map[c.id]);
   }, [selectedCoachIds, schoolDetails, listMode, selectedList]);
   const universityName = schoolDetails?.schoolInfo?.School || schoolDetails?.name || '';
+  const visibleSchools = React.useMemo(() => {
+    const term = schoolSearch.trim().toLowerCase();
+    if (!term) return schools;
+    return schools.filter((s) => s.name.toLowerCase().includes(term));
+  }, [schools, schoolSearch]);
   const selectedRecipients = React.useMemo(
     () => (selectedCoaches || []).map((c: any) => c.email || c.Email || '').filter(Boolean),
     [selectedCoaches],
@@ -199,6 +206,37 @@ export function RecruiterWizard() {
       return html.replace(re, `Hello Coach ${coachLast},`);
     }
     return `<p>Hello Coach ${coachLast},</p>${html}`;
+  }
+
+  function applyIntroTokens(html: string, coach: any, universityLabel: string) {
+    const coachFirst = coach?.firstName || coach?.FirstName || '';
+    const coachLast = coach?.lastName || coach?.LastName || '';
+    const coachFull = `${coachFirst} ${coachLast}`.trim() || 'Coach';
+    const universityNameSafe = universityLabel || '';
+    return html
+      .replaceAll('{{coach_full_name}}', coachFull)
+      .replaceAll('{{coach_first_name}}', coachFirst)
+      .replaceAll('{{coach_last_name}}', coachLast)
+      .replaceAll('{{university_name}}', universityNameSafe);
+  }
+
+  function buildSubjectLine(
+    athleteName: string,
+    gradYear: string,
+    positionOrSport: string,
+    index: number,
+  ) {
+    const safeAthlete = athleteName.trim() || 'Athlete';
+    const parts = [safeAthlete, gradYear, positionOrSport].filter(Boolean).join(' ').trim();
+    const base = parts || safeAthlete;
+    const variants = [
+      `${base} Introduction`,
+      `${base} Intro`,
+      `${base} Recruiting Intro`,
+      `${base} Profile`,
+      `${base} Highlights`,
+    ];
+    return variants[index % variants.length];
   }
 
   function toggleSection(k: string, v: boolean) {
@@ -418,9 +456,49 @@ export function RecruiterWizard() {
         setError('Select at least one coach with an email');
         return;
       }
-      const subject = `Intro: ${contact.firstName || ''} ${contact.lastName || ''} → ${universityName || ''}`.trim();
+      const athleteName = `${contact.firstName || ''} ${contact.lastName || ''}`.trim();
+      const gradYear = String((currentClient as any)?.radar?.graduationYear || (currentClient as any)?.graduationYear || '').trim();
+      const positionOrSport = String((currentClient as any)?.radar?.position || (currentClient as any)?.position || contact.sport || '').trim();
       const html = aiHtml || buildEmailPreview();
       const savedTokens = getClientGmailTokens(id);
+      const campaignName = resolvedCollegeName || selectedList?.name || universityName || 'Coach Outreach';
+      const recipientMeta = selectedCoaches.map((c: any) => ({
+        email: c.email || c.Email || '',
+        name: `${c.firstName || c.FirstName || ''} ${c.lastName || c.LastName || ''}`.trim(),
+        university: universityName || selectedList?.name || '',
+      })).filter((r) => r.email);
+
+      if (scheduleEnabled) {
+        const scheduleTs = new Date(scheduledAt).getTime();
+        if (!scheduleTs || Number.isNaN(scheduleTs) || scheduleTs <= Date.now()) {
+          throw new Error('Select a valid future date/time to schedule this campaign.');
+        }
+        await createCampaign({
+          clientId: id,
+          subject,
+          html,
+          recipients: recipientMeta,
+          senderClientId: id,
+          campaignName,
+          scheduledAt: scheduleTs,
+          personalizedMessage: followupMessage || undefined,
+          status: 'scheduled',
+        });
+        setSendMessage(`Scheduled for ${new Date(scheduleTs).toLocaleString()}`);
+        return;
+      }
+
+      const campaign = await createCampaign({
+        clientId: id,
+        subject,
+        html,
+        recipients: recipientMeta,
+        senderClientId: id,
+        campaignName,
+        personalizedMessage: followupMessage || undefined,
+        status: 'draft',
+      });
+      const campaignId = campaign?.id;
 
       // Track recipients for recording sends
       const sentRecipients: Array<{ email: string; name?: string; university?: string }> = [];
@@ -429,7 +507,10 @@ export function RecruiterWizard() {
       for (const recipient of to) {
         const coach = selectedCoaches.find((c: any) => (c.email || c.Email) === recipient) || {};
         const coachName = `${coach.firstName || coach.FirstName || ''} ${coach.lastName || coach.LastName || ''}`.trim();
-        let personalizedHtml = personalizedHtmlForCoach(html, coach);
+        const coachUniversity = coach.school || coach.School || universityName || selectedList?.name || resolvedCollegeName || '';
+        let personalizedHtml = applyIntroTokens(html, coach, coachUniversity);
+        personalizedHtml = personalizedHtmlForCoach(personalizedHtml, coach);
+        const subject = buildSubjectLine(athleteName, gradYear, positionOrSport, sentRecipients.length);
         
         // Wrap links with tracking URLs for analytics
         if (session?.agencyId) {
@@ -439,7 +520,20 @@ export function RecruiterWizard() {
             athleteEmail: contact.email || '',
             recipientEmail: recipient,
             university: universityName || selectedList?.name || '',
+            campaignId,
           });
+        }
+
+        if (session?.agencyId && campaignId) {
+          const pixel = createOpenPixelUrl({
+            agencyId: session.agencyId,
+            clientId: id,
+            athleteEmail: contact.email || '',
+            recipientEmail: recipient,
+            university: universityName || selectedList?.name || '',
+            campaignId,
+          });
+          personalizedHtml = `${personalizedHtml}<img src="${pixel}" alt="" width="1" height="1" style="display:none;" />`;
         }
         
         const draftUrl = API_BASE_URL ? `${API_BASE_URL}/gmail/create-draft` : '/api/gmail/create-draft';
@@ -449,7 +543,7 @@ export function RecruiterWizard() {
           credentials: 'include',
           body: JSON.stringify({ 
               clientId: id, 
-              to: [recipient],
+              recipients: [recipient],
               cc: ccEmails.length > 0 ? ccEmails : undefined,
               subject, 
               html: personalizedHtml, 
@@ -486,7 +580,14 @@ export function RecruiterWizard() {
           clientEmail: contact.email || '',
           recipients: sentRecipients,
           subject,
+          campaignId,
         }).catch(err => console.error('[RecruiterWizard] Failed to record sends', err));
+      }
+
+      if (campaignId) {
+        updateCampaign(campaignId, { status: 'sent' }).catch((err) => {
+          console.error('[RecruiterWizard] Failed to mark campaign sent', err);
+        });
       }
       
       setSendMessage(`Sent to ${to.length} recipient${to.length === 1 ? '' : 's'}`);
@@ -504,6 +605,9 @@ export function RecruiterWizard() {
   const [isGenerating, setIsGenerating] = React.useState(false);
   const [isCreatingDraft, setIsCreatingDraft] = React.useState(false);
   const [isEditingPreview, setIsEditingPreview] = React.useState(false);
+  const [scheduleEnabled, setScheduleEnabled] = React.useState(false);
+  const [scheduledAt, setScheduledAt] = React.useState('');
+  const [followupMessage, setFollowupMessage] = React.useState('');
 
   // Delayed busy indicator to avoid flicker on sub-1s actions
   const useDelayedBusy = (flag: boolean, delayMs = 1000) => {
@@ -1009,8 +1113,16 @@ CRITICAL INSTRUCTIONS:
               <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
                 Universities
               </Typography>
+              <TextField
+                size="small"
+                label="Search school"
+                value={schoolSearch}
+                onChange={(e) => setSchoolSearch(e.target.value)}
+                placeholder="Type a school name"
+                sx={{ mb: 2, maxWidth: 320 }}
+              />
               <Stack direction="row" spacing={2} sx={{ flexWrap: 'wrap' }}>
-                {schools.map((u) => (
+                {visibleSchools.map((u) => (
                   <Card
                     key={u.name}
                     onClick={() => setSelectedSchoolName(u.name)}
@@ -1492,6 +1604,31 @@ CRITICAL INSTRUCTIONS:
                 </Box>
               </Box>
 
+              <Box sx={{ mb: 2 }}>
+                <FormControlLabel
+                  control={<Switch checked={scheduleEnabled} onChange={(e) => setScheduleEnabled(e.target.checked)} />}
+                  label="Schedule this campaign"
+                />
+                <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 2fr' }, gap: 2, mt: 1 }}>
+                  <TextField
+                    label="Send at"
+                    type="datetime-local"
+                    value={scheduledAt}
+                    onChange={(e) => setScheduledAt(e.target.value)}
+                    InputLabelProps={{ shrink: true }}
+                    size="small"
+                    disabled={!scheduleEnabled}
+                  />
+                  <TextField
+                    label="Agent message for 48-hour follow-up"
+                    value={followupMessage}
+                    onChange={(e) => setFollowupMessage(e.target.value)}
+                    size="small"
+                    placeholder="Add a short personalized note to the athlete"
+                  />
+                </Box>
+              </Box>
+
               <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} alignItems="flex-start">
                 {!gmailConnected && (
                   <Button
@@ -1514,7 +1651,7 @@ CRITICAL INSTRUCTIONS:
                 <Button
                   variant="outlined"
                     onClick={handleCreateGmailDraft}
-                    disabled={!selectedCoaches.length || isCreatingDraft}
+                    disabled={!selectedCoaches.length || isCreatingDraft || scheduleEnabled}
                     startIcon={draftBusy ? <CircularProgress size={16} /> : null}
                     sx={{ ml: { sm: 'auto' } }}
                   >

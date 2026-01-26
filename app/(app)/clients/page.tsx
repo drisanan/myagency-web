@@ -2,15 +2,18 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Typography, Button, Stack, TextField, CircularProgress, Box } from '@mui/material';
+import AddIcon from '@mui/icons-material/Add';
 
 import { ClientsList } from '@/features/clients/ClientsList';
 import { useSession } from '@/features/auth/session';
-import { upsertClient } from '@/services/clients';
+import { listClientsByAgencyEmail, upsertClient } from '@/services/clients';
 import { useTour } from '@/features/tour/TourProvider';
 import { athletesSteps } from '@/features/tour/athletesSteps';
 import { SubscriptionQuota, useCanAddAthlete } from '@/features/settings/SubscriptionQuota';
+import { MetricCard } from '@/app/(app)/dashboard/MetricCard';
+import { IoAlertCircleOutline, IoPeopleOutline, IoPersonAddOutline } from 'react-icons/io5';
 
 // FIX: Hardcode the fallback to your actual API domain to prevent localhost issues
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://api.myrecruiteragency.com';
@@ -31,6 +34,23 @@ export default function ClientsPage() {
 
   // FIX: Safely grab the email regardless of property name
   const userEmail = session?.agencyEmail || session?.email;
+  const clientsMetricsQuery = useQuery({
+    queryKey: ['clients-metrics', userEmail],
+    queryFn: () => (userEmail ? listClientsByAgencyEmail(userEmail) : []),
+    enabled: Boolean(userEmail),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const clientsForMetrics = (clientsMetricsQuery.data ?? []) as any[];
+  const totalCount = clientsForMetrics.length;
+  const now = new Date();
+  const newThisMonth = clientsForMetrics.filter((client) => {
+    if (!client?.createdAt) return false;
+    const createdAt = new Date(client.createdAt);
+    if (Number.isNaN(createdAt.getTime())) return false;
+    return createdAt.getFullYear() === now.getFullYear() && createdAt.getMonth() === now.getMonth();
+  }).length;
+  const suspendedCount = clientsForMetrics.filter((client) => client?.accountStatus === 'suspended').length;
 
   // 1. Sync Submissions Effect
   React.useEffect(() => {
@@ -184,14 +204,39 @@ export default function ClientsPage() {
             variant="contained"
             disabled={isAtLimit}
             title={isAtLimit ? 'Upgrade to add more athletes' : 'Add new athlete'}
+            endIcon={<AddIcon />}
           >
-            {isAtLimit ? 'Limit Reached' : 'New'}
+            {isAtLimit ? 'Limit Reached' : 'Add'}
           </Button>
           <Button variant="outlined" onClick={handleGenerateLink} disabled={issuing || isAtLimit}>
             {issuing ? 'Generating…' : 'Generate Form Link'}
           </Button>
         </Stack>
       </Stack>
+
+      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(3, 1fr)' }, gap: 2 }}>
+        <MetricCard
+          title="Total Athletes"
+          value={clientsMetricsQuery.isLoading ? '—' : totalCount}
+          icon={<IoPeopleOutline size={20} />}
+          bgColor="#EFF4FF"
+          textColor="#1D4ED8"
+        />
+        <MetricCard
+          title="New This Month"
+          value={clientsMetricsQuery.isLoading ? '—' : newThisMonth}
+          icon={<IoPersonAddOutline size={20} />}
+          bgColor="#ECFDF3"
+          textColor="#027A48"
+        />
+        <MetricCard
+          title="Accounts Suspended"
+          value={clientsMetricsQuery.isLoading ? '—' : suspendedCount}
+          icon={<IoAlertCircleOutline size={20} />}
+          bgColor="#FEF3F2"
+          textColor="#B42318"
+        />
+      </Box>
 
       {isAtLimit && (
         <SubscriptionQuota showUpgradeButton />

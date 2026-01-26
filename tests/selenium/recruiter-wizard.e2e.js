@@ -160,6 +160,15 @@ async function run() {
           opt = options[1];
         }
       }
+      if (label === 'List') {
+        for (const candidate of options) {
+          const text = await candidate.getText();
+          if (!text || text.startsWith('(')) continue;
+          if (text.includes('Assigned List')) continue;
+          opt = candidate;
+          break;
+        }
+      }
       
       const optText = await opt.getText();
       console.log(`Selecting option: "${optText}"`);

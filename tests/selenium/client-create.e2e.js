@@ -115,10 +115,26 @@ async function run() {
     await createBtn.click();
 
     if (!process.env.SKIP_CLIENT_CHECK) {
-      await sleep(1000);
-      await driver.get(`${BASE}/clients`);
-      await driver.wait(until.elementLocated(By.xpath(`//div[contains(@class,"MuiDataGrid")]`)), 15000);
-      await driver.wait(until.elementLocated(By.xpath(`//div[contains(text(),"${TEST_EMAIL}")]`)), 20000);
+      const maxAttempts = 15;
+      let found = false;
+      for (let i = 0; i < maxAttempts; i++) {
+        await sleep(2000);
+        const res = await fetch(`${API_BASE}/clients`, {
+          headers: { Cookie: `an_session=${sessionCookie}` },
+        });
+        if (res.ok) {
+          const json = await res.json();
+          const clients = json?.clients || [];
+          if (i === 0) {
+            console.log(`Client list size: ${clients.length}`);
+          }
+          found = clients.some((c) => String(c?.email || '').toLowerCase() === TEST_EMAIL.toLowerCase());
+          if (found) break;
+        }
+      }
+      if (!found) {
+        throw new Error(`Client not found via API after creation: ${TEST_EMAIL}`);
+      }
     }
 
     const logs = await driver.manage().logs().get('browser');

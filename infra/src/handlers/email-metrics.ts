@@ -1,15 +1,11 @@
 import { APIGatewayProxyEventV2 } from 'aws-lambda';
-import { randomUUID } from 'crypto';
 import { response } from './cors';
 import { parseSessionFromRequest } from '../lib/session';
-import { putItem, queryByPK, updateItem, getItem } from '../lib/dynamo';
-import { EmailSendRecord, EmailStatsRecord } from '../lib/models';
+import { queryByPK, getItem } from '../lib/dynamo';
+import { EmailStatsRecord } from '../lib/models';
 import { withSentry } from '../lib/sentry';
-
-function getCurrentMonth(): string {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-}
+import { logActivity } from '../lib/activity';
+import { recordEmailSendsInternal, recordEmailOpenInternal } from '../lib/emailMetrics';
 
 const emailMetricsHandler = async (event: APIGatewayProxyEventV2) => {
   const headers = event.headers || {};
@@ -40,65 +36,22 @@ const emailMetricsHandler = async (event: APIGatewayProxyEventV2) => {
       recipients,  // Array of { email, name, university }
       subject,
       draftId,
+      campaignId,
     } = payload;
 
     if (!clientId || !recipients?.length) {
       return response(400, { ok: false, error: 'clientId and recipients required' }, origin);
     }
 
-    const now = Date.now();
-    const month = getCurrentMonth();
-    const savedRecords: EmailSendRecord[] = [];
-
-    // Create a send record for each recipient
-    for (const recipient of recipients) {
-      const sendId = randomUUID();
-      const record: EmailSendRecord = {
-        PK: `AGENCY#${agencyId}`,
-        SK: `EMAIL_SEND#${now}#${sendId}`,
-        GSI3PK: `CLIENT#${clientId}`,
-        GSI3SK: `EMAIL_SEND#${now}`,
-        clientId,
-        clientEmail: clientEmail || '',
-        recipientEmail: recipient.email,
-        recipientName: recipient.name || '',
-        university: recipient.university || '',
-        subject: subject || '',
-        draftId: draftId || '',
-        sentAt: now,
-        createdAt: now,
-      };
-      
-      await putItem(record);
-      savedRecords.push(record);
-    }
-
-    // Update monthly stats
-    const statsKey = {
-      PK: `AGENCY#${agencyId}`,
-      SK: `EMAIL_STATS#${clientId}#${month}`,
-    };
-
-    try {
-      await updateItem({
-        key: statsKey,
-        updateExpression: `
-          SET sentCount = if_not_exists(sentCount, :zero) + :count,
-              clientId = :clientId,
-              period = :period,
-              updatedAt = :now
-        `,
-        expressionAttributeValues: {
-          ':zero': 0,
-          ':count': recipients.length,
-          ':clientId': clientId,
-          ':period': month,
-          ':now': now,
-        },
-      });
-    } catch (err) {
-      console.error('[email-metrics] Stats update failed', err);
-    }
+    const { saved, month } = await recordEmailSendsInternal({
+      agencyId,
+      clientId,
+      clientEmail: clientEmail || '',
+      recipients,
+      subject,
+      draftId,
+      campaignId,
+    });
 
     console.log('[email-metrics] Sends recorded', {
       agencyId,
@@ -106,27 +59,81 @@ const emailMetricsHandler = async (event: APIGatewayProxyEventV2) => {
       count: recipients.length,
     });
 
+    try {
+      const actorEmail = session.agentEmail || session.agencyEmail || session.email || 'agent';
+      await logActivity({
+        agencyId,
+        clientId,
+        actorEmail,
+        actorType: 'agent',
+        activityType: 'email_sent',
+        description: `Sent ${recipients.length} email${recipients.length === 1 ? '' : 's'} to coaches`,
+        metadata: { recipientCount: recipients.length, subject, draftId },
+      });
+    } catch (e) {
+      console.warn('[email-metrics] Failed to log activity', e);
+    }
+
     return response(200, {
       ok: true,
-      recorded: savedRecords.length,
+      recorded: saved.length,
       month,
     }, origin);
+  }
+
+  // --- GET /email-metrics/open - Track email open (pixel) ---
+  if (method === 'GET' && event.rawPath?.includes('/open')) {
+    const params = event.queryStringParameters || {};
+    const clientId = params.clientId;
+    const recipientEmail = params.recipientEmail;
+    const clientEmail = params.clientEmail || '';
+    const university = params.university || '';
+    const campaignId = params.campaignId || '';
+
+    if (clientId && recipientEmail) {
+      try {
+        await recordEmailOpenInternal({
+          agencyId,
+          clientId,
+          clientEmail,
+          recipientEmail,
+          university,
+          campaignId: campaignId || undefined,
+          userAgent: headers['user-agent'] || headers['User-Agent'] || '',
+          ipAddress: headers['x-forwarded-for'] as string | undefined,
+        });
+      } catch (e) {
+        console.warn('[email-metrics] Failed to record open', e);
+      }
+    }
+
+    // 1x1 transparent gif
+    const gif = Buffer.from('R0lGODlhAQABAPAAAAAAAAAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw==', 'base64');
+    return {
+      statusCode: 200,
+      headers: {
+        'Content-Type': 'image/gif',
+        'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
+      },
+      body: gif.toString('base64'),
+      isBase64Encoded: true,
+    };
   }
 
   // --- GET /email-metrics/stats - Get metrics for agency/client ---
   if (method === 'GET' && event.rawPath?.includes('/stats')) {
     const params = event.queryStringParameters || {};
     const clientId = params.clientId;
-    const period = params.period || getCurrentMonth();
+    const period = params.period || `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
     const days = parseInt(params.days || '30', 10);
 
     // If clientId specified, get stats for that client
     if (clientId) {
-      const statsKey = {
+      const statsKey = period ? {
         PK: `AGENCY#${agencyId}`,
         SK: `EMAIL_STATS#${clientId}#${period}`,
-      };
-      const stats = await getItem(statsKey) as EmailStatsRecord | undefined;
+      } : null;
+      const stats = statsKey ? await getItem(statsKey) as EmailStatsRecord | undefined : undefined;
       
       // Get recent sends
       const sends = await queryByPK(`AGENCY#${agencyId}`, `EMAIL_SEND#`);

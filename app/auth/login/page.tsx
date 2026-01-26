@@ -94,7 +94,11 @@ export default function LoginPage() {
               {(['agency', 'agent', 'client'] as const).map((m) => (
                 <button
                   key={m}
-                  onClick={() => setMode(m)}
+                  onClick={() => {
+                    setMode(m);
+                    setError(null);
+                    if (m !== 'agent') setAgencyName('');
+                  }}
                   style={{
                     flex: 1,
                     padding: '10px 12px',
@@ -129,7 +133,7 @@ export default function LoginPage() {
                 {error}
               </Typography>
             ) : null}
-            <LoginForm onSubmit={onSubmit} />
+            <LoginForm key={mode} onSubmit={onSubmit} />
           </Paper>
         </Container>
       </Box>

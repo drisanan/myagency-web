@@ -6,12 +6,22 @@ import { usePathname } from 'next/navigation';
 import { useSession } from '@/features/auth/session';
 import { useImpersonation } from '@/hooks/useImpersonation';
 import { colors } from '@/theme/colors';
-import { IoAppsOutline, IoBarbellOutline, IoFlaskOutline, IoClipboardOutline, IoSchoolOutline, IoPeopleOutline } from 'react-icons/io5';
+import { IoAppsOutline, IoBarbellOutline, IoFlaskOutline, IoClipboardOutline, IoSchoolOutline, IoPeopleOutline, IoMailOutline, IoListOutline, IoCheckmarkCircleOutline, IoEyeOutline, IoCalendarOutline, IoChatbubblesOutline, IoPersonCircleOutline } from 'react-icons/io5';
 import { IoNotificationsOutline } from 'react-icons/io5';
 import { useQuery } from '@tanstack/react-query';
 import { tasksDueSoon, Task } from '@/services/tasks';
 import { listTasks } from '@/services/tasks';
 const drawerWidth = 240;
+
+function isColorLight(hexColor: string): boolean {
+  const hex = hexColor.replace('#', '');
+  if (hex.length !== 6) return true;
+  const r = parseInt(hex.substring(0, 2), 16);
+  const g = parseInt(hex.substring(2, 4), 16);
+  const b = parseInt(hex.substring(4, 6), 16);
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  return luminance > 0.5;
+}
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const { session, setSession } = useSession();
@@ -26,6 +36,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const navActiveText = s.navActiveText || colors.navActiveText;
   const contentBg = s.contentBg || '#fff';
   const cardBg = s.cardBg || '#fff';
+  const headerBg = s.headerBg || '#fff';
+  const headerText = isColorLight(headerBg) ? '#101828' : '#FFFFFF';
 
   const navItemSx = {
     width: 'calc(100% - 20px)', // leave 10px inset on each side
@@ -51,15 +63,21 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     // Only show Agents management to agency owners, not to agents themselves
     ...(session?.role !== 'agent' ? [{ href: '/agents', label: 'Agents', icon: <IoPeopleOutline /> }] : []),
     { href: '/ai/prompts', label: 'Prompts', icon: <IoFlaskOutline /> },
-    { href: '/lists', label: 'Lists', icon: <IoClipboardOutline /> },
-    { href: '/tasks', label: 'Tasks', icon: <IoClipboardOutline /> },
+    { href: '/lists', label: 'Lists', icon: <IoListOutline /> },
+    { href: '/tasks', label: 'Tasks', icon: <IoCheckmarkCircleOutline /> },
+    { href: '/email-drips', label: 'Email Drips', icon: <IoMailOutline /> },
     { href: '/recruiter', label: 'Recruiter', icon: <IoSchoolOutline /> },
   ];
 
   const navItems = session?.role === 'client'
     ? [
-        { href: '/client/lists', label: 'Lists', icon: <IoClipboardOutline /> },
-        { href: '/client/tasks', label: 'Tasks', icon: <IoClipboardOutline /> },
+        { href: '/client/lists', label: 'Lists', icon: <IoListOutline /> },
+        { href: '/client/recruiter', label: 'Recruiter', icon: <IoSchoolOutline /> },
+        { href: '/client/tasks', label: 'Tasks', icon: <IoCheckmarkCircleOutline /> },
+        { href: '/client/views', label: 'Profile Views', icon: <IoEyeOutline /> },
+        { href: '/client/meetings', label: 'Meetings', icon: <IoCalendarOutline /> },
+        { href: '/client/messages', label: 'Messages', icon: <IoChatbubblesOutline /> },
+        { href: '/client/profile', label: 'Profile', icon: <IoPersonCircleOutline /> },
       ]
     : allNavItems;
 
@@ -110,13 +128,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         position="fixed"
         sx={{
           zIndex: (t) => t.zIndex.drawer + 1,
-          bgcolor: 'transparent',
-          boxShadow: 'none',
-          color: 'inherit',
+          bgcolor: headerBg,
+          boxShadow: '0 1px 2px rgba(16, 24, 40, 0.06)',
+          color: headerText,
         }}
       >
         <Toolbar sx={{ justifyContent: 'space-between', px: 2 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', minHeight: 48 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', minHeight: 48, mr: 'auto' }}>
             {session?.agencyLogo ? (
               <img src={session.agencyLogo} alt="Agency Logo" style={{ height: 32, objectFit: 'contain' }} />
             ) : (

@@ -24,7 +24,23 @@ function toName(item: any): string {
   return item?.name ?? item?.School ?? item?.school ?? '';
 }
 
-export async function listUniversities(params: { sport: string; division: string; state: string }): Promise<Array<{ name: string }>> {
+function toLogo(item: any): string | undefined {
+  const candidates = [
+    item?.logo,
+    item?.Logo,
+    item?.logoUrl,
+    item?.logoURL,
+    item?.LogoUrl,
+    item?.logoDataUrl,
+    item?.schoolLogo,
+    item?.schoolLogoUrl,
+    item?.image,
+    item?.imageUrl,
+  ];
+  return candidates.find((value) => typeof value === 'string' && value.trim());
+}
+
+export async function listUniversities(params: { sport: string; division: string; state: string }): Promise<Array<{ name: string; logo?: string }>> {
   const qs = new URLSearchParams({
     sport: params.sport,
     division: params.division,
@@ -41,7 +57,9 @@ export async function listUniversities(params: { sport: string; division: string
     throw new Error(`HTTP ${res.status}: ${text || res.statusText}`);
   }
   const data = await res.json();
-  return (Array.isArray(data) ? data : []).map((u: any) => ({ name: toName(u) })).filter((u: any) => u.name);
+  return (Array.isArray(data) ? data : [])
+    .map((u: any) => ({ name: toName(u), logo: toLogo(u) }))
+    .filter((u: any) => u.name);
 }
 
 export type Coach = {

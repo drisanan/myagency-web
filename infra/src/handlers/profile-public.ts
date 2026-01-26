@@ -81,6 +81,11 @@ const profilePublicHandler: Handler = async (event: APIGatewayProxyEventV2) => {
 
       const client = items[0] as ClientRecord;
 
+    // Hide paused/suspended accounts from public view
+    if (client.accountStatus && client.accountStatus !== 'active') {
+      return response(404, { ok: false, error: 'Profile not found' }, origin);
+    }
+
       // Return sanitized public profile (exclude sensitive fields)
       const publicProfile = {
         id: client.id,

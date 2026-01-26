@@ -78,7 +78,7 @@ const linkForwardHandler = async (event: APIGatewayProxyEventV2) => {
   const headers = event.headers || {};
 
   // Extract and decode parameters
-  // Short params: d=destination, g=agencyId, c=clientId, a=athleteEmail, r=recipientEmail, u=university
+  // Short params: d=destination, g=agencyId, c=clientId, a=athleteEmail, r=recipientEmail, u=university, p=campaignId
   // Long params supported for backwards compatibility
   const destination = decodeParam(params.d || params.destination);
   const agencyId = decodeParam(params.g || params.agency);
@@ -86,6 +86,7 @@ const linkForwardHandler = async (event: APIGatewayProxyEventV2) => {
   const athleteEmail = decodeParam(params.a || params.athlete);
   const recipientEmail = decodeParam(params.r || params.recipient);
   const university = decodeParam(params.u || params.university);
+  const campaignId = decodeParam(params.p || params.campaignId);
 
   console.log('[link-forward] Request', {
     destination: destination?.substring(0, 100),
@@ -129,6 +130,7 @@ const linkForwardHandler = async (event: APIGatewayProxyEventV2) => {
       destination: finalDestination,
       linkType: detectLinkType(finalDestination),
       university: university || undefined,
+      campaignId: campaignId || undefined,
       clickedAt: now,
       userAgent: headers['user-agent'] || undefined,
       ipAddress: headers['x-forwarded-for']?.split(',')[0]?.trim() || undefined,

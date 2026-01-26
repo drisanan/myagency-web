@@ -21,12 +21,14 @@ const API_BASE_URL = process.env.API_BASE_URL || 'http://localhost:3001';
 const AGENCY_ID = 'agency-drisan';
 const AGENCY_EMAIL = 'drisanjames@gmail.com';
 
-const AGENCY_HEADERS = {
-  'Content-Type': 'application/json',
-  'X-Agency-Id': AGENCY_ID,
-  'X-Agency-Email': AGENCY_EMAIL,
-  'Origin': BASE_URL,
-};
+function buildAgencyHeaders(agencyId) {
+  return {
+    'Content-Type': 'application/json',
+    'X-Agency-Id': agencyId,
+    'X-Agency-Email': AGENCY_EMAIL,
+    'Origin': BASE_URL,
+  };
+}
 
 const TEST_SLUG = `test-agency-${Date.now()}`;
 const TEST_AGENT = {
@@ -40,7 +42,8 @@ const TEST_AGENT = {
 
 async function setupDriver() {
   const options = new chrome.Options();
-  options.addArguments('--headless=new');
+  // options.addArguments('--headless=new'); // DISABLED for debugging - run with visible browser
+  options.addArguments('--no-sandbox', '--disable-gpu', '--window-size=1920,1080');
   options.addArguments('--no-sandbox');
   options.addArguments('--disable-dev-shm-usage');
   
@@ -53,6 +56,8 @@ async function setupDriver() {
 async function run() {
   let driver;
   let createdAgentId = null;
+  let agencyId = AGENCY_ID;
+  let agencyHeaders = buildAgencyHeaders(agencyId);
 
   try {
     console.log('🏃 Starting Agency Slug E2E Test');
@@ -63,7 +68,7 @@ async function run() {
     console.log('\n📝 Step 1: PUT /agencies/slug - Set agency slug...');
     const setSlugRes = await fetch(`${API_BASE_URL}/agencies/slug`, {
       method: 'PUT',
-      headers: AGENCY_HEADERS,
+      headers: agencyHeaders,
       body: JSON.stringify({ slug: TEST_SLUG }),
     });
     const setSlugData = await setSlugRes.json();
@@ -77,7 +82,7 @@ async function run() {
     console.log('\n📝 Step 2: Verify slug validation...');
     const shortSlugRes = await fetch(`${API_BASE_URL}/agencies/slug`, {
       method: 'PUT',
-      headers: AGENCY_HEADERS,
+      headers: agencyHeaders,
       body: JSON.stringify({ slug: 'ab' }),
     });
     const shortSlugData = await shortSlugRes.json();
@@ -88,11 +93,22 @@ async function run() {
       console.log(`⚠️ Short slug validation may not be working`);
     }
 
+    // Resolve real agency ID from API (email lookup)
+    const agenciesRes = await fetch(`${API_BASE_URL}/agencies`, {
+      headers: agencyHeaders,
+    });
+    const agenciesData = await agenciesRes.json();
+    const resolvedAgencyId = agenciesData?.agencies?.[0]?.id;
+    if (resolvedAgencyId) {
+      agencyId = resolvedAgencyId;
+      agencyHeaders = buildAgencyHeaders(agencyId);
+    }
+
     // --- Step 3: Create test agent with auth enabled ---
     console.log('\n📝 Step 3: Create test agent...');
     const createAgentRes = await fetch(`${API_BASE_URL}/agents`, {
       method: 'POST',
-      headers: AGENCY_HEADERS,
+      headers: agencyHeaders,
       body: JSON.stringify(TEST_AGENT),
     });
     const createAgentData = await createAgentRes.json();
@@ -129,7 +145,7 @@ async function run() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Origin': BASE_URL },
       body: JSON.stringify({
-        agencyId: AGENCY_ID,  // Using UUID
+        agencyId,  // Using UUID
         email: TEST_AGENT.email,
         phone: TEST_AGENT.phone,
         accessCode: TEST_AGENT.accessCode,
@@ -203,7 +219,7 @@ async function run() {
       try {
         await fetch(`${API_BASE_URL}/agents/${createdAgentId}`, {
           method: 'DELETE',
-          headers: AGENCY_HEADERS,
+          headers: agencyHeaders,
         });
         console.log(`   Deleted test agent: ${createdAgentId}`);
       } catch (e) {

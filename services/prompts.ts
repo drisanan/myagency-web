@@ -8,6 +8,13 @@ export type PromptRecord = {
   updatedAt: number;
 };
 
+export type PromptMetrics = {
+  generated: number;
+  used: number;
+  deleted: number;
+  updatedAt?: number | null;
+};
+
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.API_BASE_URL;
 
 function requireApiBase() {
@@ -60,6 +67,13 @@ export async function listPrompts(input: { agencyEmail: string; clientId?: strin
 
   const data = await apiFetch(`/prompts?${params.toString()}`);
   return (data?.prompts as PromptRecord[]) ?? [];
+}
+
+export async function getPromptMetrics(input: { agencyEmail: string }): Promise<PromptMetrics> {
+  const params = new URLSearchParams();
+  if (input.agencyEmail) params.set('agencyEmail', input.agencyEmail);
+  const data = await apiFetch(`/prompts/metrics?${params.toString()}`);
+  return (data?.metrics as PromptMetrics) ?? { generated: 0, used: 0, deleted: 0 };
 }
 
 export async function savePrompt(input: { agencyEmail: string; clientId?: string; name: string; text: string }): Promise<PromptRecord> {

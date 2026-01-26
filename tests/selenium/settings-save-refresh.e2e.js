@@ -7,7 +7,8 @@ const { Builder, By, until } = require('selenium-webdriver');
 const chrome = require('selenium-webdriver/chrome');
 
 const BASE_URL = process.env.TEST_BASE_URL || 'https://www.myrecruiteragency.com';
-const HEADLESS = process.env.HEADLESS !== 'false';
+// Default to visible browser for debugging - set HEADLESS=true to run headless
+const HEADLESS = process.env.HEADLESS === 'true';
 const TIMEOUT = 20000;
 
 async function run() {
