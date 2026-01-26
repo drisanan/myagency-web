@@ -19,6 +19,7 @@ import {
   Snackbar,
   Alert,
   CircularProgress,
+  Skeleton,
 } from '@mui/material';
 import { useTasks } from './useTasks';
 import { TaskStatus } from '@/services/tasks';
@@ -27,6 +28,8 @@ import { useSession } from '@/features/auth/session';
 import { useQuery } from '@tanstack/react-query';
 import { listClientsByAgencyEmail } from '@/services/clients';
 import { listAgents } from '@/services/agents';
+import { MetricCard } from '@/app/(app)/dashboard/MetricCard';
+import { IoCheckmarkCircleOutline, IoListOutline, IoTimerOutline } from 'react-icons/io5';
 
 type Props = {
   assigneeClientId?: string | null;
@@ -193,72 +196,115 @@ export function TasksPanel({ assigneeClientId }: Props) {
     return null;
   };
 
+  const tasksWithDueDates = tasks.filter((t) => t.dueAt);
+  const completedTasks = tasks.filter((t) => t.status === 'done');
+  const completedOnTime = completedTasks.filter((t) => t.dueAt && t.updatedAt <= t.dueAt);
+  const completionRate = tasksWithDueDates.length
+    ? Math.round((completedOnTime.length / tasksWithDueDates.length) * 100)
+    : 0;
+
   return (
     <Box>
-      <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 2 }}>
-        <Typography variant="h6">Tasks</Typography>
-        <Button data-tour="create-task-btn" variant="contained" onClick={startNew} startIcon={<FaBell />}>
-          Add task
-        </Button>
-      </Stack>
+      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(3, 1fr)' }, gap: 2, mb: 3 }}>
+        <MetricCard
+          title="Total Tasks"
+          value={query.isLoading ? '—' : tasks.length}
+          icon={<IoListOutline size={20} />}
+        />
+        <MetricCard
+          title="On-time Completion Rate"
+          value={query.isLoading ? '—' : `${completionRate}%`}
+          icon={<IoTimerOutline size={20} />}
+        />
+        <MetricCard
+          title="Completed Tasks"
+          value={query.isLoading ? '—' : completedTasks.length}
+          icon={<IoCheckmarkCircleOutline size={20} />}
+        />
+      </Box>
 
-      {query.isLoading ? (
-        <Typography>Loading...</Typography>
-      ) : tasks.length === 0 ? (
-        <Typography color="text.secondary">No tasks yet.</Typography>
-      ) : (
-        <Stack spacing={1.5}>
-          {tasks.map((t) => {
-            const assignee = getAssigneeLabel(t);
-            return (
-              <Paper
-                key={t.id}
-                variant="outlined"
-                sx={{ p: 1.5, display: 'flex', gap: 1, alignItems: 'flex-start' }}
-                data-testid="task-item"
-              >
-                <Stack spacing={0.5} sx={{ flex: 1, minWidth: 0 }}>
-                  <Stack direction="row" spacing={1} alignItems="center" sx={{ flexWrap: 'wrap' }}>
-                    <Chip size="small" label={statusOptions.find((s) => s.value === t.status)?.label || t.status} />
-                    {t.dueAt ? (
-                      <Chip
-                        size="small"
-                        color="warning"
-                        label={`Due ${new Date(t.dueAt).toLocaleString()}`}
-                      />
-                    ) : null}
-                    {assignee ? (
-                      <Chip 
-                        size="small" 
-                        icon={assignee.type === 'agent' ? <FaUserTie /> : <FaUser />}
-                        label={assignee.name}
-                        color={assignee.type === 'agent' ? 'primary' : 'default'}
-                        variant={assignee.type === 'agent' ? 'filled' : 'outlined'}
-                      />
-                    ) : null}
-                  </Stack>
-                  <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
-                    {t.title}
-                  </Typography>
-                  {t.description ? (
-                    <Typography variant="body2" color="text.secondary" sx={{ whiteSpace: 'pre-wrap' }}>
-                      {t.description}
-                    </Typography>
-                  ) : null}
-                </Stack>
-                <Stack direction="row" spacing={1}>
-                  <IconButton aria-label="Edit task" onClick={() => startEdit(t.id)} size="small">
-                    <FaEdit />
-                  </IconButton>
-                  <IconButton aria-label="Delete task" onClick={() => handleDelete(t.id)} size="small">
-                    <FaTrash />
-                  </IconButton>
-                </Stack>
-              </Paper>
-            );
-          })}
-        </Stack>
-      )}
+      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '2fr 1fr' }, gap: 3 }}>
+        <Paper variant="outlined" sx={{ p: 2, borderRadius: 2.5, borderColor: '#dcdfe4' }}>
+          <Stack spacing={1.5}>
+            <Stack direction="row" alignItems="center" justifyContent="space-between">
+              <Typography variant="h6">Create Task</Typography>
+              <Button data-tour="create-task-btn" variant="contained" onClick={startNew}>
+                Task +
+              </Button>
+            </Stack>
+            <Typography variant="body2" color="text.secondary">
+              Create tasks for agents or athletes and track completion status.
+            </Typography>
+          </Stack>
+        </Paper>
+
+        <Paper variant="outlined" sx={{ p: 2, borderRadius: 2.5, borderColor: '#dcdfe4' }}>
+          <Typography variant="h6" sx={{ mb: 1 }}>
+            Tasks Queue
+          </Typography>
+          {query.isLoading ? (
+            <Stack spacing={1.5}>
+              {[1, 2, 3].map((k) => (
+                <Skeleton key={k} variant="rounded" height={88} />
+              ))}
+            </Stack>
+          ) : tasks.length === 0 ? (
+            <Typography color="text.secondary">No tasks yet.</Typography>
+          ) : (
+            <Stack spacing={1.5}>
+              {tasks.map((t) => {
+                const assignee = getAssigneeLabel(t);
+                return (
+                  <Paper
+                    key={t.id}
+                    variant="outlined"
+                    sx={{ p: 1.5, display: 'flex', gap: 1, alignItems: 'flex-start' }}
+                    data-testid="task-item"
+                  >
+                    <Stack spacing={0.5} sx={{ flex: 1, minWidth: 0 }}>
+                      <Stack direction="row" spacing={1} alignItems="center" sx={{ flexWrap: 'wrap' }}>
+                        <Chip size="small" label={statusOptions.find((s) => s.value === t.status)?.label || t.status} />
+                        {t.dueAt ? (
+                          <Chip
+                            size="small"
+                            color="warning"
+                            label={`Due ${new Date(t.dueAt).toLocaleString()}`}
+                          />
+                        ) : null}
+                        {assignee ? (
+                          <Chip 
+                            size="small" 
+                            icon={assignee.type === 'agent' ? <FaUserTie /> : <FaUser />}
+                            label={assignee.name}
+                            color={assignee.type === 'agent' ? 'primary' : 'default'}
+                            variant={assignee.type === 'agent' ? 'filled' : 'outlined'}
+                          />
+                        ) : null}
+                      </Stack>
+                      <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+                        {t.title}
+                      </Typography>
+                      {t.description ? (
+                        <Typography variant="body2" color="text.secondary" sx={{ whiteSpace: 'pre-wrap' }}>
+                          {t.description}
+                        </Typography>
+                      ) : null}
+                    </Stack>
+                    <Stack direction="row" spacing={1}>
+                      <IconButton aria-label="Edit task" onClick={() => startEdit(t.id)} size="small">
+                        <FaEdit />
+                      </IconButton>
+                      <IconButton aria-label="Delete task" onClick={() => handleDelete(t.id)} size="small">
+                        <FaTrash />
+                      </IconButton>
+                    </Stack>
+                  </Paper>
+                );
+              })}
+            </Stack>
+          )}
+        </Paper>
+      </Box>
 
       <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} fullWidth maxWidth="sm">
         <DialogTitle>{editingId ? 'Edit task' : 'Add task'}</DialogTitle>
