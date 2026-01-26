@@ -38,6 +38,7 @@ const STEPS = ['Select List', 'Select Coach', 'Compose & Send'];
 export function ClientRecruiterWizard() {
   const { session, loading } = useSession();
   const clientId = session?.clientId || '';
+  const agencyEmail = session?.agencyEmail || session?.email || '';
 
   const [activeStep, setActiveStep] = React.useState(0);
   const [error, setError] = React.useState<string | null>(null);
