@@ -435,6 +435,40 @@ export type ActivityLogRecord = {
 };
 
 // ============================================
+// Campaigns
+// ============================================
+
+export type CampaignRecipient = {
+  email: string;
+  name?: string;
+  university?: string;
+};
+
+export type CampaignRecord = {
+  PK: string;                    // AGENCY#<agencyId>
+  SK: string;                    // CAMPAIGN#<campaignId>
+  GSI3PK?: string;               // CLIENT#<clientId>
+  GSI3SK?: string;               // CAMPAIGN#<timestamp>
+  id: string;
+  agencyId: string;
+  clientId: string;
+  agentId?: string;
+  agentEmail?: string;
+  agentName?: string;
+  campaignName?: string;
+  subject: string;
+  html: string;
+  recipients: CampaignRecipient[];
+  senderClientId: string;
+  personalizedMessage?: string;
+  scheduledAt?: number;
+  sentAt?: number;
+  status: 'draft' | 'scheduled' | 'sent' | 'failed';
+  createdAt: number;
+  updatedAt: number;
+};
+
+// ============================================
 // Automated Campaign Follow-ups
 // ============================================
 

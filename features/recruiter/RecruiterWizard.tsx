@@ -459,6 +459,7 @@ export function RecruiterWizard() {
       const athleteName = `${contact.firstName || ''} ${contact.lastName || ''}`.trim();
       const gradYear = String((currentClient as any)?.radar?.graduationYear || (currentClient as any)?.graduationYear || '').trim();
       const positionOrSport = String((currentClient as any)?.radar?.position || (currentClient as any)?.position || '').trim();
+      const subjectBase = buildSubjectLine(athleteName, gradYear, positionOrSport, 0);
       const html = aiHtml || buildEmailPreview();
       const savedTokens = getClientGmailTokens(id);
       const campaignName = resolvedCollegeName || selectedList?.name || universityName || 'Coach Outreach';
@@ -475,7 +476,7 @@ export function RecruiterWizard() {
         }
         await createCampaign({
           clientId: id,
-          subject,
+          subject: subjectBase,
           html,
           recipients: recipientMeta,
           senderClientId: id,
@@ -490,7 +491,7 @@ export function RecruiterWizard() {
 
       const campaign = await createCampaign({
         clientId: id,
-        subject,
+        subject: subjectBase,
         html,
         recipients: recipientMeta,
         senderClientId: id,
