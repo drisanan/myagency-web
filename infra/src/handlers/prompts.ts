@@ -59,10 +59,11 @@ const promptsHandler = async (event: APIGatewayProxyEventV2) => {
   if (!session?.agencyId) {
     return response(401, { ok: false, error: 'Missing session' }, origin);
   }
-  const agencyEmail = (session as any).agencyEmail || '';
+  const sessionContext = session;
+  const agencyEmail = sessionContext.agencyEmail || '';
 
   async function incrementMetrics(delta: { generated?: number; used?: number; deleted?: number }) {
-    const key = { PK: `AGENCY#${session.agencyId}`, SK: 'PROMPT_METRICS' };
+    const key = { PK: `AGENCY#${sessionContext.agencyId}`, SK: 'PROMPT_METRICS' };
     const now = Date.now();
     const generated = delta.generated ?? 0;
     const used = delta.used ?? 0;

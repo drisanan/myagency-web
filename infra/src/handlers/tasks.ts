@@ -113,9 +113,9 @@ const tasksHandler: Handler = async (event: APIGatewayProxyEventV2) => {
         await logActivity({
           agencyId: session.agencyId,
           clientId: merged.assigneeClientId || undefined,
-          agentId: merged.assigneeAgentId || (session.role === 'agent' ? session.agentId : undefined),
+          agentId: merged.assigneeAgentId || session.agentId || undefined,
           actorEmail,
-          actorType: session.role === 'client' ? 'athlete' : 'agent',
+          actorType: 'agent',
           activityType: 'task_completed',
           description: `Task completed: ${merged.title}`,
           metadata: { taskId: merged.id },

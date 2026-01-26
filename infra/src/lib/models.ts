@@ -134,6 +134,19 @@ export type CoachListRecord = {
   updatedAt: number;
 };
 
+export type ListAssignmentRecord = {
+  PK: string;                    // AGENCY#<agencyId>
+  SK: string;                    // LIST_ASSIGN#<listId>#<clientId>
+  GSI3PK?: string;               // CLIENT#<clientId>
+  GSI3SK?: string;               // LIST_ASSIGN#<listId>
+  id: string;
+  agencyId: string;
+  listId: string;
+  clientId: string;
+  assignedBy?: string;
+  assignedAt: number;
+};
+
 export type FormSubmissionRecord = {
   PK: string;
   SK: string;
@@ -188,7 +201,24 @@ export type EmailSendRecord = {
   university?: string;
   subject?: string;
   draftId?: string;
+  campaignId?: string;
   sentAt: number;
+  createdAt: number;
+};
+
+export type EmailOpenRecord = {
+  PK: string;                    // AGENCY#<agencyId>
+  SK: string;                    // EMAIL_OPEN#<timestamp>#<uuid>
+  GSI3PK?: string;               // CLIENT#<clientId>
+  GSI3SK?: string;               // EMAIL_OPEN#<timestamp>
+  clientId: string;
+  clientEmail: string;
+  recipientEmail: string;
+  university?: string;
+  campaignId?: string;
+  openedAt: number;
+  userAgent?: string;
+  ipAddress?: string;
   createdAt: number;
 };
 
@@ -526,6 +556,7 @@ export type UpdateFormRecord = {
     location?: string;
   }>;
   highlightVideo?: string;
+  schoolInterests?: string[];
   notes?: string;
   submittedAt: number;
   reviewedAt?: number;
