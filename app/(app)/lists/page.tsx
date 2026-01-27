@@ -14,6 +14,8 @@ import { getDivisions } from '@/services/recruiterMeta';
 import { getSports, formatSportLabel } from '@/features/recruiter/divisionMapping';
 import { listUniversities, getUniversityDetails, DIVISION_API_MAPPING } from '@/services/recruiter';
 import { listLists, saveList, updateList, deleteList, CoachEntry, CoachList } from '@/services/lists';
+import { listClientsByAgencyEmail } from '@/services/clients';
+import { assignListToClient } from '@/services/listAssignments';
 import { useTour } from '@/features/tour/TourProvider';
 import { listsSteps } from '@/features/tour/listsSteps';
 
@@ -42,12 +44,15 @@ export default function ListsPage() {
   const [currentName, setCurrentName] = React.useState('');
   const [currentItems, setCurrentItems] = React.useState<CoachEntry[]>([]);
   const [editingId, setEditingId] = React.useState<string>('');
+  const [selectedClientId, setSelectedClientId] = React.useState('');
 
   const [saved, setSaved] = React.useState<CoachList[]>([]);
   const [loadingLists, setLoadingLists] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [saveError, setSaveError] = React.useState<string | null>(null);
   const [saving, setSaving] = React.useState(false);
+  const [clients, setClients] = React.useState<Array<{ id: string; firstName?: string; lastName?: string; email?: string }>>([]);
+  const [loadingClients, setLoadingClients] = React.useState(false);
   const [snackbar, setSnackbar] = React.useState<{
     open: boolean;
     message: string;
@@ -88,6 +93,20 @@ export default function ListsPage() {
       .catch((e) => { setError(e?.message || 'Failed to load universities'); setSchools([]); })
       .finally(() => setLoadingSchools(false));
   }, [sport, division, stateCode]);
+
+  React.useEffect(() => {
+    if (!userEmail) {
+      setClients([]);
+      return;
+    }
+    setLoadingClients(true);
+    listClientsByAgencyEmail(userEmail)
+      .then((data: any) => {
+        setClients(Array.isArray(data) ? data : Array.isArray(data?.clients) ? data.clients : []);
+      })
+      .catch(() => setClients([]))
+      .finally(() => setLoadingClients(false));
+  }, [userEmail]);
 
   React.useEffect(() => {
     if (!selectedSchool) { setSchoolDetails(null); return; }
@@ -157,6 +176,7 @@ export default function ListsPage() {
     setCurrentName('');
     setCurrentItems([]);
     setSaveError(null);
+    setSelectedClientId('');
   }
 
   function resetListBuilder() {
@@ -174,6 +194,7 @@ export default function ListsPage() {
     setManualEmail('');
     setManualTitle('');
     setManualSchool('');
+    setSelectedClientId('');
   }
 
   async function saveCurrent() {
@@ -205,6 +226,9 @@ export default function ListsPage() {
             return next.sort((a, b) => b.updatedAt - a.updatedAt);
           });
           setSnackbar({ open: true, message: 'List updated successfully!', severity: 'success' });
+          if (selectedClientId) {
+            await assignListToClient(selectedClientId, updated.id);
+          }
         }
         setSaveError(null);
       } else {
@@ -214,6 +238,9 @@ export default function ListsPage() {
           setSaved((p) => [rec, ...p]);
           setSaveError(null);
           setSnackbar({ open: true, message: 'List saved successfully!', severity: 'success' });
+          if (selectedClientId) {
+            await assignListToClient(selectedClientId, rec.id);
+          }
           resetListBuilder();
         }
       }
@@ -229,6 +256,7 @@ export default function ListsPage() {
     setEditingId(l.id);
     setCurrentName(l.name);
     setCurrentItems(l.items);
+    setSelectedClientId('');
   }
 
   function handleDeleteClick(list: CoachList) {
@@ -253,6 +281,7 @@ export default function ListsPage() {
   const [manualSchool, setManualSchool] = React.useState('');
 
   const totalLists = saved.length;
+  const selectedClient = clients.find((c) => c.id === selectedClientId);
   const totalUniversities = React.useMemo(() => {
     const unique = new Set<string>();
     saved.forEach((list) => {
@@ -455,6 +484,32 @@ export default function ListsPage() {
             <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
               Name your list so you can keep track of it.
             </Typography>
+          </Box>
+          <Box sx={{ mb: 1 }}>
+            <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>
+              {selectedClient
+                ? `Make List Available to ${selectedClient.firstName || ''} ${selectedClient.lastName || ''}`.trim()
+                : 'Make List Available to'}
+            </Typography>
+            <TextField
+              fullWidth
+              size="small"
+              select
+              label="Select an athlete"
+              value={selectedClientId}
+              onChange={(e) => setSelectedClientId(e.target.value)}
+              disabled={loadingClients || clients.length === 0}
+            >
+              <MenuItem value="">(Not assigned)</MenuItem>
+              {clients.map((c) => {
+                const name = `${c.firstName || ''} ${c.lastName || ''}`.trim();
+                return (
+                  <MenuItem key={c.id} value={c.id}>
+                    {name || c.email || 'Unknown'} {c.email ? `— ${c.email}` : ''}
+                  </MenuItem>
+                );
+              })}
+            </TextField>
           </Box>
           <TextField fullWidth size="small" label="List name" value={currentName} onChange={(e) => setCurrentName(e.target.value)} sx={{ mb: 1 }} />
 

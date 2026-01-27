@@ -5,7 +5,7 @@ import { TourProvider } from '@/features/tour/TourProvider';
 import { DynamicThemeProvider } from '@/features/theme/DynamicThemeProvider';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { Box, AppBar, Toolbar, Typography, Drawer, List, ListItemButton, ListItemText, Stack, CssBaseline, Avatar, IconButton, Menu, MenuItem, Divider } from '@mui/material';
+import { Box, AppBar, Toolbar, Typography, Drawer, List, ListItemButton, ListItemText, Stack, CssBaseline, Avatar, IconButton, Menu, MenuItem, Divider, Button } from '@mui/material';
 import { colors } from '@/theme/colors';
 import { useImpersonation } from '@/hooks/useImpersonation';
 import { IoClipboardOutline, IoSchoolOutline, IoEyeOutline, IoCalendarOutline, IoChatbubblesOutline } from 'react-icons/io5';
