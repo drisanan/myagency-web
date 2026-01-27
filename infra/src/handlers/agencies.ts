@@ -125,10 +125,10 @@ const agenciesHandler = async (event: APIGatewayProxyEventV2) => {
       const parsed = JSON.parse(event.body || '{}');
       
       // Secure: Force use of session email, ignore body email
-      const email = session.agencyEmail; 
+      const email = session.agencyEmail || session.email;
       
       // Try GSI1 lookup first
-      const existing = await queryGSI1(`EMAIL#${email}`, 'AGENCY#');
+      const existing = email ? await queryGSI1(`EMAIL#${email}`, 'AGENCY#') : [];
       let agency: Record<string, any> | undefined = existing?.[0];
       
       // Fallback: Query by PK using agencyId from session

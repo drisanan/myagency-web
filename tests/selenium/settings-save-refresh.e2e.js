@@ -5,8 +5,9 @@
  */
 const { Builder, By, until } = require('selenium-webdriver');
 const chrome = require('selenium-webdriver/chrome');
+const { findAndType } = require('./utils');
 
-const BASE_URL = process.env.TEST_BASE_URL || 'https://www.myrecruiteragency.com';
+const BASE_URL = process.env.TEST_BASE_URL || process.env.BASE_URL || 'https://www.myrecruiteragency.com';
 // Default to visible browser for debugging - set HEADLESS=true to run headless
 const HEADLESS = process.env.HEADLESS === 'true';
 const TIMEOUT = 20000;
@@ -26,23 +27,16 @@ async function run() {
     await driver.wait(until.elementLocated(By.css('input[type="email"], input[name="email"]')), TIMEOUT);
 
     console.log('2. Fill login credentials...');
-    // MUI TextFields - find by input type
-    const emailInput = await driver.findElement(By.css('input[type="email"]'));
-    await emailInput.clear();
-    await emailInput.sendKeys('brian@coachhorschel.com');
+    const loginEmail = process.env.TEST_EMAIL || 'brian@coachhorschel.com';
+    const loginPhone = process.env.TEST_PHONE || '5126574030';
+    const loginCode = process.env.TEST_ACCESS || '123456';
 
-    const phoneInput = await driver.findElement(By.css('input[type="tel"]'));
-    await phoneInput.clear();
-    await phoneInput.sendKeys('5126574030');
-
-    // Access code is type="text" - find the third text input or by label
-    const textInputs = await driver.findElements(By.css('input[type="text"]'));
-    const codeInput = textInputs[textInputs.length - 1]; // Last text input is access code
-    await codeInput.clear();
-    await codeInput.sendKeys('123456');
+    await findAndType(driver, 'Email', loginEmail);
+    await findAndType(driver, 'Phone', loginPhone);
+    await findAndType(driver, 'Access Code', loginCode);
 
     console.log('3. Submit login form...');
-    const loginBtn = await driver.findElement(By.css('[data-testid="login-submit"]'));
+    const loginBtn = await driver.findElement(By.xpath(`//button[normalize-space(.)="Sign in"] | //button[@data-testid="login-submit"]`));
     await loginBtn.click();
 
     // Wait for redirect away from login page

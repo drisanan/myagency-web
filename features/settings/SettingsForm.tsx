@@ -116,6 +116,7 @@ const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || '';
 
 export function SettingsForm() {
   const { session, refreshSession } = useSession();
+  const agencyEmail = session?.agencyEmail || session?.email;
   
   const [colors, setColors] = React.useState<Record<string, string>>({});
   const [logoFile, setLogoFile] = React.useState<File | null>(null);
@@ -170,9 +171,9 @@ export function SettingsForm() {
 
   // Load current settings
   React.useEffect(() => {
-    if (!session?.agencyEmail) return;
+    if (!agencyEmail) return;
     
-    getAgencySettings(session.agencyEmail)
+    getAgencySettings(agencyEmail)
       .then((settings) => {
         if (settings) {
           const loaded: Record<string, string> = {};
@@ -190,7 +191,7 @@ export function SettingsForm() {
       })
       .catch(console.error)
       .finally(() => setInitialLoading(false));
-  }, [session?.agencyEmail]);
+  }, [agencyEmail]);
 
   const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -208,7 +209,7 @@ export function SettingsForm() {
   };
 
   const onSave = async () => {
-    if (!session?.agencyEmail) return;
+    if (!agencyEmail) return;
     
     setError(null);
     setSuccess(null);
@@ -225,7 +226,7 @@ export function SettingsForm() {
         });
       }
       
-      await updateAgencySettings(session.agencyEmail, {
+      await updateAgencySettings(agencyEmail, {
         ...colors,
         logoDataUrl: logoDataUrl || undefined,
         programLevels: programLevels,

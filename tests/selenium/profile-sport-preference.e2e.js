@@ -9,9 +9,9 @@ const chrome = require('selenium-webdriver/chrome');
 const { findAndType, selectOption, allowlistedConsoleErrors, sleep, dismissTour } = require('./utils');
 
 const BASE = process.env.BASE_URL || 'https://www.myrecruiteragency.com';
-const LOGIN_EMAIL = 'drisanjames@gmail.com';
-const LOGIN_PHONE = '2084407940';
-const LOGIN_CODE = '123456';
+const LOGIN_EMAIL = process.env.TEST_EMAIL || 'drisanjames@gmail.com';
+const LOGIN_PHONE = process.env.TEST_PHONE || '2084407940';
+const LOGIN_CODE = process.env.TEST_ACCESS || '123456';
 
 async function login(driver) {
   await driver.get(`${BASE}/auth/login`);

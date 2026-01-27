@@ -163,11 +163,12 @@ export function ProfileForm() {
           <Button
             variant="outlined"
             onClick={async () => {
-              if (!session?.agencyEmail) return;
+              const email = session?.agencyEmail || session?.email;
+              if (!email) return;
               setSportLoading(true);
               setSportSuccess(null);
               try {
-                await updateAgencySettings(session.agencyEmail, {
+                await updateAgencySettings(email, {
                   ...session.agencySettings,
                   preferredSport,
                 });
