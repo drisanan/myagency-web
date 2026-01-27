@@ -113,6 +113,21 @@ function ClientShell({ children }: { children: React.ReactNode }) {
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
             {session && (
               <Stack direction="row" spacing={2} alignItems="center">
+                {isImpersonating && (
+                  <Stack direction="row" spacing={1} alignItems="center">
+                    <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                      Impersonating:
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      {session.firstName || session.lastName
+                        ? `${session.firstName || ''} ${session.lastName || ''}`.trim()
+                        : session.email}
+                    </Typography>
+                    <Button size="small" variant="outlined" onClick={stopImpersonation}>
+                      End Impersonation
+                    </Button>
+                  </Stack>
+                )}
                 <IconButton onClick={handleUserOpen} sx={{ p: 0 }}>
                   <Avatar sx={{ bgcolor: '#5D4AFB', width: 32, height: 32, cursor: 'pointer' }}>
                     {(session.firstName || session.email || '?').charAt(0).toUpperCase()}

@@ -144,6 +144,21 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
             {session ? (
               <Stack direction="row" spacing={2} alignItems="center">
+                {isImpersonating && (
+                  <Stack direction="row" spacing={1} alignItems="center">
+                    <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                      Impersonating:
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      {session.firstName || session.lastName
+                        ? `${session.firstName || ''} ${session.lastName || ''}`.trim()
+                        : session.email}
+                    </Typography>
+                    <Button size="small" variant="outlined" onClick={stopImpersonation}>
+                      End Impersonation
+                    </Button>
+                  </Stack>
+                )}
                 <Badge color="primary" badgeContent={openTasks.length || null} anchorOrigin={{ vertical: 'top', horizontal: 'left' }}>
                   <IconButton color="inherit" onClick={handleBellOpen} aria-label="Tasks alerts">
                     <Badge variant="dot" color="error" invisible={dueSoon.length === 0}>
