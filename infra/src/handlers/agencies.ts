@@ -146,6 +146,25 @@ const agenciesHandler = async (event: APIGatewayProxyEventV2) => {
         }
       }
       
+      if (!agency && session?.agencyId && email) {
+        // Auto-repair: create missing agency profile from session
+        const nameFromSession =
+          [session.firstName, session.lastName].filter(Boolean).join(' ').trim() || 'My Agency';
+        const created = {
+          PK: `AGENCY#${session.agencyId}`,
+          SK: 'PROFILE',
+          GSI1PK: `EMAIL#${email}`,
+          GSI1SK: `AGENCY#${session.agencyId}`,
+          id: session.agencyId,
+          name: nameFromSession,
+          email,
+          settings: parsed.settings || {},
+          createdAt: Date.now(),
+        };
+        await putItem(created);
+        agency = created;
+      }
+
       if (!agency) {
         return response(404, { ok: false, error: 'Agency not found' }, origin);
       }
