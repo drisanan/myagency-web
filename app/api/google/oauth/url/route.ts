@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 
-const SCOPES = ['https://www.googleapis.com/auth/gmail.compose'];
+const SCOPES = ['https://www.googleapis.com/auth/gmail.send'];
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);

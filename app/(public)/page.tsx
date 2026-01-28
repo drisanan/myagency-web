@@ -27,34 +27,65 @@ export default function MarketingPage() {
           alignItems: 'center',
           justifyContent: 'center'
         }}>
+          <Box sx={{ textAlign: 'center', px: 2 }}>
+            <Typography variant="h3" sx={{ fontWeight: 800 }}>
+              <Box component="span" sx={{ color: '#aafb00' }}>Your</Box> Recruiting Agency: Your Brand. Your System.
+            </Typography>
+          </Box>
         </Box>
       </Box>
       <Container sx={{ py: 6 }}>
-        <Typography variant="h4" gutterBottom>Get recruited with Athlete Narrative</Typography>
+        <Typography variant="h4" gutterBottom>My Recruiter Agency</Typography>
         <Typography variant="body1" sx={{ maxWidth: 720 }}>
-          Showcase performance, social proof, and growth. Connect with recruiters across divisions.
-          White-label backoffice lets agencies manage clients at scale.
+          A complete recruiting headquarters that organizes athletes, automates communication, and gives you a scalable,
+          professional workflow under your brand.
         </Typography>
-        <Box sx={{ my: 6 }}>
-          <Image src="/marketing/available.png" alt="Available banner" width={960} height={98} style={{ width: '100%', height: 'auto' }} />
-        </Box>
+        <Typography variant="body2" sx={{ maxWidth: 720, mt: 1 }}>
+          Connect Gmail and Google Calendar to send outreach emails and schedule recruiting meetings with user approval.
+        </Typography>
         <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 4, alignItems: 'center', mb: 8 }}>
           <Box>
             <Image src="/marketing/why1.jpg" alt="Why section 1" width={716} height={800} style={{ width: '100%', height: 'auto', borderRadius: 8 }} />
           </Box>
           <Box>
-            <Typography variant="h4" gutterBottom>WHY Athlete Narrative Matters</Typography>
+            <Typography variant="h4" gutterBottom>
+              <Box component="span" sx={{ textDecoration: 'underline', fontWeight: 700 }}>
+                Introducing My Recruiter Agency
+              </Box>{' '}
+              - The First white-labeled recruiting CRM
+            </Typography>
+            <Typography variant="h6" gutterBottom>Built for Advisors and Agencies</Typography>
             <Typography>
-              The college recruiting process is stressful and broken for most families. Athlete Narrative simplifies recruiting into one easy system that saves time, reduces stress, and gives your athlete a real chance to be seen.
+              A complete recruiting headquarters that organizes athletes, automates communication, and gives you a scalable,
+              professional workflow - all under your brand, not someone else’s.
             </Typography>
           </Box>
         </Box>
         <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 4, alignItems: 'center', mb: 8 }}>
           <Box>
-            <Typography variant="h4" gutterBottom>Built for Athletes First</Typography>
-            <Typography>
-              Profiles are quick to build, highlight reels are easy to upload, and every feature feels natural. Research any school, compare options, and send personalized emails to coaches with a tap.
+            <Typography variant="h4" gutterBottom>Why Do You Need This?</Typography>
+            <Typography sx={{ mb: 2 }}>
+              Recruiting isn’t overwhelming because of the athletes. It’s overwhelming because the system around them is fragmented.
+              Most advisors are forced to manage:
             </Typography>
+            <Stack spacing={0.5} sx={{ mb: 2 }}>
+              <Typography>Film on five platforms</Typography>
+              <Typography>Grades in screenshots</Typography>
+              <Typography>Communication in scattered emails</Typography>
+              <Typography>Schedules in notes apps</Typography>
+              <Typography>Coach replies buried in threads</Typography>
+              <Typography>Parents asking for updates</Typography>
+              <Typography>Athletes sending midnight messages</Typography>
+              <Typography>Zero centralized structure</Typography>
+            </Stack>
+            <Typography variant="h6" sx={{ mb: 1 }}>Which Leads to …</Typography>
+            <Stack spacing={0.5}>
+              <Typography>dropped conversations</Typography>
+              <Typography>missed opportunities</Typography>
+              <Typography>frustrated families</Typography>
+              <Typography>directors drowning in admin</Typography>
+              <Typography>advisors burning out</Typography>
+            </Stack>
           </Box>
           <Box>
             <Image src="/marketing/app4.png" alt="App preview" width={589} height={800} style={{ width: '100%', height: 'auto', borderRadius: 8 }} />
@@ -65,10 +96,19 @@ export default function MarketingPage() {
             <Image src="/marketing/why2.jpg" alt="Why section 2" width={800} height={724} style={{ width: '100%', height: 'auto', borderRadius: 8 }} />
           </Box>
           <Box>
-            <Typography variant="h4" gutterBottom>The Parent Advantage</Typography>
-            <Typography>
-              Weekly updates keep you in the loop without micromanaging. Know exactly where your child stands, which schools they’re targeting, and how coaches are responding.
+            <Typography variant="h4" gutterBottom>So, What’s The Solution?</Typography>
+            <Typography variant="h6" gutterBottom>BUILT FOR ADVISORS, DIRECTORS, AND CLUBS.</Typography>
+            <Typography sx={{ mb: 2 }}>
+              The first recruiting CRM designed for REAL-WORLD WORKFLOW.
             </Typography>
+            <Button
+              LinkComponent={Link}
+              href="https://marketing.myrecruiteragency.com/mrastart"
+              variant="contained"
+              sx={{ bgcolor: '#aafb00', color: '#0b0b0b', '&:hover': { bgcolor: '#95e000' } }}
+            >
+              LEARN MORE NOW
+            </Button>
           </Box>
         </Box>
         {/* CTAs intentionally limited to sign in/sign up in header */}

@@ -1026,10 +1026,6 @@ export function ClientWizard({
     } else if (value.accessCode?.trim() && value.accessCode.length !== 6) {
       next.accessCode = 'Access code must be exactly 6 digits';
     }
-    // Gmail is required for new clients (not in edit mode)
-    if (checkGmail && !gmailConnected && mode !== 'edit') {
-      next.gmail = 'Please connect your Gmail account to proceed';
-    }
     return next;
   }, [gmailConnected, mode]);
 

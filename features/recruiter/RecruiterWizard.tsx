@@ -415,6 +415,9 @@ export function RecruiterWizard() {
 
   async function handleCreateGmailDraft() {
     try {
+      if (!window.confirm('Send this email now?')) {
+        return;
+      }
       setSendMessage(null);
       setIsCreatingDraft(true);
       const id = currentClient?.id || lastConnectedClientIdRef.current || clientId || '';
@@ -504,7 +507,7 @@ export function RecruiterWizard() {
       // Track recipients for recording sends
       const sentRecipients: Array<{ email: string; name?: string; university?: string }> = [];
 
-      // Send one draft per recipient to avoid a single email with multiple TOs
+      // Send one email per recipient to avoid a single email with multiple TOs
       for (const recipient of to) {
         const coach = selectedCoaches.find((c: any) => (c.email || c.Email) === recipient) || {};
         const coachName = `${coach.firstName || coach.FirstName || ''} ${coach.lastName || coach.LastName || ''}`.trim();
@@ -537,8 +540,8 @@ export function RecruiterWizard() {
           personalizedHtml = `${personalizedHtml}<img src="${pixel}" alt="" width="1" height="1" style="display:none;" />`;
         }
         
-        const draftUrl = API_BASE_URL ? `${API_BASE_URL}/gmail/create-draft` : '/api/gmail/create-draft';
-        const res = await fetch(draftUrl, {
+        const sendUrl = API_BASE_URL ? `${API_BASE_URL}/gmail/send` : '/api/gmail/send';
+        const res = await fetch(sendUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
@@ -554,7 +557,7 @@ export function RecruiterWizard() {
         });
         const data = await res.json();
         if (!res.ok || !data?.ok) {
-          throw new Error(data?.error || 'Draft creation failed');
+          throw new Error(data?.error || 'Send failed');
         }
         
         // Track this recipient for send recording
@@ -594,7 +597,7 @@ export function RecruiterWizard() {
       setSendMessage(`Sent to ${to.length} recipient${to.length === 1 ? '' : 's'}`);
     } catch (e: any) {
       console.error(e);
-      setError(e?.message || 'Failed to create Gmail draft');
+      setError(e?.message || 'Failed to send email');
     } finally {
       setIsCreatingDraft(false);
     }
@@ -1656,7 +1659,7 @@ CRITICAL INSTRUCTIONS:
                     startIcon={draftBusy ? <CircularProgress size={16} /> : null}
                     sx={{ ml: { sm: 'auto' } }}
                   >
-                    {draftBusy ? 'Creating…' : 'Create Gmail Draft'}
+                    {draftBusy ? 'Sending…' : 'Send Email'}
                 </Button>
                 )}
 

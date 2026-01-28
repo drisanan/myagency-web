@@ -11,7 +11,7 @@ const REDIRECT_URI = process.env.GOOGLE_REDIRECT_URI || `https://${API_DOMAIN}/g
 const FRONTEND_URL = process.env.FRONTEND_URL || 'https://www.myrecruiteragency.com';
 
 const SCOPES = [
-  'https://www.googleapis.com/auth/gmail.compose',
+  'https://www.googleapis.com/auth/gmail.send',
   'https://www.googleapis.com/auth/calendar.readonly',  // Read calendar events
   'https://www.googleapis.com/auth/calendar.events',     // Create/edit calendar events
   'email',

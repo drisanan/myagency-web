@@ -14,7 +14,9 @@ export function MarketingHeader() {
           </Box>
           <Box>
             <Button LinkComponent={Link} href="/auth/login" color="inherit">Sign in</Button>
-            <Button LinkComponent={Link} href="/auth/signup" variant="contained" sx={{ ml: 1 }}>Sign up</Button>
+            <Button LinkComponent={Link} href="https://marketing.myrecruiteragency.com/mrastart" variant="contained" sx={{ ml: 1 }}>
+              Sign up
+            </Button>
           </Box>
         </Toolbar>
       </Container>

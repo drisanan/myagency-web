@@ -56,7 +56,7 @@ body.marketing-page h3 { font-size:28px; }
   border-bottom: 1px solid #1a1a1a;
 }
 .marketing-header .MuiButton-text { color:#ffffff; }
-.marketing-header .MuiButton-contained { background:#ff1514; color:#ffffff; }
+.marketing-header .MuiButton-contained { background:#aafb00; color:#0b0b0b; }
 .marketing-header .MuiButton-outlined { border-color:#ffffff; color:#ffffff; }
 
 /* Hero overlay text */

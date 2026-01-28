@@ -362,6 +362,9 @@ CRITICAL INSTRUCTIONS:
 
   async function handleCreateDraft() {
     try {
+      if (!window.confirm('Send this email now?')) {
+        return;
+      }
       setIsCreatingDraft(true);
       setSendMessage(null);
       setError(null);
@@ -375,13 +378,13 @@ CRITICAL INSTRUCTIONS:
       const html = emailHtml || buildEmailPreview();
       const savedTokens = getClientGmailTokens(clientId);
 
-      const draftUrl = API_BASE_URL ? `${API_BASE_URL}/gmail/create-draft` : '/api/gmail/create-draft';
-      const res = await fetch(draftUrl, {
+      const sendUrl = API_BASE_URL ? `${API_BASE_URL}/gmail/send` : '/api/gmail/send';
+      const res = await fetch(sendUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           clientId,
-          to: [selectedCoach.email],
+          recipients: [selectedCoach.email],
           subject,
           html,
           tokens: savedTokens || undefined,
@@ -390,17 +393,14 @@ CRITICAL INSTRUCTIONS:
       });
       const data = await res.json();
       if (!res.ok || !data?.ok) {
-        throw new Error(data?.error || 'Draft creation failed');
-      }
-      if (data.openUrl) {
-        window.open(data.openUrl, '_blank');
+        throw new Error(data?.error || 'Send failed');
       }
       try {
         markMailed(clientId, [selectedCoach.email]);
       } catch {}
-      setSendMessage('Draft created successfully!');
+      setSendMessage('Email sent successfully!');
     } catch (e: any) {
-      setError(e?.message || 'Failed to create draft');
+      setError(e?.message || 'Failed to send email');
     } finally {
       setIsCreatingDraft(false);
     }
@@ -675,7 +675,7 @@ CRITICAL INSTRUCTIONS:
                     startIcon={isCreatingDraft ? <CircularProgress size={16} color="inherit" /> : null}
                     sx={{ bgcolor: '#b7ff00', color: '#000', '&:hover': { bgcolor: '#a0e600' } }}
                   >
-                    {isCreatingDraft ? 'Creating…' : 'Create Gmail Draft'}
+                    {isCreatingDraft ? 'Sending…' : 'Send Email'}
                   </Button>
                 )}
               </Stack>

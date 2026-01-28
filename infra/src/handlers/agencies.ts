@@ -8,17 +8,18 @@ import { AgencyRecord } from '../lib/models';
 
 function toRecord(input: Partial<AgencyRecord> & { email: string; name: string }, existing?: AgencyRecord): AgencyRecord {
   const id = input.id || existing?.id || newId('agency');
+  const normalizedEmail = String(input.email || '').trim().toLowerCase();
   return {
     // Preserve existing fields first
     ...existing,
     // Then overlay new fields
     PK: `AGENCY#${id}`,
     SK: 'PROFILE',
-    GSI1PK: `EMAIL#${input.email}`,
+    GSI1PK: `EMAIL#${normalizedEmail}`,
     GSI1SK: `AGENCY#${id}`,
     id,
     name: input.name,
-    email: input.email,
+    email: normalizedEmail,
     settings: input.settings ?? existing?.settings,
     subscriptionLevel: input.subscriptionLevel ?? existing?.subscriptionLevel,
     createdAt: existing?.createdAt ?? Date.now(),
@@ -50,7 +51,8 @@ const agenciesHandler = async (event: APIGatewayProxyEventV2) => {
       }
 
       // Secure: Return ONLY the logged-in agency's profile
-      let found = await queryGSI1(`EMAIL#${session.agencyEmail}`, 'AGENCY#');
+      const lookupEmail = String(session.agencyEmail || session.email || '').trim().toLowerCase();
+      let found = await queryGSI1(`EMAIL#${lookupEmail}`, 'AGENCY#');
       
       // Fallback: Query by PK using agencyId from session
       if ((!found || found.length === 0) && session.agencyId) {
@@ -86,8 +88,9 @@ const agenciesHandler = async (event: APIGatewayProxyEventV2) => {
       let agency: AgencyRecord | undefined;
       
       // Try GSI1 lookup by email first
-      if (session.agencyEmail) {
-        const byEmail = await queryGSI1(`EMAIL#${session.agencyEmail}`, 'AGENCY#');
+      if (session.agencyEmail || session.email) {
+        const lookupEmail = String(session.agencyEmail || session.email || '').trim().toLowerCase();
+        const byEmail = await queryGSI1(`EMAIL#${lookupEmail}`, 'AGENCY#');
         agency = byEmail?.[0] as AgencyRecord | undefined;
       }
       
@@ -125,7 +128,7 @@ const agenciesHandler = async (event: APIGatewayProxyEventV2) => {
       const parsed = JSON.parse(event.body || '{}');
       
       // Secure: Force use of session email, ignore body email
-      const email = session.agencyEmail || session.email;
+      const email = (session.agencyEmail || session.email || '').toLowerCase();
       
       // Try GSI1 lookup first
       const existing = email ? await queryGSI1(`EMAIL#${email}`, 'AGENCY#') : [];

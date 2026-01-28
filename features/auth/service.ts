@@ -128,7 +128,8 @@ export async function fetchSession(): Promise<Session | null> {
 
 export async function login(input: { email: string; phone: string; accessCode: string }): Promise<Session> {
   const base = requireApiBase();
-  const result = await loginWithGHL(base, input.email.trim(), input.phone.trim(), input.accessCode.trim());
+  const normalizedEmail = input.email.trim().toLowerCase();
+  const result = await loginWithGHL(base, normalizedEmail, input.phone.trim(), input.accessCode.trim());
   if (!result.ok) {
     throw new Error(result.error);
   }
@@ -154,19 +155,19 @@ console.log('agencyLogo', agencyLogo);
   }
   console.log('agencyId', agencyId);
   if (!agencyId) {
-    const agency = await getAgencyByEmail(result.contact.email);
+    const agency = await getAgencyByEmail(result.contact.email?.toLowerCase?.() || result.contact.email);
     agencyId = agency?.id;
   }
 
   // Final fallback: use contact email as agencyId to avoid missing field on session
-  agencyId = agencyId || result.contact.email;
+  agencyId = agencyId || result.contact.email?.toLowerCase?.() || result.contact.email;
 console.log('agencyId', agencyId);
   console.log('result.contact.email', result.contact.email);
 
   // Fetch agency settings for theming (all white-label colors)
   let agencySettings: AgencySettings | undefined = undefined;
   try {
-    const agency = await getAgencyByEmail(result.contact.email);
+    const agency = await getAgencyByEmail(result.contact.email?.toLowerCase?.() || result.contact.email);
     if (agency?.settings) {
       agencySettings = { ...agency.settings };
     }
@@ -176,8 +177,8 @@ console.log('agencyId', agencyId);
 
   const session: Session = {
     role: 'agency',
-    email: result.contact.email,
-    agencyEmail: result.contact.email,
+    email: result.contact.email?.toLowerCase?.() || result.contact.email,
+    agencyEmail: result.contact.email?.toLowerCase?.() || result.contact.email,
     agencyId,
     contactId: result.contact.id,
     firstName: result.contact.firstName,

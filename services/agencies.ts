@@ -89,7 +89,8 @@ export async function getAgencies() {
 export async function getAgencyByEmail(email: string) {
   const data = await apiFetch('/agencies');
   const list = data?.agencies ?? [];
-  return list.find((a: Agency) => a.email === email) ?? null;
+  const target = String(email || '').trim().toLowerCase();
+  return list.find((a: Agency) => String(a.email || '').trim().toLowerCase() === target) ?? null;
 }
 
 export async function getAgencyById(id: string) {
@@ -101,7 +102,8 @@ export async function getAgencyById(id: string) {
 export async function getAgencySettings(email: string) {
   const data = await apiFetch(`/agencies?email=${encodeURIComponent(email)}`);
   const list = data?.agencies ?? [];
-  const a = list.find((x: Agency) => x.email === email);
+  const target = String(email || '').trim().toLowerCase();
+  const a = list.find((x: Agency) => String(x.email || '').trim().toLowerCase() === target);
   // Return settings plus slug for the settings form
   return { ...(a?.settings ?? {}), slug: a?.slug };
 }

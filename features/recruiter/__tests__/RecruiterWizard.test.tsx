@@ -140,24 +140,25 @@ describe('RecruiterWizard loading indicators', () => {
 
       // wait for gmail status fetch to resolve and button to enable
       await act(async () => {});
-      const draftBtn = await screen.findByRole('button', { name: /create gmail draft/i });
-      expect(draftBtn).toBeEnabled();
+      const sendBtn = await screen.findByRole('button', { name: /send email/i });
+      expect(sendBtn).toBeEnabled();
 
-      // Click create draft and verify recipients include both coaches
-      await user.click(draftBtn);
+      // Click send and verify recipients include both coaches
+      jest.spyOn(window, 'confirm').mockReturnValue(true);
+      await user.click(sendBtn);
 
       // last two calls (one per recipient)
       const calls = fetchMock.mock.calls.filter(([, init]) => (init as any)?.body);
       const toLists = calls
         .map(([, init]) => JSON.parse((init as any).body))
-        .filter((b) => Array.isArray(b.to))
-        .map((b) => b.to);
+        .filter((b) => Array.isArray(b.recipients))
+        .map((b) => b.recipients);
       expect(toLists).toEqual(expect.arrayContaining([[ 'ada@u.test' ], [ 'alan@u.test' ]]));
       expect(toLists.length).toBe(2);
 
       const bodies = calls
         .map(([, init]) => JSON.parse((init as any).body))
-        .filter((b) => Array.isArray(b.to));
+        .filter((b) => Array.isArray(b.recipients));
       const htmls = bodies.map((b) => b.html);
       expect(htmls[0]).toMatch(/Coach (Ada|Lovelace)|Ada|Lovelace/i);
       expect(htmls[1]).toMatch(/Coach (Alan|Turing)|Alan|Turing/i);
@@ -165,12 +166,12 @@ describe('RecruiterWizard loading indicators', () => {
     15000
   );
 
-  test('shows sent-to-N confirmation after drafts', async () => {
+  test('shows sent-to-N confirmation after send', async () => {
     const user = userEvent.setup();
     const fetchMock = jest.fn()
       // google/status
       .mockResolvedValueOnce({ ok: true, json: async () => ({ connected: true }) } as any)
-      // drafts
+      // send
       .mockResolvedValue({ ok: true, json: async () => ({ ok: true }) } as any);
     (global as any).fetch = fetchMock;
 
@@ -188,9 +189,10 @@ describe('RecruiterWizard loading indicators', () => {
     await user.click(await screen.findByText(/Selenium List/i));
     await user.click(screen.getByRole('button', { name: /next/i }));
 
-    // Draft step: create drafts
-    const draftBtn = await screen.findByRole('button', { name: /create gmail draft/i });
-    await user.click(draftBtn);
+    // Send step
+    const sendBtn = await screen.findByRole('button', { name: /send email/i });
+    jest.spyOn(window, 'confirm').mockReturnValue(true);
+    await user.click(sendBtn);
 
     const confirmation = await screen.findByTestId('send-confirmation');
     expect(confirmation).toHaveTextContent('Sent to 1 recipient');

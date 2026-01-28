@@ -28,7 +28,7 @@ const gmailHandler: Handler = async (event: APIGatewayProxyEventV2) => {
     // Usage: Client asks "Where do I send the user to authorize Gmail?"
     if (action === 'oauth-url') {
       try {
-        const url = buildOAuthUrl(['https://www.googleapis.com/auth/gmail.compose']);
+        const url = buildOAuthUrl(['https://www.googleapis.com/auth/gmail.send']);
         return response(200, { ok: true, url }, origin);
       } catch (e: any) {
         return response(400, { ok: false, error: e?.message || 'Failed to build OAuth URL' }, origin);
@@ -70,12 +70,88 @@ const gmailHandler: Handler = async (event: APIGatewayProxyEventV2) => {
       }
     }
 
-    // --- C. Create Drafts ---
+    // --- C. Send Emails ---
+    // Usage: Agency wants to send emails from the connected Gmail account.
+    if (action === 'send') {
+      if (!event.body) return response(400, { ok: false, error: 'Missing body' }, origin);
+      const payload = JSON.parse(event.body);
+      const { clientId, recipients, subject, html, cc } = payload || {};
+
+      if (!clientId || !Array.isArray(recipients) || !recipients.length || !subject || !html) {
+        return response(400, { ok: false, error: 'clientId, recipients[], subject, html required' }, origin);
+      }
+
+      const tokenRec = await getItem({
+        PK: `AGENCY#${session.agencyId}`,
+        SK: `GMAIL_TOKEN#${clientId}`,
+      }) as GmailTokenRecord | undefined;
+
+      if (!tokenRec?.tokens) {
+        return response(400, { ok: false, error: 'No Gmail tokens stored for this client. Please reconnect Gmail.' }, origin);
+      }
+
+      let tokens = tokenRec.tokens;
+      const oauth2Client = new google.auth.OAuth2(
+        process.env.GOOGLE_CLIENT_ID,
+        process.env.GOOGLE_CLIENT_SECRET,
+        process.env.GOOGLE_REDIRECT_URI,
+      );
+      oauth2Client.setCredentials(tokens);
+
+      const isExpired = tokens.expiry_date && Date.now() > tokens.expiry_date;
+      if (isExpired && tokens.refresh_token) {
+        console.log('[gmail:send] Token expired, refreshing...', { clientId, expiry: tokens.expiry_date });
+        try {
+          const { credentials } = await oauth2Client.refreshAccessToken();
+          tokens = credentials;
+          oauth2Client.setCredentials(credentials);
+          await putItem({
+            ...tokenRec,
+            tokens: credentials,
+            updatedAt: Date.now(),
+          });
+          console.log('[gmail:send] Token refreshed successfully', { clientId, newExpiry: credentials.expiry_date });
+        } catch (refreshErr: any) {
+          console.error('[gmail:send] Token refresh failed', refreshErr);
+          return response(401, {
+            ok: false,
+            error: 'Gmail token expired and refresh failed. Please reconnect Gmail.',
+            needsReconnect: true,
+          }, origin);
+        }
+      }
+
+      const gmail = google.gmail({ version: 'v1', auth: oauth2Client });
+      const results: Array<{ to: string; ok: boolean; error?: string }> = [];
+      for (const to of recipients) {
+        try {
+          if (process.env.MOCK_GMAIL === 'true' || !tokens?.access_token) {
+            console.log('Mocking send', { to });
+            results.push({ to, ok: true });
+            continue;
+          }
+          const raw = buildMime(subject, html, to, Array.isArray(cc) ? cc : undefined);
+          await gmail.users.messages.send({
+            userId: 'me',
+            requestBody: { raw },
+          });
+          results.push({ to, ok: true });
+        } catch (err: any) {
+          console.error('Gmail send error', err);
+          results.push({ to, ok: false, error: err?.message || 'send error' });
+        }
+      }
+
+      const sent = results.filter((r) => r.ok).length;
+      return response(200, { ok: true, sent, results }, origin);
+    }
+
+    // --- D. Create Drafts ---
     // Usage: Agency wants to create draft emails in the connected Gmail account.
     if (action === 'create-draft') {
       if (!event.body) return response(400, { ok: false, error: 'Missing body' }, origin);
       const payload = JSON.parse(event.body);
-      const { clientId, recipients, subject, html } = payload || {};
+      const { clientId, recipients, subject, html, cc } = payload || {};
 
       if (!clientId || !Array.isArray(recipients) || !recipients.length || !subject || !html) {
         return response(400, { ok: false, error: 'clientId, recipients[], subject, html required' }, origin);
@@ -140,7 +216,7 @@ const gmailHandler: Handler = async (event: APIGatewayProxyEventV2) => {
             continue;
           }
 
-          const raw = buildMime(subject, html, to);
+          const raw = buildMime(subject, html, to, Array.isArray(cc) ? cc : undefined);
           await gmail.users.drafts.create({
             userId: 'me',
             requestBody: { message: { raw } },
@@ -161,10 +237,13 @@ const gmailHandler: Handler = async (event: APIGatewayProxyEventV2) => {
 };
 
 // Helper: Build RFC 2822 compliant message
-function buildMime(subject: string, html: string, to: string) {
+function buildMime(subject: string, html: string, to: string, cc?: string[]) {
   const lines = [];
   lines.push('From: me');
   lines.push(`To: ${to}`);
+  if (cc?.length) {
+    lines.push(`Cc: ${cc.join(', ')}`);
+  }
   lines.push(`Subject: ${subject}`);
   lines.push('Content-Type: text/html; charset="UTF-8"');
   lines.push('');
