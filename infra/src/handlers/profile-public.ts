@@ -87,6 +87,8 @@ const profilePublicHandler: Handler = async (event: APIGatewayProxyEventV2) => {
     }
 
       // Return sanitized public profile (exclude sensitive fields)
+      // Include photoUrl/profileImageUrl for backwards compatibility
+      const clientAny = client as any;
       const publicProfile = {
         id: client.id,
         username: client.username,
@@ -95,7 +97,10 @@ const profilePublicHandler: Handler = async (event: APIGatewayProxyEventV2) => {
         sport: client.sport,
         phone: client.phone,
         email: client.email,
+        photoUrl: clientAny.photoUrl,
+        profileImageUrl: clientAny.profileImageUrl,
         galleryImages: client.galleryImages || [],
+        highlightVideos: clientAny.highlightVideos || [],
         radar: client.radar || {},
         // Don't expose: accessCodeHash, authEnabled, agencyId, agencyEmail, PK, SK, GSI keys
       };

@@ -1056,9 +1056,15 @@ export function ClientWizard({
         setSubmitError('');
         setSubmitSuccess('');
       }
+      // Copy profile photo to radar.profileImage so it displays on public profile
+      const profileImage = basic.photoUrl || basic.profileImageUrl;
+      const mergedRadar = {
+        ...radar,
+        ...(profileImage ? { profileImage } : {}),
+      };
       const payload: Record<string, any> = {
         ...basic,
-        radar,
+        radar: mergedRadar,
         agencyEmail: overrideAgencyEmail ?? initialClient?.agencyEmail ?? session?.email,
         id: initialClient?.id,
         // Include Gmail tokens if connected during this session

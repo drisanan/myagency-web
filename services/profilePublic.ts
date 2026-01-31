@@ -5,6 +5,11 @@
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || '';
 
+export type HighlightVideo = {
+  url: string;
+  title?: string;
+};
+
 export type PublicProfile = {
   id: string;
   username: string;
@@ -13,7 +18,10 @@ export type PublicProfile = {
   sport: string;
   phone?: string;
   email?: string;
+  photoUrl?: string;
+  profileImageUrl?: string;
   galleryImages: string[];
+  highlightVideos?: HighlightVideo[];
   radar: {
     // Personal info
     preferredPosition?: string;

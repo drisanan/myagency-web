@@ -215,6 +215,15 @@ functions:
       - httpApi:
           path: /tasks/{id}
           method: any
+  suggestions:
+    handler: infra/src/handlers/suggestions.handler
+    events:
+      - httpApi:
+          path: /suggestions
+          method: any
+      - httpApi:
+          path: /suggestions/{id}
+          method: any
   prompts:
     handler: infra/src/handlers/prompts.handler
     events:

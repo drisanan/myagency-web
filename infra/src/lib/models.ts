@@ -562,3 +562,32 @@ export type UpdateFormRecord = {
   reviewedAt?: number;
   reviewedBy?: string;
 };
+
+// ============================================
+// User Suggestions / Improvement Requests
+// ============================================
+
+export type SuggestionStatus = 'pending' | 'resolved' | 'denied';
+
+export type SuggestionRecord = {
+  PK: string;                    // SUGGESTION#<id>
+  SK: string;                    // META
+  GSI1PK?: string;               // STATUS#<status>
+  GSI1SK?: string;               // SUGGESTION#<createdAt>
+  GSI2PK?: string;               // USER#<submittedByEmail>
+  GSI2SK?: string;               // SUGGESTION#<createdAt>
+  id: string;
+  submittedByEmail: string;
+  submittedByName: string;
+  agencyId?: string;             // Optional: which agency context
+  screenPath: string;            // URL path where suggestion was made
+  areaSelector: string;          // CSS selector or component identifier
+  areaContext: string;           // Additional context about the area
+  originalSuggestion: string;    // User's free-form text
+  requirements: string;          // AI-generated structured requirements
+  status: SuggestionStatus;
+  resolutionNotes?: string;      // Why resolved/denied
+  resolvedBy?: string;           // Developer who resolved
+  createdAt: number;
+  updatedAt: number;
+};

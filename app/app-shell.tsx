@@ -6,8 +6,9 @@ import { usePathname } from 'next/navigation';
 import { useSession } from '@/features/auth/session';
 import { useImpersonation } from '@/hooks/useImpersonation';
 import { colors } from '@/theme/colors';
-import { IoAppsOutline, IoBarbellOutline, IoFlaskOutline, IoClipboardOutline, IoSchoolOutline, IoPeopleOutline, IoMailOutline, IoListOutline, IoCheckmarkCircleOutline, IoEyeOutline, IoCalendarOutline, IoChatbubblesOutline, IoPersonCircleOutline } from 'react-icons/io5';
+import { IoAppsOutline, IoBarbellOutline, IoFlaskOutline, IoClipboardOutline, IoSchoolOutline, IoPeopleOutline, IoMailOutline, IoListOutline, IoCheckmarkCircleOutline, IoEyeOutline, IoCalendarOutline, IoChatbubblesOutline, IoPersonCircleOutline, IoBulbOutline } from 'react-icons/io5';
 import { IoNotificationsOutline } from 'react-icons/io5';
+import { SuggestionButton } from '@/features/suggestions';
 import { useQuery } from '@tanstack/react-query';
 import { tasksDueSoon, Task } from '@/services/tasks';
 import { listTasks } from '@/services/tasks';
@@ -67,6 +68,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     { href: '/tasks', label: 'Tasks', icon: <IoCheckmarkCircleOutline /> },
     { href: '/email-drips', label: 'Email Drips', icon: <IoMailOutline /> },
     { href: '/recruiter', label: 'Recruiter', icon: <IoSchoolOutline /> },
+    { href: '/improvements', label: 'Improvements', icon: <IoBulbOutline /> },
   ];
 
   const navItems = session?.role === 'client'
@@ -314,6 +316,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         )}
         {children}
       </Box>
+
+      {/* Floating suggestion button */}
+      <SuggestionButton hidden={session?.role === 'client'} />
     </Box>
   );
 }

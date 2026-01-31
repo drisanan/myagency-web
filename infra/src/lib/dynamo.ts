@@ -160,3 +160,18 @@ export async function scanByGSI3PK(GSI3PK: string) {
   return res.Items ?? [];
 }
 
+// Generic scan with custom filter expression
+export async function scanTable(params: {
+  FilterExpression: string;
+  ExpressionAttributeValues: Record<string, unknown>;
+  ExpressionAttributeNames?: Record<string, string>;
+}) {
+  const res = await docClient.send(new ScanCommand({
+    TableName: TABLE_NAME,
+    FilterExpression: params.FilterExpression,
+    ExpressionAttributeValues: params.ExpressionAttributeValues,
+    ExpressionAttributeNames: params.ExpressionAttributeNames,
+  }));
+  return res.Items ?? [];
+}
+

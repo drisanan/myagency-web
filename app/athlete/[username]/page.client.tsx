@@ -178,8 +178,10 @@ export function AthleteProfileClient({ username }: { username: string }) {
 
   const { radar } = profile;
   const fullName = `${profile.firstName} ${profile.lastName}`.trim();
-  const profileImage = radar.profileImage || profile.galleryImages?.[0];
-  const hasHighlights = radar.youtubeHighlightUrl || radar.hudlLink;
+  // Check multiple possible profile image sources
+  const profileImage = radar.profileImage || profile.photoUrl || profile.profileImageUrl || profile.galleryImages?.[0];
+  const hasUploadedVideos = (profile.highlightVideos?.length ?? 0) > 0;
+  const hasHighlights = radar.youtubeHighlightUrl || radar.hudlLink || hasUploadedVideos;
   const hasSocials = radar.instagramProfileUrl || radar.tiktokProfileUrl || radar.twitterUrl || radar.facebookUrl;
   const hasMetrics = (radar.metrics?.length ?? 0) > 0;
   const hasGallery = (profile.galleryImages?.length ?? 0) > 0;
@@ -500,6 +502,44 @@ export function AthleteProfileClient({ username }: { username: string }) {
               </Box>
             )}
           </Box>
+          {/* Uploaded Highlight Videos */}
+          {hasUploadedVideos && (
+            <Box sx={{ mt: 4 }}>
+              <Typography variant="h6" sx={{ color: colors.text, mb: 2, fontWeight: 600 }}>
+                Uploaded Highlights
+              </Typography>
+              <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(2, 1fr)' }, gap: 3 }}>
+                {profile.highlightVideos?.map((video, idx) => (
+                  <Box
+                    key={idx}
+                    sx={{
+                      bgcolor: colors.surfaceLight,
+                      borderRadius: 3,
+                      overflow: 'hidden',
+                      border: `1px solid ${colors.surface}`,
+                    }}
+                  >
+                    <Box
+                      component="video"
+                      controls
+                      preload="metadata"
+                      sx={{ width: '100%', maxHeight: 300, bgcolor: '#000' }}
+                    >
+                      <source src={video.url} type="video/mp4" />
+                      Your browser does not support the video tag.
+                    </Box>
+                    {video.title && (
+                      <Box sx={{ p: 2 }}>
+                        <Typography fontWeight={600} sx={{ color: colors.text }}>
+                          {video.title}
+                        </Typography>
+                      </Box>
+                    )}
+                  </Box>
+                ))}
+              </Box>
+            </Box>
+          )}
         </Container>
       )}
 
