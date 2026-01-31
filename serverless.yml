@@ -217,6 +217,7 @@ functions:
           method: any
   suggestions:
     handler: infra/src/handlers/suggestions.handler
+    timeout: 30  # Increased for OpenAI API calls
     events:
       - httpApi:
           path: /suggestions
