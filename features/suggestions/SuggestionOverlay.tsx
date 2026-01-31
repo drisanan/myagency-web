@@ -178,7 +178,7 @@ export function SuggestionOverlay({ open, onClose }: SuggestionOverlayProps) {
 
   return (
     <>
-      {/* Dimmed backdrop */}
+      {/* Dimmed backdrop - pointer-events: none during area selection so clicks pass through */}
       <Fade in={open}>
         <Box
           data-suggestion-overlay="backdrop"
@@ -189,6 +189,8 @@ export function SuggestionOverlay({ open, onClose }: SuggestionOverlayProps) {
             bgcolor: 'rgba(0, 0, 0, 0.6)',
             zIndex: 1300,
             cursor: step === 'select-area' ? 'crosshair' : 'default',
+            // Allow clicks to pass through during area selection
+            pointerEvents: step === 'select-area' ? 'none' : 'auto',
           }}
         />
       </Fade>
