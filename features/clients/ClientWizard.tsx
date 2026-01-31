@@ -1026,6 +1026,10 @@ export function ClientWizard({
     } else if (value.accessCode?.trim() && value.accessCode.length !== 6) {
       next.accessCode = 'Access code must be exactly 6 digits';
     }
+    // Gmail connection is required for profile completion
+    if (checkGmail && !gmailConnected) {
+      next.gmail = 'Gmail connection is required to send recruiting emails on your behalf';
+    }
     return next;
   }, [gmailConnected, mode]);
 
