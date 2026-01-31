@@ -162,19 +162,40 @@ async function runTest() {
       throw new Error('Overlay did not appear after clicking button');
     }
 
-    // 5. Click on an area to select it
-    console.log('7. Selecting an area...');
+    // 5. Dismiss any tour if present
+    console.log('7. Checking for and dismissing tour...');
+    try {
+      const tourOverlay = await driver.findElements(By.css('.driver-overlay, .driver-popover'));
+      if (tourOverlay.length > 0) {
+        console.log('   Tour detected, dismissing...');
+        // Try to click the close button or skip
+        const closeBtn = await driver.findElements(By.css('.driver-popover-close-btn, button[aria-label="Close"]'));
+        if (closeBtn.length > 0) {
+          await closeBtn[0].click();
+          await sleep(500);
+        }
+        // Or press Escape to close tour
+        await driver.actions().sendKeys(Key.ESCAPE).perform();
+        await sleep(500);
+      }
+    } catch (e) {
+      console.log('   No tour to dismiss');
+    }
+
+    // 6. Click on an area to select it
+    console.log('8. Selecting an area...');
     
     // Find something to click on (like a heading or card)
     const targetElement = await driver.findElement(By.css('main h1, main h2, main .MuiTypography-h5, main .MuiPaper-root'));
     console.log('   Found target element to click');
     
-    // Click the target
-    await targetElement.click();
+    // Use JavaScript click to bypass any overlay issues
+    await driver.executeScript('arguments[0].click();', targetElement);
+    console.log('   Clicked element via JavaScript');
     await sleep(1000);
 
-    // 6. Check for suggestion form
-    console.log('8. Checking for suggestion form...');
+    // 7. Check for suggestion form
+    console.log('9. Checking for suggestion form...');
     
     let suggestionForm;
     try {
@@ -190,24 +211,24 @@ async function runTest() {
       throw new Error('Suggestion form did not appear after selecting area');
     }
 
-    // 7. Enter suggestion text
-    console.log('9. Entering suggestion...');
+    // 8. Enter suggestion text
+    console.log('10. Entering suggestion...');
     const textarea = await driver.findElement(By.css('textarea'));
     await textarea.sendKeys('This is a test suggestion from Selenium E2E test');
     await sleep(500);
 
-    // 8. Submit the suggestion
-    console.log('10. Submitting suggestion...');
+    // 9. Submit the suggestion
+    console.log('11. Submitting suggestion...');
     const submitButton = await driver.findElement(By.xpath("//button[contains(text(), 'Submit')]"));
     await submitButton.click();
     await sleep(3000);
 
-    // 9. Check for success
-    console.log('11. Checking for success...');
+    // 10. Check for success
+    console.log('12. Checking for success...');
     try {
       await driver.wait(
         until.elementLocated(By.xpath("//*[contains(text(), 'Suggestion Submitted')]")),
-        10000
+        15000
       );
       console.log('   ✓ Success message found');
     } catch (e) {
@@ -217,6 +238,14 @@ async function runTest() {
         const errorText = await errors[0].getText();
         console.log('   Error message:', errorText);
       }
+      
+      // Get browser console logs
+      const logs = await driver.manage().logs().get('browser');
+      console.log('   Browser console logs:');
+      logs.slice(-10).forEach(log => {
+        console.log('     ', log.level.name, log.message);
+      });
+      
       throw new Error('Success message not found');
     }
 

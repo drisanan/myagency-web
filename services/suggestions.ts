@@ -3,7 +3,7 @@
  * Handles CRUD operations for user improvement suggestions
  */
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || '';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://api.myrecruiteragency.com';
 
 export type SuggestionStatus = 'pending' | 'resolved' | 'denied';
 
