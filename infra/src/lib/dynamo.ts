@@ -174,4 +174,3 @@ export async function scanTable(params: {
   }));
   return res.Items ?? [];
 }
-

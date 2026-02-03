@@ -131,6 +131,12 @@ functions:
       - httpApi:
           path: /lists/{id}
           method: any
+  listAssignments:
+    handler: infra/src/handlers/list-assignments.handler
+    events:
+      - httpApi:
+          path: /list-assignments
+          method: any
   formsPublic:
     handler: infra/src/handlers/forms-public.handler
     events:
