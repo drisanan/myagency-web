@@ -20,14 +20,70 @@ export const dashboardTableSx: SxProps<Theme> = {
     borderBottom: '1px solid #f2f4f7',
   },
   '& .MuiTableCell-root': {
-    padding: '12px 16px',
-    fontSize: 14,
+    padding: { xs: '8px 12px', sm: '12px 16px' },
+    fontSize: { xs: 13, sm: 14 },
   },
   '& .MuiTableRow-root:nth-of-type(even)': {
     backgroundColor: '#fcfcfd',
   },
   '& .MuiTableRow-root:hover': {
     backgroundColor: '#f8fafc',
+  },
+};
+
+// Responsive table container - allows horizontal scrolling on mobile
+export const responsiveTableContainerSx: SxProps<Theme> = {
+  width: '100%',
+  overflowX: 'auto',
+  WebkitOverflowScrolling: 'touch', // Smooth scrolling on iOS
+  '&::-webkit-scrollbar': {
+    height: 6,
+  },
+  '&::-webkit-scrollbar-track': {
+    backgroundColor: '#f1f1f1',
+    borderRadius: 3,
+  },
+  '&::-webkit-scrollbar-thumb': {
+    backgroundColor: '#c1c1c1',
+    borderRadius: 3,
+    '&:hover': {
+      backgroundColor: '#a1a1a1',
+    },
+  },
+};
+
+// Mobile card styles for table rows converted to cards
+export const mobileCardSx: SxProps<Theme> = {
+  p: 2,
+  mb: 1.5,
+  borderRadius: 2,
+  border: '1px solid #eaecf0',
+  backgroundColor: '#fff',
+  '&:hover': {
+    backgroundColor: '#f8fafc',
+    boxShadow: '0 2px 4px rgba(16, 24, 40, 0.08)',
+  },
+};
+
+// Hide on mobile helper
+export const hideOnMobile: SxProps<Theme> = {
+  display: { xs: 'none', md: 'table-cell' },
+};
+
+// Show only on mobile helper
+export const showOnMobile: SxProps<Theme> = {
+  display: { xs: 'block', md: 'none' },
+};
+
+// Actions column responsive wrapper
+export const responsiveActionsSx: SxProps<Theme> = {
+  display: 'flex',
+  flexWrap: 'wrap',
+  gap: 0.5,
+  '& .MuiButton-root': {
+    minWidth: { xs: 'auto', sm: 64 },
+    px: { xs: 1, sm: 2 },
+    fontSize: { xs: 12, sm: 13 },
   },
 };
 

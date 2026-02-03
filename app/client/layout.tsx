@@ -5,10 +5,10 @@ import { TourProvider } from '@/features/tour/TourProvider';
 import { DynamicThemeProvider } from '@/features/theme/DynamicThemeProvider';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { Box, AppBar, Toolbar, Typography, Drawer, List, ListItemButton, ListItemText, Stack, CssBaseline, Avatar, IconButton, Menu, MenuItem, Divider, Button } from '@mui/material';
+import { Box, AppBar, Toolbar, Typography, Drawer, List, ListItemButton, ListItemText, Stack, CssBaseline, Avatar, IconButton, Menu, MenuItem, Divider, Button, useMediaQuery, useTheme } from '@mui/material';
 import { colors } from '@/theme/colors';
 import { useImpersonation } from '@/hooks/useImpersonation';
-import { IoClipboardOutline, IoSchoolOutline, IoEyeOutline, IoCalendarOutline, IoChatbubblesOutline } from 'react-icons/io5';
+import { IoClipboardOutline, IoSchoolOutline, IoEyeOutline, IoCalendarOutline, IoChatbubblesOutline, IoMenuOutline, IoCloseOutline } from 'react-icons/io5';
 
 const drawerWidth = 240;
 
@@ -42,6 +42,20 @@ function ClientShell({ children }: { children: React.ReactNode }) {
   const { session, setSession } = useSession();
   const pathname = usePathname();
   const { isImpersonating, stopImpersonation } = useImpersonation();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const [mobileOpen, setMobileOpen] = React.useState(false);
+
+  const handleDrawerToggle = () => {
+    setMobileOpen(!mobileOpen);
+  };
+
+  // Close drawer when route changes on mobile
+  React.useEffect(() => {
+    if (isMobile) {
+      setMobileOpen(false);
+    }
+  }, [pathname, isMobile]);
   
   // Dynamic colors from agency settings (white-label)
   const s = session?.agencySettings || {};
@@ -102,29 +116,39 @@ function ClientShell({ children }: { children: React.ReactNode }) {
           color: 'inherit',
         }}
       >
-        <Toolbar sx={{ justifyContent: 'space-between', px: 2 }}>
+        <Toolbar sx={{ justifyContent: 'space-between', px: { xs: 1, sm: 2 } }}>
           <Box sx={{ display: 'flex', alignItems: 'center', minHeight: 48 }}>
+            {/* Hamburger menu for mobile */}
+            <IconButton
+              color="inherit"
+              aria-label="open drawer"
+              edge="start"
+              onClick={handleDrawerToggle}
+              sx={{ mr: 1, display: { md: 'none' } }}
+            >
+              {mobileOpen ? <IoCloseOutline size={24} /> : <IoMenuOutline size={24} />}
+            </IconButton>
             {agencyLogo ? (
               <img src={agencyLogo} alt="Agency Logo" style={{ height: 32, objectFit: 'contain' }} />
             ) : (
               <img src="/marketing/an-logo.png" alt="Athlete Narrative" style={{ height: 32, objectFit: 'contain' }} />
             )}
           </Box>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1, sm: 2 } }}>
             {session && (
-              <Stack direction="row" spacing={2} alignItems="center">
+              <Stack direction="row" spacing={{ xs: 1, sm: 2 }} alignItems="center">
                 {isImpersonating && (
                   <Stack direction="row" spacing={1} alignItems="center">
-                    <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                    <Typography variant="body2" sx={{ fontWeight: 600, display: { xs: 'none', sm: 'block' } }}>
                       Impersonating:
                     </Typography>
-                    <Typography variant="body2" color="text.secondary">
+                    <Typography variant="body2" color="text.secondary" sx={{ display: { xs: 'none', md: 'block' } }}>
                       {session.firstName || session.lastName
                         ? `${session.firstName || ''} ${session.lastName || ''}`.trim()
                         : session.email}
                     </Typography>
-                    <Button size="small" variant="outlined" onClick={stopImpersonation}>
-                      End Impersonation
+                    <Button size="small" variant="outlined" onClick={stopImpersonation} sx={{ fontSize: { xs: 11, sm: 13 }, px: { xs: 1, sm: 2 } }}>
+                      End
                     </Button>
                   </Stack>
                 )}
@@ -162,9 +186,50 @@ function ClientShell({ children }: { children: React.ReactNode }) {
         </MenuItem>
       </Menu>
 
+      {/* Mobile Drawer - temporary */}
+      <Drawer
+        variant="temporary"
+        open={mobileOpen}
+        onClose={handleDrawerToggle}
+        ModalProps={{ keepMounted: true }}
+        sx={{
+          display: { xs: 'block', md: 'none' },
+          '& .MuiDrawer-paper': {
+            width: drawerWidth,
+            boxSizing: 'border-box',
+            bgcolor: primaryColor,
+            color: navText,
+          },
+        }}
+      >
+        <Toolbar />
+        <List sx={{ display: 'flex', flexDirection: 'column', gap: '5px', mt: 2.5 }}>
+          {navItems.map((item) => {
+            const selected = pathname === item.href || pathname?.startsWith(`${item.href}/`);
+            return (
+              <ListItemButton
+                key={item.href}
+                LinkComponent={Link}
+                href={item.href}
+                sx={navItemSx}
+                selected={selected}
+                onClick={handleDrawerToggle}
+              >
+                <Stack direction="row" spacing={2} alignItems="center">
+                  {item.icon}
+                  <ListItemText primary={item.label} />
+                </Stack>
+              </ListItemButton>
+            );
+          })}
+        </List>
+      </Drawer>
+
+      {/* Desktop Drawer - permanent */}
       <Drawer
         variant="permanent"
         sx={{
+          display: { xs: 'none', md: 'block' },
           width: drawerWidth,
           '& .MuiDrawer-paper': {
             width: drawerWidth,
@@ -199,8 +264,9 @@ function ClientShell({ children }: { children: React.ReactNode }) {
         component="main"
         sx={{
           flexGrow: 1,
-          p: 3,
+          p: { xs: 1.5, sm: 2, md: 3 },
           bgcolor: contentBg,
+          width: { xs: '100%', md: `calc(100% - ${drawerWidth}px)` },
         }}
       >
         <Toolbar />

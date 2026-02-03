@@ -2,10 +2,11 @@
 import React from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { listClientsByAgencyEmail, deleteClient, getGmailStatus, refreshGmailToken } from '@/services/clients';
-import { Button, Stack, Box, Typography, Avatar, Paper, Chip, CircularProgress, Table, TableHead, TableRow, TableCell, TableBody, TablePagination } from '@mui/material';
+import { Button, Stack, Box, Typography, Avatar, Paper, Chip, CircularProgress, Table, TableHead, TableRow, TableCell, TableBody, TablePagination, useMediaQuery, useTheme, IconButton, Menu, MenuItem } from '@mui/material';
 import { useSession } from '@/features/auth/session';
 import { useImpersonation } from '@/hooks/useImpersonation';
-import { dashboardTablePaperSx, dashboardTableSx } from '@/components/tableStyles';
+import { dashboardTablePaperSx, dashboardTableSx, responsiveTableContainerSx, hideOnMobile, mobileCardSx } from '@/components/tableStyles';
+import { IoEllipsisVertical } from 'react-icons/io5';
 
 function GmailStatusCell({ clientId }: { clientId: string }) {
   const [refreshing, setRefreshing] = React.useState(false);
@@ -55,11 +56,45 @@ function GmailStatusCell({ clientId }: { clientId: string }) {
   return <Chip label="Connected" size="small" color="success" />;
 }
 
+// Mobile action menu component
+function MobileActionsMenu({ row, canImpersonate, impersonateClient, onDelete, refetch }: {
+  row: any;
+  canImpersonate: boolean;
+  impersonateClient: (client: any) => void;
+  onDelete: (id: string) => Promise<void>;
+  refetch: () => void;
+}) {
+  const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
+  const open = Boolean(anchorEl);
+
+  return (
+    <>
+      <IconButton size="small" onClick={(e) => setAnchorEl(e.currentTarget)}>
+        <IoEllipsisVertical />
+      </IconButton>
+      <Menu anchorEl={anchorEl} open={open} onClose={() => setAnchorEl(null)}>
+        <MenuItem component="a" href={`/clients/${row.id}`} onClick={() => setAnchorEl(null)}>View</MenuItem>
+        <MenuItem component="a" href={`/clients/${row.id}/edit`} onClick={() => setAnchorEl(null)}>Edit</MenuItem>
+        {canImpersonate && (
+          <MenuItem onClick={() => { impersonateClient({ id: row.id, email: row.email, firstName: row.firstName, lastName: row.lastName }); setAnchorEl(null); }}>
+            Impersonate
+          </MenuItem>
+        )}
+        <MenuItem sx={{ color: 'error.main' }} onClick={async () => { await onDelete(row.id); refetch(); setAnchorEl(null); }}>
+          Delete
+        </MenuItem>
+      </Menu>
+    </>
+  );
+}
+
 export function ClientsList() {
   const { session } = useSession();
   const { impersonateClient, isImpersonating } = useImpersonation();
   const [page, setPage] = React.useState(0);
   const [rowsPerPage, setRowsPerPage] = React.useState(10);
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   
   // FIX: Check for agencyEmail OR email so it works with your API response
   const agencyEmail = session?.agencyEmail || session?.email || '';
@@ -74,14 +109,73 @@ export function ClientsList() {
   const rows = data as any[];
   const totalRows = rows.length;
   const pagedRows = rows.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
+
+  // Mobile card view
+  if (isMobile) {
+    return (
+      <Paper variant="outlined" sx={{ width: '100%', p: 0, ...dashboardTablePaperSx }}>
+        <Box sx={{ maxHeight: 520, overflow: 'auto', p: 1.5 }}>
+          {pagedRows.map((row) => {
+            const name = `${row.firstName ?? ''} ${row.lastName ?? ''}`.trim() || 'Unknown';
+            const photo = row?.photoUrl || row?.profileImageUrl || '/marketing/an-logo.png';
+            return (
+              <Box key={row.id} sx={mobileCardSx}>
+                <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
+                  <Stack direction="row" spacing={1.5} alignItems="center" sx={{ minWidth: 0, flex: 1 }}>
+                    <Avatar src={photo} alt={name} sx={{ width: 44, height: 44 }} />
+                    <Box sx={{ minWidth: 0 }}>
+                      <Typography variant="subtitle2" sx={{ fontWeight: 700 }} noWrap>{name}</Typography>
+                      <Typography variant="caption" color="text.secondary" noWrap>{row.email || '-'}</Typography>
+                      <Stack direction="row" spacing={1} mt={0.5}>
+                        <Chip label={row.sport || 'No sport'} size="small" variant="outlined" />
+                        <GmailStatusCell clientId={row.id} />
+                      </Stack>
+                    </Box>
+                  </Stack>
+                  <MobileActionsMenu
+                    row={row}
+                    canImpersonate={canImpersonate}
+                    impersonateClient={impersonateClient}
+                    onDelete={async (id: string) => { await deleteClient(id); }}
+                    refetch={refetch}
+                  />
+                </Stack>
+              </Box>
+            );
+          })}
+          {rows.length === 0 && (
+            <Box sx={{ textAlign: 'center', py: 4 }}>
+              <Typography color="text.secondary">No athletes found.</Typography>
+            </Box>
+          )}
+        </Box>
+        <TablePagination
+          component="div"
+          count={totalRows}
+          page={page}
+          onPageChange={(_, nextPage) => setPage(nextPage)}
+          rowsPerPage={rowsPerPage}
+          onRowsPerPageChange={(e) => { setRowsPerPage(Number(e.target.value)); setPage(0); }}
+          rowsPerPageOptions={[10, 25, 50]}
+          sx={{
+            borderTop: '1px solid #eaecf0',
+            '& .MuiTablePagination-toolbar': { flexWrap: 'wrap', justifyContent: 'center' },
+            '& .MuiTablePagination-selectLabel, & .MuiTablePagination-displayedRows': { fontSize: 12 },
+          }}
+        />
+      </Paper>
+    );
+  }
+
+  // Desktop table view
   return (
-    <Paper variant="outlined" sx={{ height: 520, width: '100%', p: 0, ...dashboardTablePaperSx }}>
-      <Box sx={{ height: '100%', overflow: 'auto' }}>
-        <Table size="small" stickyHeader sx={dashboardTableSx}>
+    <Paper variant="outlined" sx={{ width: '100%', p: 0, ...dashboardTablePaperSx }}>
+      <Box sx={{ ...responsiveTableContainerSx, maxHeight: 520 }}>
+        <Table size="small" stickyHeader sx={{ ...dashboardTableSx, minWidth: 700 }}>
           <TableHead>
             <TableRow>
               <TableCell>Athlete</TableCell>
-              <TableCell>Email</TableCell>
+              <TableCell sx={hideOnMobile}>Email</TableCell>
               <TableCell>Sport</TableCell>
               <TableCell>Gmail</TableCell>
               <TableCell>Actions</TableCell>
@@ -105,19 +199,19 @@ export function ClientsList() {
                         <Typography variant="subtitle2" sx={{ fontWeight: 700, lineHeight: 1.1 }} noWrap>
                           {name}
                         </Typography>
-                        <Typography variant="body2" color="text.secondary" noWrap>
+                        <Typography variant="body2" color="text.secondary" noWrap sx={{ maxWidth: { sm: 150, md: 200 } }}>
                           {description}
                         </Typography>
                       </Box>
                     </Box>
                   </TableCell>
-                  <TableCell>{row.email || '-'}</TableCell>
+                  <TableCell sx={hideOnMobile}>{row.email || '-'}</TableCell>
                   <TableCell>{row.sport || '-'}</TableCell>
                   <TableCell>
                     <GmailStatusCell clientId={row.id} />
                   </TableCell>
                   <TableCell>
-                    <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                    <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap sx={{ '& .MuiButton-root': { minWidth: 'auto', px: 1, fontSize: 12 } }}>
                       <Button size="small" href={`/clients/${row.id}`}>View</Button>
                       <Button size="small" href={`/clients/${row.id}/edit`}>Edit</Button>
                       <Button size="small" color="error" onClick={async () => { await deleteClient(row.id); refetch(); }}>Delete</Button>
@@ -149,27 +243,27 @@ export function ClientsList() {
             )}
           </TableBody>
         </Table>
-        <TablePagination
-          component="div"
-          count={totalRows}
-          page={page}
-          onPageChange={(_, nextPage) => setPage(nextPage)}
-          rowsPerPage={rowsPerPage}
-          onRowsPerPageChange={(event) => {
-            setRowsPerPage(Number(event.target.value));
-            setPage(0);
-          }}
-          rowsPerPageOptions={[10, 25, 50]}
-          sx={{
-            position: 'sticky',
-            bottom: 0,
-            backgroundColor: 'rgba(255, 255, 255, 0.92)',
-            borderTop: '1px solid #eaecf0',
-            boxShadow: '0 -6px 12px rgba(16, 24, 40, 0.08)',
-            zIndex: 1,
-          }}
-        />
       </Box>
+      <TablePagination
+        component="div"
+        count={totalRows}
+        page={page}
+        onPageChange={(_, nextPage) => setPage(nextPage)}
+        rowsPerPage={rowsPerPage}
+        onRowsPerPageChange={(event) => {
+          setRowsPerPage(Number(event.target.value));
+          setPage(0);
+        }}
+        rowsPerPageOptions={[10, 25, 50]}
+        sx={{
+          position: 'sticky',
+          bottom: 0,
+          backgroundColor: 'rgba(255, 255, 255, 0.92)',
+          borderTop: '1px solid #eaecf0',
+          boxShadow: '0 -6px 12px rgba(16, 24, 40, 0.08)',
+          zIndex: 1,
+        }}
+      />
     </Paper>
   );
 }

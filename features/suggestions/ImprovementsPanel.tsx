@@ -29,6 +29,9 @@ import {
   Tabs,
   Tab,
   Collapse,
+  Stack,
+  useMediaQuery,
+  useTheme,
 } from '@mui/material';
 import {
   FaCopy,
@@ -46,6 +49,7 @@ import {
   Suggestion,
   SuggestionStatus,
 } from '@/services/suggestions';
+import { mobileCardSx, responsiveTableContainerSx, dashboardTableSx } from '@/components/tableStyles';
 
 const STATUS_COLORS: Record<SuggestionStatus, 'warning' | 'success' | 'error'> = {
   pending: 'warning',
@@ -70,6 +74,8 @@ interface ImprovementsPanelProps {
  */
 export function ImprovementsPanel({ compact = false }: ImprovementsPanelProps) {
   const queryClient = useQueryClient();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [selectedTab, setSelectedTab] = React.useState(0);
   const [expandedId, setExpandedId] = React.useState<string | null>(null);
   const [copiedId, setCopiedId] = React.useState<string | null>(null);
@@ -194,11 +200,13 @@ Copy and paste this into the AI terminal to implement.`;
         value={selectedTab}
         onChange={(_, v) => setSelectedTab(v)}
         sx={{ mb: 2, borderBottom: 1, borderColor: 'divider' }}
+        variant={isMobile ? 'scrollable' : 'standard'}
+        scrollButtons={isMobile ? 'auto' : false}
       >
-        <Tab label={`All (${counts.all})`} />
-        <Tab label={`Pending (${counts.pending})`} />
-        <Tab label={`Resolved (${counts.resolved})`} />
-        <Tab label={`Denied (${counts.denied})`} />
+        <Tab label={`All (${counts.all})`} sx={{ minWidth: { xs: 'auto', sm: 90 }, px: { xs: 1, sm: 2 } }} />
+        <Tab label={`Pending (${counts.pending})`} sx={{ minWidth: { xs: 'auto', sm: 90 }, px: { xs: 1, sm: 2 } }} />
+        <Tab label={`Resolved (${counts.resolved})`} sx={{ minWidth: { xs: 'auto', sm: 90 }, px: { xs: 1, sm: 2 } }} />
+        <Tab label={`Denied (${counts.denied})`} sx={{ minWidth: { xs: 'auto', sm: 90 }, px: { xs: 1, sm: 2 } }} />
       </Tabs>
 
       {filteredSuggestions.length === 0 ? (
@@ -207,9 +215,90 @@ Copy and paste this into the AI terminal to implement.`;
             No suggestions found
           </Typography>
         </Paper>
+      ) : isMobile ? (
+        /* Mobile card view */
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+          {filteredSuggestions.map((suggestion) => (
+            <Paper key={suggestion.id} sx={{ p: 0, overflow: 'hidden' }}>
+              <Box
+                sx={{ ...mobileCardSx, mb: 0, cursor: 'pointer' }}
+                onClick={() => setExpandedId(expandedId === suggestion.id ? null : suggestion.id)}
+              >
+                <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
+                  <Box sx={{ minWidth: 0, flex: 1 }}>
+                    <Typography variant="subtitle2" fontWeight={600} noWrap>
+                      {suggestion.screenPath}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary" noWrap>
+                      {suggestion.submittedByName} • {new Date(suggestion.createdAt).toLocaleDateString()}
+                    </Typography>
+                    <Box mt={0.5}>
+                      <Chip
+                        label={STATUS_LABELS[suggestion.status]}
+                        color={STATUS_COLORS[suggestion.status]}
+                        size="small"
+                      />
+                    </Box>
+                  </Box>
+                  <Stack direction="row" spacing={0.5} alignItems="center">
+                    <IconButton
+                      size="small"
+                      onClick={(e) => { e.stopPropagation(); handleCopyRequirements(suggestion); }}
+                      color={copiedId === suggestion.id ? 'success' : 'default'}
+                    >
+                      {copiedId === suggestion.id ? <FaCheck /> : <FaCopy />}
+                    </IconButton>
+                    <IconButton size="small">
+                      {expandedId === suggestion.id ? <FaChevronUp /> : <FaChevronDown />}
+                    </IconButton>
+                  </Stack>
+                </Stack>
+              </Box>
+              <Collapse in={expandedId === suggestion.id}>
+                <Box sx={{ p: 2, bgcolor: '#fafbfc', borderTop: '1px solid #eaecf0' }}>
+                  <Typography variant="subtitle2" fontWeight={600} sx={{ mb: 1 }}>Original Suggestion</Typography>
+                  <Paper variant="outlined" sx={{ p: 1.5, bgcolor: 'white', mb: 2 }}>
+                    <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', fontSize: 13 }}>
+                      {suggestion.originalSuggestion}
+                    </Typography>
+                  </Paper>
+                  <Typography variant="subtitle2" fontWeight={600} sx={{ mb: 1 }}>Requirements</Typography>
+                  <Paper variant="outlined" sx={{ p: 1.5, bgcolor: 'white', maxHeight: 200, overflow: 'auto' }}>
+                    <Typography component="pre" sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', m: 0, fontSize: 11, fontFamily: 'monospace' }}>
+                      {suggestion.requirements}
+                    </Typography>
+                  </Paper>
+                  {suggestion.status === 'pending' && (
+                    <Stack direction="row" spacing={1} mt={2}>
+                      <Button
+                        size="small"
+                        color="success"
+                        variant="contained"
+                        startIcon={<FaCheck />}
+                        onClick={() => setStatusDialog({ open: true, suggestion, newStatus: 'resolved', notes: '' })}
+                      >
+                        Resolve
+                      </Button>
+                      <Button
+                        size="small"
+                        color="error"
+                        variant="outlined"
+                        startIcon={<FaTimes />}
+                        onClick={() => setStatusDialog({ open: true, suggestion, newStatus: 'denied', notes: '' })}
+                      >
+                        Deny
+                      </Button>
+                    </Stack>
+                  )}
+                </Box>
+              </Collapse>
+            </Paper>
+          ))}
+        </Box>
       ) : (
-        <TableContainer component={Paper}>
-          <Table size={compact ? 'small' : 'medium'}>
+        /* Desktop table view */
+        <TableContainer component={Paper} sx={responsiveTableContainerSx}>
+          <Table size={compact ? 'small' : 'medium'} sx={dashboardTableSx}>
             <TableHead>
               <TableRow sx={{ bgcolor: '#f9fafb' }}>
                 <TableCell width={40}></TableCell>

@@ -8,14 +8,31 @@ import {
   Dialog, DialogTitle, DialogContent, DialogActions,
   TextField, Alert, Chip, FormControlLabel, Checkbox,
   Snackbar, Paper, Table, TableHead, TableRow, TableCell, TableBody, TablePagination,
-  IconButton,
+  IconButton, useMediaQuery, useTheme, Menu, MenuItem,
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
+import { IoEllipsisVertical } from 'react-icons/io5';
 
 import { useSession } from '@/features/auth/session';
 import { listAgents, upsertAgent, deleteAgent, Agent } from '@/services/agents';
 import { SubscriptionQuota, useCanAddAthlete } from '@/features/settings/SubscriptionQuota';
-import { dashboardTablePaperSx, dashboardTableSx } from '@/components/tableStyles';
+import { dashboardTablePaperSx, dashboardTableSx, responsiveTableContainerSx, mobileCardSx, hideOnMobile } from '@/components/tableStyles';
+
+// Mobile action menu for agents
+function AgentActionMenu({ agent, onEdit, onDelete }: { agent: Agent; onEdit: () => void; onDelete: () => void }) {
+  const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
+  return (
+    <>
+      <IconButton size="small" onClick={(e) => setAnchorEl(e.currentTarget)}>
+        <IoEllipsisVertical />
+      </IconButton>
+      <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={() => setAnchorEl(null)}>
+        <MenuItem onClick={() => { onEdit(); setAnchorEl(null); }}>Edit</MenuItem>
+        <MenuItem sx={{ color: 'error.main' }} onClick={() => { onDelete(); setAnchorEl(null); }}>Delete</MenuItem>
+      </Menu>
+    </>
+  );
+}
 
 export default function AgentsPage() {
   const { session, loading } = useSession();
@@ -149,6 +166,8 @@ export default function AgentsPage() {
     }
   };
 
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const totalRows = agents.length;
   const pagedAgents = agents.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
 
@@ -206,48 +225,105 @@ export default function AgentsPage() {
         <SubscriptionQuota showUpgradeButton />
       )}
 
-      <Paper variant="outlined" sx={{ height: 500, width: '100%', p: 0, ...dashboardTablePaperSx }}>
-        <Box sx={{ height: '100%', overflow: 'auto' }}>
-          <Table size="small" stickyHeader sx={dashboardTableSx}>
-            <TableHead>
-              <TableRow>
-                <TableCell>First Name</TableCell>
-                <TableCell>Last Name</TableCell>
-                <TableCell>Email</TableCell>
-                <TableCell>Phone</TableCell>
-                <TableCell>Role</TableCell>
-                <TableCell>Can Login</TableCell>
-                <TableCell>Admin</TableCell>
-                <TableCell>Actions</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {pagedAgents.map((agent) => (
-                <TableRow key={agent.id}>
-                  <TableCell>{agent.firstName || '-'}</TableCell>
-                  <TableCell>{agent.lastName || '-'}</TableCell>
-                  <TableCell>{agent.email || '-'}</TableCell>
-                  <TableCell>{agent.phone || '-'}</TableCell>
-                  <TableCell>{agent.role || '-'}</TableCell>
-                  <TableCell>{agent.authEnabled ? '✓' : '—'}</TableCell>
-                  <TableCell>{agent.isAdmin ? '✓' : '—'}</TableCell>
-                  <TableCell>
-                    <Stack direction="row" spacing={1}>
-                      <Button size="small" onClick={() => handleOpenEdit(agent)}>Edit</Button>
-                      <Button size="small" color="error" onClick={() => handleDeleteClick(agent)}>Delete</Button>
+      {/* Mobile Card View */}
+      {isMobile ? (
+        <Paper variant="outlined" sx={{ width: '100%', p: 0, ...dashboardTablePaperSx }}>
+          <Box sx={{ maxHeight: 500, overflow: 'auto', p: 1.5 }}>
+            {pagedAgents.map((agent) => (
+              <Box key={agent.id} sx={mobileCardSx}>
+                <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
+                  <Box sx={{ minWidth: 0, flex: 1 }}>
+                    <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+                      {agent.firstName} {agent.lastName}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary" noWrap>
+                      {agent.email}
+                    </Typography>
+                    {agent.phone && (
+                      <Typography variant="caption" color="text.secondary" display="block">
+                        {agent.phone}
+                      </Typography>
+                    )}
+                    <Stack direction="row" spacing={0.5} mt={1} flexWrap="wrap" useFlexGap>
+                      {agent.role && <Chip label={agent.role} size="small" variant="outlined" />}
+                      {agent.authEnabled && <Chip label="Can Login" size="small" color="success" />}
+                      {agent.isAdmin && <Chip label="Admin" size="small" color="primary" />}
                     </Stack>
-                  </TableCell>
-                </TableRow>
-              ))}
-              {totalRows === 0 && (
+                  </Box>
+                  <AgentActionMenu 
+                    agent={agent} 
+                    onEdit={() => handleOpenEdit(agent)} 
+                    onDelete={() => handleDeleteClick(agent)} 
+                  />
+                </Stack>
+              </Box>
+            ))}
+            {totalRows === 0 && (
+              <Box sx={{ textAlign: 'center', py: 4 }}>
+                <Typography color="text.secondary">No agents found.</Typography>
+              </Box>
+            )}
+          </Box>
+          <TablePagination
+            component="div"
+            count={totalRows}
+            page={page}
+            onPageChange={(_, nextPage) => setPage(nextPage)}
+            rowsPerPage={rowsPerPage}
+            onRowsPerPageChange={(e) => { setRowsPerPage(Number(e.target.value)); setPage(0); }}
+            rowsPerPageOptions={[10, 25, 50]}
+            sx={{
+              borderTop: '1px solid #eaecf0',
+              '& .MuiTablePagination-toolbar': { flexWrap: 'wrap', justifyContent: 'center' },
+              '& .MuiTablePagination-selectLabel, & .MuiTablePagination-displayedRows': { fontSize: 12 },
+            }}
+          />
+        </Paper>
+      ) : (
+        /* Desktop Table View */
+        <Paper variant="outlined" sx={{ width: '100%', p: 0, ...dashboardTablePaperSx }}>
+          <Box sx={{ ...responsiveTableContainerSx, maxHeight: 500 }}>
+            <Table size="small" stickyHeader sx={{ ...dashboardTableSx, minWidth: 800 }}>
+              <TableHead>
                 <TableRow>
-                  <TableCell colSpan={8} align="center">
-                    No agents found.
-                  </TableCell>
+                  <TableCell>First Name</TableCell>
+                  <TableCell>Last Name</TableCell>
+                  <TableCell>Email</TableCell>
+                  <TableCell sx={hideOnMobile}>Phone</TableCell>
+                  <TableCell sx={hideOnMobile}>Role</TableCell>
+                  <TableCell>Can Login</TableCell>
+                  <TableCell>Admin</TableCell>
+                  <TableCell>Actions</TableCell>
                 </TableRow>
-              )}
-            </TableBody>
-          </Table>
+              </TableHead>
+              <TableBody>
+                {pagedAgents.map((agent) => (
+                  <TableRow key={agent.id}>
+                    <TableCell>{agent.firstName || '-'}</TableCell>
+                    <TableCell>{agent.lastName || '-'}</TableCell>
+                    <TableCell>{agent.email || '-'}</TableCell>
+                    <TableCell sx={hideOnMobile}>{agent.phone || '-'}</TableCell>
+                    <TableCell sx={hideOnMobile}>{agent.role || '-'}</TableCell>
+                    <TableCell>{agent.authEnabled ? '✓' : '—'}</TableCell>
+                    <TableCell>{agent.isAdmin ? '✓' : '—'}</TableCell>
+                    <TableCell>
+                      <Stack direction="row" spacing={0.5} sx={{ '& .MuiButton-root': { minWidth: 'auto', px: 1, fontSize: 12 } }}>
+                        <Button size="small" onClick={() => handleOpenEdit(agent)}>Edit</Button>
+                        <Button size="small" color="error" onClick={() => handleDeleteClick(agent)}>Delete</Button>
+                      </Stack>
+                    </TableCell>
+                  </TableRow>
+                ))}
+                {totalRows === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={8} align="center">
+                      No agents found.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </Box>
           <TablePagination
             component="div"
             count={totalRows}
@@ -268,8 +344,8 @@ export default function AgentsPage() {
               zIndex: 1,
             }}
           />
-        </Box>
-      </Paper>
+        </Paper>
+      )}
 
       {/* Add/Edit Dialog */}
       <Dialog open={dialogOpen} onClose={handleCloseDialog} maxWidth="sm" fullWidth>

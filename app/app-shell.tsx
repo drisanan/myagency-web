@@ -1,12 +1,12 @@
 'use client';
 import React from 'react';
-import { Box, CssBaseline, AppBar, Toolbar, Typography, Drawer, List, ListItemButton, ListItemText, Button, Alert, Stack, Avatar, Badge, IconButton, Menu, MenuItem, Divider } from '@mui/material';
+import { Box, CssBaseline, AppBar, Toolbar, Typography, Drawer, List, ListItemButton, ListItemText, Button, Alert, Stack, Avatar, Badge, IconButton, Menu, MenuItem, Divider, useMediaQuery, useTheme } from '@mui/material';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useSession } from '@/features/auth/session';
 import { useImpersonation } from '@/hooks/useImpersonation';
 import { colors } from '@/theme/colors';
-import { IoAppsOutline, IoBarbellOutline, IoFlaskOutline, IoClipboardOutline, IoSchoolOutline, IoPeopleOutline, IoMailOutline, IoListOutline, IoCheckmarkCircleOutline, IoEyeOutline, IoCalendarOutline, IoChatbubblesOutline, IoPersonCircleOutline, IoBulbOutline } from 'react-icons/io5';
+import { IoAppsOutline, IoBarbellOutline, IoFlaskOutline, IoClipboardOutline, IoSchoolOutline, IoPeopleOutline, IoMailOutline, IoListOutline, IoCheckmarkCircleOutline, IoEyeOutline, IoCalendarOutline, IoChatbubblesOutline, IoPersonCircleOutline, IoBulbOutline, IoMenuOutline, IoCloseOutline } from 'react-icons/io5';
 import { IoNotificationsOutline } from 'react-icons/io5';
 import { SuggestionButton } from '@/features/suggestions';
 import { useQuery } from '@tanstack/react-query';
@@ -28,6 +28,20 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const { session, setSession } = useSession();
   const pathname = usePathname();
   const { isImpersonating, stopImpersonation } = useImpersonation();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const [mobileOpen, setMobileOpen] = React.useState(false);
+
+  const handleDrawerToggle = () => {
+    setMobileOpen(!mobileOpen);
+  };
+
+  // Close drawer when route changes on mobile
+  React.useEffect(() => {
+    if (isMobile) {
+      setMobileOpen(false);
+    }
+  }, [pathname, isMobile]);
 
   // Dynamic colors from agency settings (white-label)
   const s = session?.agencySettings || {};
@@ -135,29 +149,39 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           color: headerText,
         }}
       >
-        <Toolbar sx={{ justifyContent: 'space-between', px: 2 }}>
+        <Toolbar sx={{ justifyContent: 'space-between', px: { xs: 1, sm: 2 } }}>
           <Box sx={{ display: 'flex', alignItems: 'center', minHeight: 48, mr: 'auto' }}>
+            {/* Hamburger menu for mobile */}
+            <IconButton
+              color="inherit"
+              aria-label="open drawer"
+              edge="start"
+              onClick={handleDrawerToggle}
+              sx={{ mr: 1, display: { md: 'none' } }}
+            >
+              {mobileOpen ? <IoCloseOutline size={24} /> : <IoMenuOutline size={24} />}
+            </IconButton>
             {session?.agencyLogo ? (
               <img src={session.agencyLogo} alt="Agency Logo" style={{ height: 32, objectFit: 'contain' }} />
             ) : (
               <img src="/marketing/an-logo.png" alt="Athlete Narrative" style={{ height: 32, objectFit: 'contain' }} />
             )}
           </Box>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1, sm: 2 } }}>
             {session ? (
-              <Stack direction="row" spacing={2} alignItems="center">
+              <Stack direction="row" spacing={{ xs: 1, sm: 2 }} alignItems="center">
                 {isImpersonating && (
                   <Stack direction="row" spacing={1} alignItems="center">
-                    <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                    <Typography variant="body2" sx={{ fontWeight: 600, display: { xs: 'none', sm: 'block' } }}>
                       Impersonating:
                     </Typography>
-                    <Typography variant="body2" color="text.secondary">
+                    <Typography variant="body2" color="text.secondary" sx={{ display: { xs: 'none', md: 'block' } }}>
                       {session.firstName || session.lastName
                         ? `${session.firstName || ''} ${session.lastName || ''}`.trim()
                         : session.email}
                     </Typography>
-                    <Button size="small" variant="outlined" onClick={stopImpersonation}>
-                      End Impersonation
+                    <Button size="small" variant="outlined" onClick={stopImpersonation} sx={{ fontSize: { xs: 11, sm: 13 }, px: { xs: 1, sm: 2 } }}>
+                      End
                     </Button>
                   </Stack>
                 )}
@@ -238,9 +262,50 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </MenuItem>
       </Menu>
 
+      {/* Mobile Drawer - temporary */}
+      <Drawer
+        variant="temporary"
+        open={mobileOpen}
+        onClose={handleDrawerToggle}
+        ModalProps={{ keepMounted: true }} // Better open performance on mobile
+        sx={{
+          display: { xs: 'block', md: 'none' },
+          '& .MuiDrawer-paper': {
+            width: drawerWidth,
+            boxSizing: 'border-box',
+            bgcolor: primaryColor,
+            color: navText,
+          },
+        }}
+      >
+        <Toolbar />
+        <List sx={{ display: 'flex', flexDirection: 'column', gap: '5px', mt: 2.5 }}>
+          {navItems.map((item) => {
+            const selected = pathname === item.href || pathname?.startsWith(`${item.href}/`);
+            return (
+              <ListItemButton
+                key={item.href}
+                LinkComponent={Link}
+                href={item.href}
+                sx={navItemSx}
+                selected={selected}
+                onClick={handleDrawerToggle}
+              >
+                <Stack direction="row" spacing={2} alignItems="center">
+                  {item.icon}
+                  <ListItemText primary={item.label} />
+                </Stack>
+              </ListItemButton>
+            );
+          })}
+        </List>
+      </Drawer>
+
+      {/* Desktop Drawer - permanent */}
       <Drawer
         variant="permanent"
         sx={{
+          display: { xs: 'none', md: 'block' },
           width: drawerWidth,
           '& .MuiDrawer-paper': {
             width: drawerWidth,
@@ -251,7 +316,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         }}
       >
         <Toolbar />
-        <List sx={{ display: 'flex', flexDirection: 'column', gap: '5px', mt: 2.5 /* ~20px */ }}>
+        <List sx={{ display: 'flex', flexDirection: 'column', gap: '5px', mt: 2.5 }}>
           {navItems.map((item) => {
             const selected = pathname === item.href || pathname?.startsWith(`${item.href}/`);
             return (
@@ -275,8 +340,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         component="main"
         sx={{
           flexGrow: 1,
-          p: 3,
+          p: { xs: 1.5, sm: 2, md: 3 },
           bgcolor: contentBg,
+          width: { xs: '100%', md: `calc(100% - ${drawerWidth}px)` },
+          ml: { md: 0 },
         }}
       >
         <Toolbar />
