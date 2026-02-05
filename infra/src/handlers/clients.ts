@@ -77,7 +77,9 @@ const clientsHandler: Handler = async (event: APIGatewayProxyEventV2) => {
       }
     }
 
-    return response(200, { ok: true, clients: items }, origin);
+    // Filter out soft-deleted clients
+    const activeClients = items.filter((c: any) => !c.deletedAt);
+    return response(200, { ok: true, clients: activeClients }, origin);
   }
 
   // --- POST ---
