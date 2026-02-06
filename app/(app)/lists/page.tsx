@@ -8,6 +8,29 @@ import {
 } from '@mui/material';
 import { MetricCard } from '@/app/(app)/dashboard/MetricCard';
 import { IoListOutline, IoSchoolOutline, IoPieChartOutline } from 'react-icons/io5';
+
+/** University logo with lazy loading, error fallback, and placeholder */
+function UniversityLogo({ src, alt }: { src?: string; alt: string }) {
+  const [failed, setFailed] = React.useState(false);
+
+  if (!src || failed) {
+    return (
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 40, width: '100%', bgcolor: '#f3f4f6', borderRadius: 1 }}>
+        <IoSchoolOutline size={24} color="#9CA3AF" />
+      </Box>
+    );
+  }
+
+  return (
+    <img
+      src={src}
+      alt={alt}
+      loading="lazy"
+      onError={() => setFailed(true)}
+      style={{ maxHeight: 40, maxWidth: '100%', objectFit: 'contain' }}
+    />
+  );
+}
 import { useSession } from '@/features/auth/session';
 import { getStates } from '@/services/recruiterMeta';
 import { getDivisions } from '@/services/recruiterMeta';
@@ -400,11 +423,7 @@ export default function ListsPage() {
               >
                 <CardContent sx={{ display: 'grid', gap: 1, alignItems: 'center' }}>
                   <Box sx={{ height: 48, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    {u.logo ? (
-                      <img src={u.logo} alt={`${u.name} logo`} style={{ maxHeight: 40, maxWidth: '100%', objectFit: 'contain' }} />
-                    ) : (
-                      <Skeleton variant="rectangular" height={40} width="100%" />
-                    )}
+                    <UniversityLogo src={u.logo} alt={`${u.name} logo`} />
                   </Box>
                   <Typography variant="body2">{u.name}</Typography>
                 </CardContent>

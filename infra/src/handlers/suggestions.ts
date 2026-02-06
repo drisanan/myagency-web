@@ -212,7 +212,7 @@ const suggestionsHandler: Handler = async (event: APIGatewayProxyEventV2) => {
     
     // Scan all suggestions (in production, use GSI for better performance)
     const items = await scanTable({
-      FilterExpression: 'begins_with(PK, :pk)',
+      FilterExpression: 'begins_with(PK, :pk) AND attribute_not_exists(deletedAt)',
       ExpressionAttributeValues: { ':pk': 'SUGGESTION#' },
     });
     

@@ -232,10 +232,8 @@ export function SettingsForm() {
         programLevels: programLevels,
       });
       
-      setSuccess('Settings saved! Refreshing...');
       await refreshSession();
-      // Reload page to apply theme changes across all components
-      window.location.reload();
+      setSuccess('Settings saved successfully!');
     } catch (e: any) {
       setError(e?.message || 'Failed to save settings');
     } finally {

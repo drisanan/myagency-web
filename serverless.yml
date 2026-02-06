@@ -68,6 +68,11 @@ provider:
             - s3:DeleteObject
           Resource:
             - arn:aws:s3:::${self:service}-media-${self:provider.stage}/*
+        - Effect: Allow
+          Action:
+            - ses:SendEmail
+            - ses:SendRawEmail
+          Resource: '*'
 
 plugins:
   # serverless-esbuild removed because Serverless v4 bundles esbuild/TS by default

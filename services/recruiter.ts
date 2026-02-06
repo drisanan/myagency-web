@@ -2,6 +2,10 @@
 // Real Lambda-backed recruiter service for universities list and details
 const BASE_URL = 'https://c3gognktxzx6xqlrdfb6bxvxsu0ojalg.lambda-url.us-west-2.on.aws';
 
+// In-memory cache for university listings (5 minute TTL)
+const CACHE_TTL = 5 * 60 * 1000;
+const universityCache = new Map<string, { data: Array<{ name: string; logo?: string }>; expiresAt: number }>();
+
 export const DIVISION_API_MAPPING: Record<string, string> = {
   D1: 'division-1',
   D1AA: 'division-1aa',
@@ -41,6 +45,12 @@ function toLogo(item: any): string | undefined {
 }
 
 export async function listUniversities(params: { sport: string; division: string; state: string }): Promise<Array<{ name: string; logo?: string }>> {
+  const cacheKey = `${params.sport}|${params.division}|${params.state}`;
+  const cached = universityCache.get(cacheKey);
+  if (cached && cached.expiresAt > Date.now()) {
+    return cached.data;
+  }
+
   const qs = new URLSearchParams({
     sport: params.sport,
     division: params.division,
@@ -57,9 +67,12 @@ export async function listUniversities(params: { sport: string; division: string
     throw new Error(`HTTP ${res.status}: ${text || res.statusText}`);
   }
   const data = await res.json();
-  return (Array.isArray(data) ? data : [])
+  const result = (Array.isArray(data) ? data : [])
     .map((u: any) => ({ name: toName(u), logo: toLogo(u) }))
     .filter((u: any) => u.name);
+
+  universityCache.set(cacheKey, { data: result, expiresAt: Date.now() + CACHE_TTL });
+  return result;
 }
 
 export type Coach = {

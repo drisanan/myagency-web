@@ -6,6 +6,7 @@ import { DynamicThemeProvider } from '@/features/theme/DynamicThemeProvider';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { Box, AppBar, Toolbar, Typography, Drawer, List, ListItemButton, ListItemText, Stack, CssBaseline, Avatar, IconButton, Menu, MenuItem, Divider, Button, useMediaQuery, useTheme } from '@mui/material';
+import { useQueryClient } from '@tanstack/react-query';
 import { colors } from '@/theme/colors';
 import { useImpersonation } from '@/hooks/useImpersonation';
 import { IoClipboardOutline, IoSchoolOutline, IoEyeOutline, IoCalendarOutline, IoChatbubblesOutline, IoMenuOutline, IoCloseOutline } from 'react-icons/io5';
@@ -17,8 +18,11 @@ function Guard({ children }: { children: React.ReactNode }) {
   const router = useRouter();
 
   React.useEffect(() => {
-    if (!loading && (!session || session.role !== 'client')) {
-      router.push('/auth/login');
+    if (!loading && !session) {
+      router.replace('/auth/login');
+    } else if (!loading && session && session.role !== 'client') {
+      // Non-client user (e.g. agency returning from impersonation) — redirect to main app
+      router.replace('/clients');
     }
   }, [loading, session, router]);
 
@@ -41,6 +45,7 @@ const navItems = [
 function ClientShell({ children }: { children: React.ReactNode }) {
   const { session, setSession } = useSession();
   const pathname = usePathname();
+  const router = useRouter();
   const { isImpersonating, stopImpersonation } = useImpersonation();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
@@ -72,10 +77,13 @@ function ClientShell({ children }: { children: React.ReactNode }) {
   const handleUserOpen = (e: React.MouseEvent<HTMLElement>) => setUserAnchor(e.currentTarget);
   const handleUserClose = () => setUserAnchor(null);
 
+  const queryClient = useQueryClient();
+
   const handleLogout = () => {
     setSession(null);
+    queryClient.clear();
     document.cookie = 'an_session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
-    window.location.href = '/auth/login';
+    router.push('/auth/login');
   };
 
   const navItemSx = {

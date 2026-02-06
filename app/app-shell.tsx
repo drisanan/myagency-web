@@ -2,8 +2,9 @@
 import React from 'react';
 import { Box, CssBaseline, AppBar, Toolbar, Typography, Drawer, List, ListItemButton, ListItemText, Button, Alert, Stack, Avatar, Badge, IconButton, Menu, MenuItem, Divider, useMediaQuery, useTheme } from '@mui/material';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useSession } from '@/features/auth/session';
+import { useQueryClient } from '@tanstack/react-query';
 import { useImpersonation } from '@/hooks/useImpersonation';
 import { colors } from '@/theme/colors';
 import { IoAppsOutline, IoBarbellOutline, IoFlaskOutline, IoClipboardOutline, IoSchoolOutline, IoPeopleOutline, IoMailOutline, IoListOutline, IoCheckmarkCircleOutline, IoEyeOutline, IoCalendarOutline, IoChatbubblesOutline, IoPersonCircleOutline, IoBulbOutline, IoMenuOutline, IoCloseOutline } from 'react-icons/io5';
@@ -27,6 +28,8 @@ function isColorLight(hexColor: string): boolean {
 export function AppShell({ children }: { children: React.ReactNode }) {
   const { session, setSession } = useSession();
   const pathname = usePathname();
+  const router = useRouter();
+  const queryClient = useQueryClient();
   const { isImpersonating, stopImpersonation } = useImpersonation();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
@@ -124,8 +127,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   const handleLogout = () => {
     setSession(null);
+    queryClient.clear();
     document.cookie = 'an_session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
-    window.location.href = '/auth/login';
+    router.push('/auth/login');
   };
 
   return (
