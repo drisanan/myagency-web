@@ -176,6 +176,7 @@ function buildTheme(settings: AgencySettings) {
       MuiTab: {
         styleOverrides: {
           root: {
+            borderRadius: 0,
             '&.Mui-selected': { color: s.secondaryColor },
           },
         },
@@ -498,14 +499,6 @@ function buildTheme(settings: AgencySettings) {
             borderRadius: '0 !important',
             clipPath: 'polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 12px 100%, 0 calc(100% - 12px))',
             '&::before': { display: 'none' },
-          },
-        },
-      },
-      MuiTab: {
-        styleOverrides: {
-          root: {
-            borderRadius: 0,
-            '&.Mui-selected': { color: s.secondaryColor },
           },
         },
       },

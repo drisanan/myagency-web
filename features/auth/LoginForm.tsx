@@ -53,7 +53,7 @@ export function LoginForm({ onSubmit, darkMode }: Props) {
     '& .MuiInputLabel-root': { color: '#FFFFFF80' },
     '& .MuiInputLabel-root.Mui-focused': { color: colors.lime },
     '& .MuiFormHelperText-root': { color: colors.error },
-  } : {};
+  } : undefined;
 
   return (
     <form onSubmit={handleSubmit} noValidate autoComplete="off">
