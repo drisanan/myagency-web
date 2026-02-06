@@ -39,7 +39,7 @@ function GmailStatusCell({ clientId }: { clientId: string }) {
   if (status.expired && status.canRefresh) {
     return (
       <Stack direction="row" spacing={1} alignItems="center">
-        <Chip label="Expired" size="small" color="warning" />
+        <Chip label="Expired" size="small" sx={{ bgcolor: '#CCFF00', color: '#0A0A0A', fontWeight: 700 }} />
         <Button 
           size="small" 
           variant="outlined" 
@@ -158,7 +158,8 @@ export function ClientsList() {
           onRowsPerPageChange={(e) => { setRowsPerPage(Number(e.target.value)); setPage(0); }}
           rowsPerPageOptions={[10, 25, 50]}
           sx={{
-            borderTop: '1px solid #eaecf0',
+            borderTop: '1px solid',
+            borderColor: 'divider',
             '& .MuiTablePagination-toolbar': { flexWrap: 'wrap', justifyContent: 'center' },
             '& .MuiTablePagination-selectLabel, & .MuiTablePagination-displayedRows': { fontSize: 12 },
           }}
@@ -258,9 +259,9 @@ export function ClientsList() {
         sx={{
           position: 'sticky',
           bottom: 0,
-          backgroundColor: 'rgba(255, 255, 255, 0.92)',
-          borderTop: '1px solid #eaecf0',
-          boxShadow: '0 -6px 12px rgba(16, 24, 40, 0.08)',
+          backgroundColor: '#FFFFFF',
+          borderTop: '1px solid',
+          borderColor: 'divider',
           zIndex: 1,
         }}
       />

@@ -15,8 +15,8 @@ function UniversityLogo({ src, alt }: { src?: string; alt: string }) {
 
   if (!src || failed) {
     return (
-      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 40, width: '100%', bgcolor: '#f3f4f6', borderRadius: 1 }}>
-        <IoSchoolOutline size={24} color="#9CA3AF" />
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 40, width: '100%', bgcolor: '#E0E0E0', borderRadius: 1 }}>
+        <IoSchoolOutline size={24} color="#0A0A0A60" />
       </Box>
     );
   }
@@ -346,15 +346,11 @@ export default function ListsPage() {
           title="Total Lists"
           value={loadingLists ? '—' : totalLists}
           icon={<IoListOutline size={20} />}
-          bgColor="#EFF4FF"
-          textColor="#1D4ED8"
         />
         <MetricCard
           title="Universities Targeted"
           value={loadingLists ? '—' : totalUniversities}
           icon={<IoSchoolOutline size={20} />}
-          bgColor="#ECFDF3"
-          textColor="#027A48"
         />
         <MetricCard
           title="Breakdown by Division"
@@ -362,13 +358,13 @@ export default function ListsPage() {
           icon={<IoPieChartOutline size={20} />}
           footer={
             loadingLists ? (
-              <Typography variant="body2" sx={{ color: '#667085' }}>
+              <Typography variant="body2" sx={{ color: '#FFFFFF60' }}>
                 Loading breakdown…
               </Typography>
             ) : (
               <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 1, width: '100%' }}>
                 {divisionCounts.order.map((div) => (
-                  <Typography key={div} variant="body2" sx={{ color: '#667085' }}>
+                  <Typography key={div} variant="body2" sx={{ color: '#FFFFFF60' }}>
                     {div} - {divisionCounts.counts[div] ?? 0}
                   </Typography>
                 ))}
@@ -417,8 +413,8 @@ export default function ListsPage() {
                 onClick={() => setSelectedSchool(u.name)}
                 sx={{
                   cursor: 'pointer',
-                  borderColor: selectedSchool === u.name ? '#2563EB' : '#eaecf0',
-                  boxShadow: selectedSchool === u.name ? '0 0 0 2px rgba(37, 99, 235, 0.12)' : 'none',
+                  borderColor: selectedSchool === u.name ? '#CCFF00' : '#E0E0E0',
+                  boxShadow: selectedSchool === u.name ? '0 0 0 2px rgba(204, 255, 0, 0.20)' : 'none',
                 }}
               >
                 <CardContent sx={{ display: 'grid', gap: 1, alignItems: 'center' }}>

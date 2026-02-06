@@ -52,9 +52,9 @@ export const env = {
   apiBaseUrl: optionalEnv('NEXT_PUBLIC_API_BASE_URL', 'https://api.myrecruiteragency.com'),
   
   /**
-   * API base URL for server-side requests (may differ in some setups)
+   * API base URL for server-side requests (always the full URL, not the proxy)
    */
-  serverApiBaseUrl: optionalEnv('API_BASE_URL', optionalEnv('NEXT_PUBLIC_API_BASE_URL', 'https://api.myrecruiteragency.com')),
+  serverApiBaseUrl: optionalEnv('API_BASE_URL', 'https://api.myrecruiteragency.com'),
 
   // ==========================================================================
   // Google OAuth

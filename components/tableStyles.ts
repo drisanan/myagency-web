@@ -1,33 +1,51 @@
 import type { SxProps, Theme } from '@mui/material/styles';
+import { colors, gradients } from '@/theme/colors';
 
 export const dashboardTablePaperSx: SxProps<Theme> = {
-  borderRadius: 2.5,
-  border: '1px solid #eaecf0',
-  boxShadow: '0 1px 2px rgba(16, 24, 40, 0.06)',
-  backgroundColor: '#fff',
+  borderRadius: 0,
+  clipPath: 'polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 12px 100%, 0 calc(100% - 12px))',
+  border: 'none',
+  boxShadow: 'none',
+  backgroundColor: colors.white,
   overflow: 'hidden',
+  position: 'relative',
+  transition: 'box-shadow 0.25s ease, transform 0.2s ease',
+  // Dark accent bar on left (inverted MetricCard style)
+  '&::before': {
+    content: '""',
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    bottom: 0,
+    width: '3px',
+    background: `linear-gradient(180deg, ${colors.black} 0%, ${colors.black}40 100%)`,
+    zIndex: 1,
+  },
+  '&:hover': {
+    boxShadow: `0 4px 20px rgba(0,0,0,0.08), 0 0 16px ${colors.lime}06`,
+  },
 };
 
 export const dashboardTableSx: SxProps<Theme> = {
   '& .MuiTableCell-head': {
-    backgroundColor: '#f9fafb',
-    color: '#475467',
-    fontWeight: 600,
-    borderBottom: '1px solid #eaecf0',
+    background: gradients.darkCard,
+    color: colors.white,
+    fontWeight: 700,
+    textTransform: 'uppercase',
+    letterSpacing: '0.06em',
+    fontSize: '0.75rem',
+    borderBottom: 'none',
   },
   '& .MuiTableCell-body': {
-    color: '#101828',
-    borderBottom: '1px solid #f2f4f7',
+    color: colors.black,
+    borderBottom: '1px solid #E0E0E0',
   },
   '& .MuiTableCell-root': {
     padding: { xs: '8px 12px', sm: '12px 16px' },
     fontSize: { xs: 13, sm: 14 },
   },
-  '& .MuiTableRow-root:nth-of-type(even)': {
-    backgroundColor: '#fcfcfd',
-  },
   '& .MuiTableRow-root:hover': {
-    backgroundColor: '#f8fafc',
+    backgroundColor: '#CCFF0010',
   },
 };
 
@@ -35,19 +53,19 @@ export const dashboardTableSx: SxProps<Theme> = {
 export const responsiveTableContainerSx: SxProps<Theme> = {
   width: '100%',
   overflowX: 'auto',
-  WebkitOverflowScrolling: 'touch', // Smooth scrolling on iOS
+  WebkitOverflowScrolling: 'touch',
   '&::-webkit-scrollbar': {
     height: 6,
   },
   '&::-webkit-scrollbar-track': {
-    backgroundColor: '#f1f1f1',
+    backgroundColor: '#E0E0E0',
     borderRadius: 3,
   },
   '&::-webkit-scrollbar-thumb': {
-    backgroundColor: '#c1c1c1',
+    backgroundColor: '#0A0A0A40',
     borderRadius: 3,
     '&:hover': {
-      backgroundColor: '#a1a1a1',
+      backgroundColor: '#0A0A0A60',
     },
   },
 };
@@ -56,12 +74,28 @@ export const responsiveTableContainerSx: SxProps<Theme> = {
 export const mobileCardSx: SxProps<Theme> = {
   p: 2,
   mb: 1.5,
-  borderRadius: 2,
-  border: '1px solid #eaecf0',
-  backgroundColor: '#fff',
+  borderRadius: 0,
+  clipPath: 'polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px))',
+  border: 'none',
+  backgroundColor: colors.white,
+  position: 'relative',
+  overflow: 'hidden',
+  transition: 'box-shadow 0.2s ease, transform 0.15s ease',
+  // Dark accent bar on left
+  '&::before': {
+    content: '""',
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    bottom: 0,
+    width: '3px',
+    background: `linear-gradient(180deg, ${colors.black} 0%, ${colors.black}40 100%)`,
+    zIndex: 1,
+  },
   '&:hover': {
-    backgroundColor: '#f8fafc',
-    boxShadow: '0 2px 4px rgba(16, 24, 40, 0.08)',
+    backgroundColor: '#CCFF0008',
+    boxShadow: `0 4px 16px rgba(0,0,0,0.08), 0 0 12px ${colors.lime}06`,
+    transform: 'translateY(-1px)',
   },
 };
 
@@ -88,10 +122,13 @@ export const responsiveActionsSx: SxProps<Theme> = {
 };
 
 export const dashboardDataGridSx: SxProps<Theme> = {
-  borderRadius: 2.5,
-  border: '1px solid #eaecf0',
-  boxShadow: '0 1px 2px rgba(16, 24, 40, 0.06)',
-  backgroundColor: '#fff',
+  borderRadius: 0,
+  clipPath: 'polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 12px 100%, 0 calc(100% - 12px))',
+  border: 'none',
+  boxShadow: 'none',
+  backgroundColor: colors.white,
+  position: 'relative',
+  overflow: 'hidden',
   '& .MuiDataGrid-main': {
     padding: 0,
   },
@@ -105,8 +142,8 @@ export const dashboardDataGridSx: SxProps<Theme> = {
     width: '100%',
   },
   '& .MuiDataGrid-columnHeaders': {
-    backgroundColor: '#f9fafb',
-    borderBottom: '1px solid #eaecf0',
+    background: gradients.darkCard,
+    borderBottom: 'none',
     width: '100%',
   },
   '& .MuiDataGrid-columnHeadersInner': {
@@ -118,11 +155,14 @@ export const dashboardDataGridSx: SxProps<Theme> = {
   },
   '& .MuiDataGrid-columnHeaderTitle': {
     fontWeight: 600,
-    color: '#475467',
+    color: colors.white,
+    textTransform: 'uppercase',
+    letterSpacing: '0.05em',
+    fontSize: '0.75rem',
   },
   '& .MuiDataGrid-cell': {
-    borderBottom: '1px solid #f2f4f7',
-    color: '#101828',
+    borderBottom: '1px solid #E0E0E0',
+    color: colors.black,
     fontSize: 14,
     paddingLeft: 0,
     paddingRight: 0,
@@ -130,13 +170,10 @@ export const dashboardDataGridSx: SxProps<Theme> = {
   '& .MuiDataGrid-row': {
     width: '100%',
   },
-  '& .MuiDataGrid-row:nth-of-type(even)': {
-    backgroundColor: '#fcfcfd',
-  },
   '& .MuiDataGrid-row:hover': {
-    backgroundColor: '#f8fafc',
+    backgroundColor: '#CCFF0010',
   },
   '& .MuiDataGrid-footerContainer': {
-    borderTop: '1px solid #eaecf0',
+    borderTop: '1px solid #E0E0E0',
   },
 };

@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getTokens, saveTokens } from '../../google/tokenStore';
 import { toBase64Url } from '../utils';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.API_BASE_URL || '';
+// Server-side routes should prefer API_BASE_URL (full URL) over NEXT_PUBLIC_ (may be a relative proxy path)
+const API_BASE_URL = process.env.API_BASE_URL || process.env.NEXT_PUBLIC_API_BASE_URL || '';
 
 async function fetchTokensFromBackend(clientId: string, cookies: string): Promise<any> {
   if (!API_BASE_URL) return null;

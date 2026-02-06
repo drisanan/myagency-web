@@ -6,7 +6,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useSession } from '@/features/auth/session';
 import { useQueryClient } from '@tanstack/react-query';
 import { useImpersonation } from '@/hooks/useImpersonation';
-import { colors } from '@/theme/colors';
+import { colors, gradients } from '@/theme/colors';
 import { IoAppsOutline, IoBarbellOutline, IoFlaskOutline, IoClipboardOutline, IoSchoolOutline, IoPeopleOutline, IoMailOutline, IoListOutline, IoCheckmarkCircleOutline, IoEyeOutline, IoCalendarOutline, IoChatbubblesOutline, IoPersonCircleOutline, IoBulbOutline, IoMenuOutline, IoCloseOutline } from 'react-icons/io5';
 import { IoNotificationsOutline } from 'react-icons/io5';
 import { SuggestionButton } from '@/features/suggestions';
@@ -14,16 +14,6 @@ import { useQuery } from '@tanstack/react-query';
 import { tasksDueSoon, Task } from '@/services/tasks';
 import { listTasks } from '@/services/tasks';
 const drawerWidth = 240;
-
-function isColorLight(hexColor: string): boolean {
-  const hex = hexColor.replace('#', '');
-  if (hex.length !== 6) return true;
-  const r = parseInt(hex.substring(0, 2), 16);
-  const g = parseInt(hex.substring(2, 4), 16);
-  const b = parseInt(hex.substring(4, 6), 16);
-  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-  return luminance > 0.5;
-}
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const { session, setSession } = useSession();
@@ -52,24 +42,29 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const secondaryColor = s.secondaryColor || colors.navActiveBg;
   const navText = s.navText || colors.sidebarText;
   const navActiveText = s.navActiveText || colors.navActiveText;
-  const contentBg = s.contentBg || '#fff';
-  const cardBg = s.cardBg || '#fff';
-  const headerBg = s.headerBg || '#fff';
-  const headerText = isColorLight(headerBg) ? '#101828' : '#FFFFFF';
+  const contentBg = s.contentBg || colors.contentBg;
+  const headerBg = s.headerBg || colors.headerBg;
 
   const navItemSx = {
-    width: 'calc(100% - 20px)', // leave 10px inset on each side
+    width: 'calc(100% - 20px)',
     mx: '10px',
-    px: 1.25, // ~10px horizontal padding inside
+    px: 1.25,
     color: navText,
-    borderRadius: '5px',
+    borderRadius: 0,
     py: 0.5,
+    fontSize: '0.8rem',
+    fontWeight: 700,
+    textTransform: 'uppercase' as const,
+    letterSpacing: '0.06em',
+    clipPath: 'polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 6px 100%, 0 calc(100% - 6px))',
+    transition: 'all 0.15s ease',
     '&:hover': {
       bgcolor: 'rgba(255, 255, 255, 0.08)',
     },
     '&.Mui-selected, &.Mui-selected:hover': {
-      bgcolor: secondaryColor,
+      background: `linear-gradient(135deg, ${secondaryColor} 0%, ${secondaryColor}DD 100%)`,
       color: navActiveText,
+      boxShadow: `0 0 12px ${secondaryColor}30`,
     },
     justifyContent: 'flex-start',
   };
@@ -137,10 +132,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       sx={{
         display: 'flex',
         minHeight: '100vh',
-        backgroundImage: 'url(/marketing/bg-an.png)',
-        backgroundRepeat: 'no-repeat',
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
+        bgcolor: contentBg,
       }}
     >
       <CssBaseline />
@@ -148,9 +140,25 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         position="fixed"
         sx={{
           zIndex: (t) => t.zIndex.drawer + 1,
-          bgcolor: headerBg,
-          boxShadow: '0 1px 2px rgba(16, 24, 40, 0.06)',
-          color: headerText,
+          background: gradients.header,
+          boxShadow: '0 1px 0 rgba(255,255,255,0.05)',
+          color: colors.headerText,
+          overflow: 'hidden',
+          // Animated streak-of-light bottom border
+          '&::after': {
+            content: '""',
+            position: 'absolute',
+            bottom: 0,
+            left: 0,
+            width: '200%',
+            height: '2px',
+            background: `linear-gradient(90deg, transparent 0%, transparent 25%, ${colors.lime}15 35%, ${colors.lime} 50%, ${colors.lime}15 65%, transparent 75%, transparent 100%)`,
+            animation: 'headerStreak 4s linear infinite',
+          },
+          '@keyframes headerStreak': {
+            '0%': { transform: 'translateX(-50%)' },
+            '100%': { transform: 'translateX(0%)' },
+          },
         }}
       >
         <Toolbar sx={{ justifyContent: 'space-between', px: { xs: 1, sm: 2 } }}>
@@ -176,15 +184,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <Stack direction="row" spacing={{ xs: 1, sm: 2 }} alignItems="center">
                 {isImpersonating && (
                   <Stack direction="row" spacing={1} alignItems="center">
-                    <Typography variant="body2" sx={{ fontWeight: 600, display: { xs: 'none', sm: 'block' } }}>
+                    <Typography variant="body2" sx={{ fontWeight: 600, display: { xs: 'none', sm: 'block' }, color: colors.white }}>
                       Impersonating:
                     </Typography>
-                    <Typography variant="body2" color="text.secondary" sx={{ display: { xs: 'none', md: 'block' } }}>
+                    <Typography variant="body2" sx={{ display: { xs: 'none', md: 'block' }, color: '#FFFFFF80' }}>
                       {session.firstName || session.lastName
                         ? `${session.firstName || ''} ${session.lastName || ''}`.trim()
                         : session.email}
                     </Typography>
-                    <Button size="small" variant="outlined" onClick={stopImpersonation} sx={{ fontSize: { xs: 11, sm: 13 }, px: { xs: 1, sm: 2 } }}>
+                    <Button size="small" variant="outlined" onClick={stopImpersonation} sx={{ fontSize: { xs: 11, sm: 13 }, px: { xs: 1, sm: 2 }, borderColor: colors.lime, color: colors.lime }}>
                       End
                     </Button>
                   </Stack>
@@ -197,7 +205,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   </IconButton>
                 </Badge>
                 <IconButton onClick={handleUserOpen} sx={{ p: 0 }}>
-                    <Avatar sx={{ bgcolor: '#5D4AFB', width: 32, height: 32, cursor: 'pointer' }}>
+                    <Avatar sx={{ bgcolor: colors.lime, color: colors.black, width: 32, height: 32, cursor: 'pointer', fontWeight: 700 }}>
                       {(session.email || '?').charAt(0).toUpperCase()}
                     </Avatar>
                   </IconButton>
@@ -271,13 +279,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         variant="temporary"
         open={mobileOpen}
         onClose={handleDrawerToggle}
-        ModalProps={{ keepMounted: true }} // Better open performance on mobile
+        ModalProps={{ keepMounted: true }}
         sx={{
           display: { xs: 'block', md: 'none' },
           '& .MuiDrawer-paper': {
             width: drawerWidth,
             boxSizing: 'border-box',
-            bgcolor: primaryColor,
+            background: gradients.sidebar,
             color: navText,
           },
         }}
@@ -297,7 +305,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               >
                 <Stack direction="row" spacing={2} alignItems="center">
                   {item.icon}
-                  <ListItemText primary={item.label} />
+                  <ListItemText primary={item.label} primaryTypographyProps={{ sx: { fontSize: '0.8rem', fontWeight: 600, letterSpacing: '0.05em' } }} />
                 </Stack>
               </ListItemButton>
             );
@@ -314,8 +322,19 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           '& .MuiDrawer-paper': {
             width: drawerWidth,
             boxSizing: 'border-box',
-            bgcolor: primaryColor,
+            background: gradients.sidebar,
             color: navText,
+            // Right-edge lime accent
+            borderRight: 'none',
+            '&::after': {
+              content: '""',
+              position: 'absolute',
+              top: 0,
+              right: 0,
+              bottom: 0,
+              width: '1px',
+              background: `linear-gradient(180deg, transparent 0%, ${colors.lime}20 30%, ${colors.lime}20 70%, transparent 100%)`,
+            },
           },
         }}
       >
@@ -333,7 +352,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               >
                 <Stack direction="row" spacing={2} alignItems="center">
                   {item.icon}
-                  <ListItemText primary={item.label} />
+                  <ListItemText primary={item.label} primaryTypographyProps={{ sx: { fontSize: '0.8rem', fontWeight: 600, letterSpacing: '0.05em' } }} />
                 </Stack>
               </ListItemButton>
             );
@@ -345,13 +364,29 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         sx={{
           flexGrow: 1,
           p: { xs: 1.5, sm: 2, md: 3 },
-          bgcolor: contentBg,
+          // Dotted grid texture over content gradient
+          background: `${gradients.dottedGrid}, ${gradients.contentPane}`,
+          backgroundSize: '24px 24px, 100% 100%',
+          // Subtle lime radial glow in the top-left corner for energy
+          '&::before': {
+            content: '""',
+            position: 'fixed',
+            top: 0,
+            left: drawerWidth,
+            width: '50vw',
+            height: '50vh',
+            background: 'radial-gradient(ellipse at 0% 0%, rgba(204,255,0,0.04) 0%, transparent 60%)',
+            pointerEvents: 'none',
+            zIndex: 0,
+          },
+          position: 'relative',
           width: { xs: '100%', md: `calc(100% - ${drawerWidth}px)` },
           ml: { md: 0 },
+          minHeight: '100vh',
         }}
       >
         <Toolbar />
-        {/* Impersonation Banner - below utility header, in main content area */}
+        {/* Impersonation Banner */}
         {isImpersonating && (
           <Alert 
             severity="warning" 
@@ -393,5 +428,3 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     </Box>
   );
 }
-
-

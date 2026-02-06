@@ -7,7 +7,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { Box, AppBar, Toolbar, Typography, Drawer, List, ListItemButton, ListItemText, Stack, CssBaseline, Avatar, IconButton, Menu, MenuItem, Divider, Button, useMediaQuery, useTheme } from '@mui/material';
 import { useQueryClient } from '@tanstack/react-query';
-import { colors } from '@/theme/colors';
+import { colors, gradients } from '@/theme/colors';
 import { useImpersonation } from '@/hooks/useImpersonation';
 import { IoClipboardOutline, IoSchoolOutline, IoEyeOutline, IoCalendarOutline, IoChatbubblesOutline, IoMenuOutline, IoCloseOutline } from 'react-icons/io5';
 
@@ -68,7 +68,7 @@ function ClientShell({ children }: { children: React.ReactNode }) {
   const secondaryColor = s.secondaryColor || colors.navActiveBg;
   const navText = s.navText || colors.sidebarText;
   const navActiveText = s.navActiveText || colors.navActiveText;
-  const contentBg = s.contentBg || '#fff';
+  const contentBg = s.contentBg || colors.contentBg;
   const agencyLogo = session?.agencyLogo;
 
   // User menu state
@@ -91,7 +91,8 @@ function ClientShell({ children }: { children: React.ReactNode }) {
     mx: '10px',
     px: 1.25,
     color: navText,
-    borderRadius: '5px',
+    borderRadius: 0,
+    clipPath: 'polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px))',
     py: 0.5,
     '&:hover': {
       bgcolor: 'rgba(255, 255, 255, 0.08)',
@@ -108,10 +109,7 @@ function ClientShell({ children }: { children: React.ReactNode }) {
       sx={{
         display: 'flex',
         minHeight: '100vh',
-        backgroundImage: 'url(/marketing/bg-an.png)',
-        backgroundRepeat: 'no-repeat',
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
+        bgcolor: contentBg,
       }}
     >
       <CssBaseline />
@@ -119,9 +117,24 @@ function ClientShell({ children }: { children: React.ReactNode }) {
         position="fixed"
         sx={{
           zIndex: (t) => t.zIndex.drawer + 1,
-          bgcolor: 'transparent',
-          boxShadow: 'none',
-          color: 'inherit',
+          background: gradients.header,
+          boxShadow: '0 1px 0 rgba(255,255,255,0.05)',
+          color: colors.headerText,
+          overflow: 'hidden',
+          '&::after': {
+            content: '""',
+            position: 'absolute',
+            bottom: 0,
+            left: 0,
+            width: '200%',
+            height: '2px',
+            background: `linear-gradient(90deg, transparent 0%, transparent 25%, ${colors.lime}15 35%, ${colors.lime} 50%, ${colors.lime}15 65%, transparent 75%, transparent 100%)`,
+            animation: 'headerStreak 4s linear infinite',
+          },
+          '@keyframes headerStreak': {
+            '0%': { transform: 'translateX(-50%)' },
+            '100%': { transform: 'translateX(0%)' },
+          },
         }}
       >
         <Toolbar sx={{ justifyContent: 'space-between', px: { xs: 1, sm: 2 } }}>
@@ -161,7 +174,7 @@ function ClientShell({ children }: { children: React.ReactNode }) {
                   </Stack>
                 )}
                 <IconButton onClick={handleUserOpen} sx={{ p: 0 }}>
-                  <Avatar sx={{ bgcolor: '#5D4AFB', width: 32, height: 32, cursor: 'pointer' }}>
+                  <Avatar sx={{ bgcolor: colors.lime, color: colors.black, width: 32, height: 32, cursor: 'pointer', fontWeight: 700 }}>
                     {(session.firstName || session.email || '?').charAt(0).toUpperCase()}
                   </Avatar>
                 </IconButton>
@@ -205,7 +218,7 @@ function ClientShell({ children }: { children: React.ReactNode }) {
           '& .MuiDrawer-paper': {
             width: drawerWidth,
             boxSizing: 'border-box',
-            bgcolor: primaryColor,
+            background: gradients.sidebar,
             color: navText,
           },
         }}
@@ -242,8 +255,18 @@ function ClientShell({ children }: { children: React.ReactNode }) {
           '& .MuiDrawer-paper': {
             width: drawerWidth,
             boxSizing: 'border-box',
-            bgcolor: primaryColor,
+            background: gradients.sidebar,
             color: navText,
+            borderRight: 'none',
+            '&::after': {
+              content: '""',
+              position: 'absolute',
+              top: 0,
+              right: 0,
+              bottom: 0,
+              width: '1px',
+              background: `linear-gradient(180deg, transparent 0%, ${colors.lime}20 30%, ${colors.lime}20 70%, transparent 100%)`,
+            },
           },
         }}
       >
@@ -273,8 +296,22 @@ function ClientShell({ children }: { children: React.ReactNode }) {
         sx={{
           flexGrow: 1,
           p: { xs: 1.5, sm: 2, md: 3 },
-          bgcolor: contentBg,
+          background: `${gradients.dottedGrid}, ${gradients.contentPane}`,
+          backgroundSize: '24px 24px, 100% 100%',
+          '&::before': {
+            content: '""',
+            position: 'fixed',
+            top: 0,
+            left: drawerWidth,
+            width: '50vw',
+            height: '50vh',
+            background: 'radial-gradient(ellipse at 0% 0%, rgba(204,255,0,0.04) 0%, transparent 60%)',
+            pointerEvents: 'none',
+            zIndex: 0,
+          },
+          position: 'relative',
           width: { xs: '100%', md: `calc(100% - ${drawerWidth}px)` },
+          minHeight: '100vh',
         }}
       >
         <Toolbar />

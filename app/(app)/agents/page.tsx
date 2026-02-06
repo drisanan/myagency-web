@@ -16,6 +16,7 @@ import { IoEllipsisVertical } from 'react-icons/io5';
 import { useSession } from '@/features/auth/session';
 import { listAgents, upsertAgent, deleteAgent, Agent } from '@/services/agents';
 import { SubscriptionQuota, useCanAddAthlete } from '@/features/settings/SubscriptionQuota';
+import { LoadingState } from '@/components/LoadingState';
 import { dashboardTablePaperSx, dashboardTableSx, responsiveTableContainerSx, mobileCardSx, hideOnMobile } from '@/components/tableStyles';
 
 // Mobile action menu for agents
@@ -172,12 +173,7 @@ export default function AgentsPage() {
   const pagedAgents = agents.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
 
   if (loading || isLoading) {
-    return (
-      <Stack spacing={2} alignItems="center" sx={{ py: 4 }}>
-        <CircularProgress size={24} />
-        <Typography>Loading agents…</Typography>
-      </Stack>
-    );
+    return <LoadingState message="Loading agents..." />;
   }
 
   if (!session?.email && !session?.agencyEmail) {
@@ -208,15 +204,15 @@ export default function AgentsPage() {
 
       {/* Show Agency Name/ID for agents to use when logging in */}
       {session?.agencyId && (
-        <Alert severity="info" sx={{ mt: 1 }}>
-          <Typography variant="body2" sx={{ mb: 0.5 }}>
+        <Alert severity="info" sx={{ mt: 1, bgcolor: '#F5F5F5', color: '#555', '& .MuiAlert-icon': { color: '#999' } }}>
+          <Typography variant="body2" sx={{ mb: 0.5, color: '#555' }}>
             Share one of these with your agents so they can log in:
           </Typography>
-          <Typography variant="body2" component="div">
-            <strong>Agency Name:</strong> Set a friendly name in <a href="/settings" style={{ color: '#1976d2' }}>Settings</a>
+          <Typography variant="body2" component="div" sx={{ color: '#555' }}>
+            <strong>Agency Name:</strong> Set a friendly name in <a href="/settings" style={{ color: '#666', textDecoration: 'underline' }}>Settings</a>
           </Typography>
-          <Typography variant="body2" component="div" sx={{ mt: 0.5 }}>
-            <strong>Fallback ID:</strong> <code style={{ background: '#f5f5f5', padding: '2px 6px', borderRadius: 4 }}>{session.agencyId}</code>
+          <Typography variant="body2" component="div" sx={{ mt: 0.5, color: '#555' }}>
+            <strong>Fallback ID:</strong> <code style={{ background: '#E8E8E8', padding: '2px 6px', borderRadius: 0, color: '#444' }}>{session.agencyId}</code>
           </Typography>
         </Alert>
       )}
@@ -273,7 +269,8 @@ export default function AgentsPage() {
             onRowsPerPageChange={(e) => { setRowsPerPage(Number(e.target.value)); setPage(0); }}
             rowsPerPageOptions={[10, 25, 50]}
             sx={{
-              borderTop: '1px solid #eaecf0',
+              borderTop: '1px solid',
+              borderColor: 'divider',
               '& .MuiTablePagination-toolbar': { flexWrap: 'wrap', justifyContent: 'center' },
               '& .MuiTablePagination-selectLabel, & .MuiTablePagination-displayedRows': { fontSize: 12 },
             }}
@@ -338,9 +335,9 @@ export default function AgentsPage() {
             sx={{
               position: 'sticky',
               bottom: 0,
-              backgroundColor: 'rgba(255, 255, 255, 0.92)',
-              borderTop: '1px solid #eaecf0',
-              boxShadow: '0 -6px 12px rgba(16, 24, 40, 0.08)',
+              backgroundColor: '#FFFFFF',
+              borderTop: '1px solid',
+              borderColor: 'divider',
               zIndex: 1,
             }}
           />

@@ -16,45 +16,70 @@ import Divider from '@mui/material/Divider';
 import { useSession } from '@/features/auth/session';
 import { updateAgencySettings, getAgencySettings } from '@/services/agencies';
 import { SubscriptionQuota } from '@/features/settings/SubscriptionQuota';
+import { colors as themeColors } from '@/theme/colors';
+import { LoadingState } from '@/components/LoadingState';
 
-// Default color palette
+// Default 3-color system
 const defaults = {
-  // Core
-  primaryColor: '#14151E',
-  secondaryColor: '#AAFB00',
-  buttonText: '#14151E',
-  // Text
-  textPrimary: '#1A1A2E',
-  textSecondary: '#6B7280',
-  linkColor: '#3B82F6',
-  // Backgrounds
-  contentBg: '#F9FAFB',
-  cardBg: '#FFFFFF',
-  headerBg: '#FFFFFF',
-  // Navigation
-  navText: '#999DAA',
-  navActiveText: '#14151E',
+  primaryColor: themeColors.black,
+  secondaryColor: themeColors.lime,
+  buttonText: themeColors.black,
+  textPrimary: themeColors.black,
+  textSecondary: '#0A0A0A99',
+  linkColor: themeColors.lime,
+  contentBg: themeColors.contentBg,
+  cardBg: themeColors.white,
+  headerBg: themeColors.headerBg,
+  navText: '#FFFFFF80',
+  navActiveText: themeColors.black,
   navHoverBg: 'rgba(255,255,255,0.08)',
-  // Status Colors
-  successColor: '#10B981',
-  warningColor: '#F59E0B',
-  errorColor: '#EF4444',
-  infoColor: '#3B82F6',
-  // Borders
-  borderColor: '#E5E7EB',
-  dividerColor: '#E5E7EB',
+  successColor: themeColors.lime,
+  warningColor: themeColors.warning,
+  errorColor: themeColors.error,
+  infoColor: themeColors.lime,
+  borderColor: '#E0E0E0',
+  dividerColor: '#E0E0E0',
 };
 
 type ColorKey = keyof typeof defaults;
 
-// Helper to determine if a hex color is light (needs dark text)
-function isColorLight(hexColor: string): boolean {
+// Helper to determine if a hex color is dark (needs light text)
+function isDark(hexColor: string): boolean {
   const hex = hexColor.replace('#', '');
+  if (hex.length < 6) return false;
   const r = parseInt(hex.substring(0, 2), 16);
   const g = parseInt(hex.substring(2, 4), 16);
   const b = parseInt(hex.substring(4, 6), 16);
   const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-  return luminance > 0.5;
+  return luminance < 0.5;
+}
+
+function contrastText(hex: string): string {
+  return isDark(hex) ? '#FFFFFF' : '#0A0A0A';
+}
+
+// Derive all other values from 3 inputs
+function deriveColors(brand: string, background: string, base: string) {
+  const textPrimary = isDark(background) ? '#FFFFFF' : '#0A0A0A';
+  return {
+    primaryColor: background,
+    secondaryColor: brand,
+    buttonText: contrastText(brand),
+    textPrimary,
+    textSecondary: `${textPrimary}99`,
+    linkColor: brand,
+    contentBg: isDark(base) ? '#1A1A1A' : '#F5F5F5',
+    cardBg: base,
+    headerBg: background,
+    navText: `${textPrimary}80`,
+    navActiveText: contrastText(brand),
+    successColor: brand,
+    warningColor: '#FFB800',
+    errorColor: '#FF3B3B',
+    infoColor: brand,
+    borderColor: isDark(base) ? '#FFFFFF20' : '#E0E0E0',
+    dividerColor: isDark(base) ? '#FFFFFF20' : '#E0E0E0',
+  };
 }
 
 function ColorPicker({ 
@@ -78,7 +103,7 @@ function ColorPicker({
           type="color"
           value={value || defaultValue}
           onChange={(e) => onChange(e.target.value)}
-          style={{ width: 36, height: 36, border: 'none', cursor: 'pointer', borderRadius: 4, padding: 0 }}
+          style={{ width: 36, height: 36, border: 'none', cursor: 'pointer', borderRadius: 0, padding: 0 }}
         />
         <TextField
           size="small"
@@ -93,8 +118,9 @@ function ColorPicker({
             width: 36, 
             height: 36, 
             bgcolor: value || defaultValue, 
-            borderRadius: 1, 
-            border: '1px solid #ddd',
+            borderRadius: 0, 
+            clipPath: 'polygon(0 0, calc(100% - 4px) 0, 100% 4px, 100% 100%, 4px 100%, 0 calc(100% - 4px))',
+            border: '1px solid #E0E0E0',
             flexShrink: 0,
           }} 
         />
@@ -126,6 +152,11 @@ export function SettingsForm() {
   const [loading, setLoading] = React.useState(false);
   const [initialLoading, setInitialLoading] = React.useState(true);
   
+  // Simplified 3-picker values
+  const [brandColor, setBrandColor] = React.useState(defaults.secondaryColor);
+  const [bgColor, setBgColor] = React.useState(defaults.primaryColor);
+  const [baseColor, setBaseColor] = React.useState(defaults.cardBg);
+  
   // Agency slug state
   const [agencySlug, setAgencySlug] = React.useState('');
   const [slugError, setSlugError] = React.useState<string | null>(null);
@@ -141,6 +172,23 @@ export function SettingsForm() {
     { value: 'platinum', label: 'Platinum', color: '#e5e4e2' },
   ];
   const [programLevels, setProgramLevels] = React.useState<ProgramLevel[]>(defaultProgramLevels);
+
+  // When the 3 simplified pickers change, derive all values
+  const handleBrandChange = (v: string) => {
+    setBrandColor(v);
+    const derived = deriveColors(v, bgColor, baseColor);
+    setColors(derived);
+  };
+  const handleBgChange = (v: string) => {
+    setBgColor(v);
+    const derived = deriveColors(brandColor, v, baseColor);
+    setColors(derived);
+  };
+  const handleBaseChange = (v: string) => {
+    setBaseColor(v);
+    const derived = deriveColors(brandColor, bgColor, v);
+    setColors(derived);
+  };
 
   const updateColor = (key: ColorKey, value: string) => {
     setColors(prev => ({ ...prev, [key]: value }));
@@ -181,9 +229,12 @@ export function SettingsForm() {
             if (settings[key]) loaded[key] = settings[key];
           });
           setColors(loaded);
+          // Sync the 3 simple pickers
+          if (settings.secondaryColor) setBrandColor(settings.secondaryColor);
+          if (settings.primaryColor) setBgColor(settings.primaryColor);
+          if (settings.cardBg) setBaseColor(settings.cardBg);
           if (settings.logoDataUrl) setLogoPreview(settings.logoDataUrl);
           if (settings.slug) setAgencySlug(settings.slug);
-          // Load custom program levels if set
           if (settings.programLevels?.length) {
             setProgramLevels(settings.programLevels);
           }
@@ -243,14 +294,13 @@ export function SettingsForm() {
 
   const resetAllColors = () => {
     setColors({});
+    setBrandColor(defaults.secondaryColor);
+    setBgColor(defaults.primaryColor);
+    setBaseColor(defaults.cardBg);
   };
 
   if (initialLoading) {
-    return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
-        <CircularProgress />
-      </Box>
-    );
+    return <LoadingState message="Loading settings..." />;
   }
 
   return (
@@ -294,7 +344,7 @@ export function SettingsForm() {
         
         {session?.agencyId && (
           <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
-            Fallback ID (can also be used): <code style={{ background: '#f5f5f5', padding: '2px 6px', borderRadius: 4 }}>{session.agencyId}</code>
+            Fallback ID (can also be used): <code style={{ background: '#0A0A0A08', padding: '2px 6px', borderRadius: 0 }}>{session.agencyId}</code>
           </Typography>
         )}
       </Box>
@@ -304,16 +354,16 @@ export function SettingsForm() {
       <Box>
         <Typography variant="h6" gutterBottom>White-Label Branding</Typography>
         <Typography variant="body2" color="text.secondary">
-          Customize your agency's appearance. These settings apply to your portal and your clients' portals.
+          Customize your agency's appearance with 3 simple colors. All other colors are auto-derived.
         </Typography>
       </Box>
 
       {/* Logo Section */}
-      <Box sx={{ p: 2, bgcolor: '#f9f9f9', borderRadius: 2 }}>
+      <Box sx={{ p: 2, bgcolor: '#0A0A0A08', borderRadius: 0, clipPath: 'polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 12px 100%, 0 calc(100% - 12px))' }}>
         <Typography variant="subtitle1" fontWeight={600} gutterBottom>Agency Logo</Typography>
         <Stack spacing={2}>
           {logoPreview && (
-            <Box sx={{ p: 2, bgcolor: colors.primaryColor || defaults.primaryColor, borderRadius: 1, display: 'inline-block', maxWidth: 'fit-content' }}>
+            <Box sx={{ p: 2, bgcolor: colors.primaryColor || defaults.primaryColor, borderRadius: 0, clipPath: 'polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px))', display: 'inline-block', maxWidth: 'fit-content' }}>
               <img src={logoPreview} alt="Logo preview" style={{ maxHeight: 48, maxWidth: 200 }} />
             </Box>
           )}
@@ -334,170 +384,57 @@ export function SettingsForm() {
         </Stack>
       </Box>
 
-      {/* Core Colors */}
-      <Accordion defaultExpanded>
-        <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-          <Typography fontWeight={600}>Core Colors</Typography>
-        </AccordionSummary>
-        <AccordionDetails>
-          <Stack spacing={2}>
-            <ColorPicker 
-              label="Primary Color (Sidebar / Header)" 
-              value={colors.primaryColor || ''} 
-              onChange={(v) => updateColor('primaryColor', v)}
-              defaultValue={defaults.primaryColor}
-            />
-            <ColorPicker 
-              label="Secondary Color (Buttons / Accents)" 
-              value={colors.secondaryColor || ''} 
-              onChange={(v) => updateColor('secondaryColor', v)}
-              defaultValue={defaults.secondaryColor}
-            />
-            <ColorPicker 
-              label="Button Text Color" 
-              value={colors.buttonText || ''} 
-              onChange={(v) => updateColor('buttonText', v)}
-              defaultValue={defaults.buttonText}
-            />
-          </Stack>
-        </AccordionDetails>
-      </Accordion>
+      {/* Simplified 3-color pickers */}
+      <Box sx={{ p: 2, borderRadius: 0, clipPath: 'polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 12px 100%, 0 calc(100% - 12px))', border: '1px solid #E0E0E0' }}>
+        <Typography variant="subtitle1" fontWeight={600} gutterBottom>Brand Colors</Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          Pick 3 colors. Everything else is automatically calculated.
+        </Typography>
+        <Stack spacing={2.5}>
+          <ColorPicker 
+            label="Brand Color (Buttons, Accents, Active States)" 
+            value={brandColor} 
+            onChange={handleBrandChange}
+            defaultValue={defaults.secondaryColor}
+          />
+          <ColorPicker 
+            label="Background Color (Sidebar, Header)" 
+            value={bgColor} 
+            onChange={handleBgChange}
+            defaultValue={defaults.primaryColor}
+          />
+          <ColorPicker 
+            label="Base Color (Cards, Content Panels)" 
+            value={baseColor} 
+            onChange={handleBaseChange}
+            defaultValue={defaults.cardBg}
+          />
+        </Stack>
+      </Box>
 
-      {/* Text Colors */}
+      {/* Advanced Color Overrides */}
       <Accordion>
         <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-          <Typography fontWeight={600}>Text Colors</Typography>
+          <Typography fontWeight={600}>Advanced Color Overrides</Typography>
         </AccordionSummary>
         <AccordionDetails>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Override individually-derived values if needed. Most users won't need this.
+          </Typography>
           <Stack spacing={2}>
-            <ColorPicker 
-              label="Primary Text" 
-              value={colors.textPrimary || ''} 
-              onChange={(v) => updateColor('textPrimary', v)}
-              defaultValue={defaults.textPrimary}
-            />
-            <ColorPicker 
-              label="Secondary Text (Muted)" 
-              value={colors.textSecondary || ''} 
-              onChange={(v) => updateColor('textSecondary', v)}
-              defaultValue={defaults.textSecondary}
-            />
-            <ColorPicker 
-              label="Link Color" 
-              value={colors.linkColor || ''} 
-              onChange={(v) => updateColor('linkColor', v)}
-              defaultValue={defaults.linkColor}
-            />
-          </Stack>
-        </AccordionDetails>
-      </Accordion>
-
-      {/* Background Colors */}
-      <Accordion>
-        <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-          <Typography fontWeight={600}>Background Colors</Typography>
-        </AccordionSummary>
-        <AccordionDetails>
-          <Stack spacing={2}>
-            <ColorPicker 
-              label="Content Background" 
-              value={colors.contentBg || ''} 
-              onChange={(v) => updateColor('contentBg', v)}
-              defaultValue={defaults.contentBg}
-            />
-            <ColorPicker 
-              label="Card / Panel Background" 
-              value={colors.cardBg || ''} 
-              onChange={(v) => updateColor('cardBg', v)}
-              defaultValue={defaults.cardBg}
-            />
-          </Stack>
-        </AccordionDetails>
-      </Accordion>
-
-      {/* Navigation Colors */}
-      <Accordion>
-        <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-          <Typography fontWeight={600}>Navigation Colors</Typography>
-        </AccordionSummary>
-        <AccordionDetails>
-          <Stack spacing={2}>
-            <ColorPicker 
-              label="Header Background" 
-              value={colors.headerBg || ''} 
-              onChange={(v) => updateColor('headerBg', v)}
-              defaultValue={defaults.headerBg}
-            />
-            <ColorPicker 
-              label="Nav Item Text" 
-              value={colors.navText || ''} 
-              onChange={(v) => updateColor('navText', v)}
-              defaultValue={defaults.navText}
-            />
-            <ColorPicker 
-              label="Nav Active Item Text" 
-              value={colors.navActiveText || ''} 
-              onChange={(v) => updateColor('navActiveText', v)}
-              defaultValue={defaults.navActiveText}
-            />
-          </Stack>
-        </AccordionDetails>
-      </Accordion>
-
-      {/* Status Colors */}
-      <Accordion>
-        <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-          <Typography fontWeight={600}>Status Colors</Typography>
-        </AccordionSummary>
-        <AccordionDetails>
-          <Stack spacing={2}>
-            <ColorPicker 
-              label="Success (Green)" 
-              value={colors.successColor || ''} 
-              onChange={(v) => updateColor('successColor', v)}
-              defaultValue={defaults.successColor}
-            />
-            <ColorPicker 
-              label="Warning (Orange)" 
-              value={colors.warningColor || ''} 
-              onChange={(v) => updateColor('warningColor', v)}
-              defaultValue={defaults.warningColor}
-            />
-            <ColorPicker 
-              label="Error (Red)" 
-              value={colors.errorColor || ''} 
-              onChange={(v) => updateColor('errorColor', v)}
-              defaultValue={defaults.errorColor}
-            />
-            <ColorPicker 
-              label="Info (Blue)" 
-              value={colors.infoColor || ''} 
-              onChange={(v) => updateColor('infoColor', v)}
-              defaultValue={defaults.infoColor}
-            />
-          </Stack>
-        </AccordionDetails>
-      </Accordion>
-
-      {/* Borders */}
-      <Accordion>
-        <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-          <Typography fontWeight={600}>Borders & Dividers</Typography>
-        </AccordionSummary>
-        <AccordionDetails>
-          <Stack spacing={2}>
-            <ColorPicker 
-              label="Border Color" 
-              value={colors.borderColor || ''} 
-              onChange={(v) => updateColor('borderColor', v)}
-              defaultValue={defaults.borderColor}
-            />
-            <ColorPicker 
-              label="Divider Color" 
-              value={colors.dividerColor || ''} 
-              onChange={(v) => updateColor('dividerColor', v)}
-              defaultValue={defaults.dividerColor}
-            />
+            <ColorPicker label="Text Primary" value={colors.textPrimary || ''} onChange={(v) => updateColor('textPrimary', v)} defaultValue={defaults.textPrimary} />
+            <ColorPicker label="Text Secondary" value={colors.textSecondary || ''} onChange={(v) => updateColor('textSecondary', v)} defaultValue={defaults.textSecondary} />
+            <ColorPicker label="Link Color" value={colors.linkColor || ''} onChange={(v) => updateColor('linkColor', v)} defaultValue={defaults.linkColor} />
+            <ColorPicker label="Content Background" value={colors.contentBg || ''} onChange={(v) => updateColor('contentBg', v)} defaultValue={defaults.contentBg} />
+            <ColorPicker label="Header Background" value={colors.headerBg || ''} onChange={(v) => updateColor('headerBg', v)} defaultValue={defaults.headerBg} />
+            <ColorPicker label="Nav Text" value={colors.navText || ''} onChange={(v) => updateColor('navText', v)} defaultValue={defaults.navText} />
+            <ColorPicker label="Nav Active Text" value={colors.navActiveText || ''} onChange={(v) => updateColor('navActiveText', v)} defaultValue={defaults.navActiveText} />
+            <ColorPicker label="Success Color" value={colors.successColor || ''} onChange={(v) => updateColor('successColor', v)} defaultValue={defaults.successColor} />
+            <ColorPicker label="Warning Color" value={colors.warningColor || ''} onChange={(v) => updateColor('warningColor', v)} defaultValue={defaults.warningColor} />
+            <ColorPicker label="Error Color" value={colors.errorColor || ''} onChange={(v) => updateColor('errorColor', v)} defaultValue={defaults.errorColor} />
+            <ColorPicker label="Info Color" value={colors.infoColor || ''} onChange={(v) => updateColor('infoColor', v)} defaultValue={defaults.infoColor} />
+            <ColorPicker label="Border Color" value={colors.borderColor || ''} onChange={(v) => updateColor('borderColor', v)} defaultValue={defaults.borderColor} />
+            <ColorPicker label="Divider Color" value={colors.dividerColor || ''} onChange={(v) => updateColor('dividerColor', v)} defaultValue={defaults.dividerColor} />
           </Stack>
         </AccordionDetails>
       </Accordion>
@@ -549,7 +486,7 @@ export function SettingsForm() {
                       updated[index] = { ...level, color: e.target.value };
                       setProgramLevels(updated);
                     }}
-                    style={{ width: 40, height: 32, border: 'none', cursor: 'pointer', borderRadius: 4 }}
+                    style={{ width: 40, height: 32, border: 'none', cursor: 'pointer', borderRadius: 0 }}
                   />
                 </Box>
                 {programLevels.length > 1 && (
@@ -567,7 +504,7 @@ export function SettingsForm() {
               <Button
                 size="small"
                 variant="outlined"
-                onClick={() => setProgramLevels(prev => [...prev, { value: `tier${prev.length + 1}`, label: `Tier ${prev.length + 1}`, color: '#666666' }])}
+                onClick={() => setProgramLevels(prev => [...prev, { value: `tier${prev.length + 1}`, label: `Tier ${prev.length + 1}`, color: '#0A0A0A60' }])}
               >
                 Add Level
               </Button>
@@ -582,7 +519,7 @@ export function SettingsForm() {
           </Stack>
           
           {/* Preview */}
-          <Box sx={{ mt: 2, p: 1.5, bgcolor: '#f5f5f5', borderRadius: 1 }}>
+          <Box sx={{ mt: 2, p: 1.5, bgcolor: '#0A0A0A08', borderRadius: 0, clipPath: 'polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px))' }}>
             <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
               Preview:
             </Typography>
@@ -593,9 +530,10 @@ export function SettingsForm() {
                   sx={{
                     px: 1.5,
                     py: 0.5,
-                    borderRadius: 2,
+                    borderRadius: 0,
+                    clipPath: 'polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 6px 100%, 0 calc(100% - 6px))',
                     bgcolor: level.color,
-                    color: isColorLight(level.color) ? '#000' : '#fff',
+                    color: isDark(level.color) ? '#fff' : '#000',
                     fontSize: 13,
                     fontWeight: 500,
                   }}
@@ -633,7 +571,8 @@ export function SettingsForm() {
         <Box 
           sx={{ 
             p: 2, 
-            borderRadius: 2, 
+            borderRadius: 0, 
+            clipPath: 'polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 12px 100%, 0 calc(100% - 12px))',
             border: `1px solid ${colors.borderColor || defaults.borderColor}`,
             bgcolor: colors.contentBg || defaults.contentBg,
           }}
@@ -643,8 +582,9 @@ export function SettingsForm() {
               sx={{ 
                 p: 2, 
                 bgcolor: colors.primaryColor || defaults.primaryColor, 
-                borderRadius: 1,
-                color: '#fff',
+                borderRadius: 0,
+                clipPath: 'polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px))',
+                color: contrastText(colors.primaryColor || defaults.primaryColor),
               }}
             >
               <Typography variant="body2">Sidebar / Header Preview</Typography>
@@ -653,7 +593,8 @@ export function SettingsForm() {
               sx={{ 
                 p: 2, 
                 bgcolor: colors.cardBg || defaults.cardBg, 
-                borderRadius: 1,
+                borderRadius: 0,
+                clipPath: 'polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px))',
                 border: `1px solid ${colors.borderColor || defaults.borderColor}`,
               }}
             >
@@ -682,8 +623,8 @@ export function SettingsForm() {
                 }}
               >
                 Action Button
-      </Button>
-              <Box sx={{ px: 1, py: 0.5, bgcolor: colors.successColor || defaults.successColor, borderRadius: 1, color: '#fff', fontSize: 12 }}>
+              </Button>
+              <Box sx={{ px: 1, py: 0.5, bgcolor: colors.successColor || defaults.successColor, borderRadius: 1, color: contrastText(colors.successColor || defaults.successColor), fontSize: 12 }}>
                 Success
               </Box>
               <Box sx={{ px: 1, py: 0.5, bgcolor: colors.warningColor || defaults.warningColor, borderRadius: 1, color: '#fff', fontSize: 12 }}>
@@ -691,9 +632,6 @@ export function SettingsForm() {
               </Box>
               <Box sx={{ px: 1, py: 0.5, bgcolor: colors.errorColor || defaults.errorColor, borderRadius: 1, color: '#fff', fontSize: 12 }}>
                 Error
-              </Box>
-              <Box sx={{ px: 1, py: 0.5, bgcolor: colors.infoColor || defaults.infoColor, borderRadius: 1, color: '#fff', fontSize: 12 }}>
-                Info
               </Box>
             </Stack>
           </Stack>

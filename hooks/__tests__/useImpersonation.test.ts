@@ -42,7 +42,7 @@ describe('useImpersonation', () => {
         agencyEmail: 'agency@example.com',
         firstName: 'Agency',
         lastName: 'Owner',
-        agencySettings: { primaryColor: '#1976d2' },
+        agencySettings: { primaryColor: '#0A0A0A' },
         agencyLogo: 'https://logo.png',
       };
 

@@ -1,69 +1,201 @@
-/* Marketing page specific stylesheet - local fonts and overrides */
+/* ══════════════════════════════════════════════════════════
+   Marketing page stylesheet — Nike-inspired sporty aesthetic
+   3-color system: Black #0A0A0A · Lime #CCFF00 · White #FFFFFF
+   ══════════════════════════════════════════════════════════ */
+
+/* ── Font faces ── */
 @font-face { font-family: 'Bebas Neue'; src: url('/marketing/fonts/BebasNeue.ttf') format('truetype'); font-weight: 400; font-style: normal; font-display: swap; }
 @font-face { font-family: 'Archivo Black'; src: url('/marketing/fonts/ArchivoBlack.ttf') format('truetype'); font-weight: 400; font-style: normal; font-display: swap; }
 @font-face { font-family: 'Source Sans 3'; src: url('/marketing/fonts/SourceSans3-400.ttf') format('truetype'); font-weight: 400; font-style: normal; font-display: swap; }
 @font-face { font-family: 'Source Sans 3'; src: url('/marketing/fonts/SourceSans3-700.ttf') format('truetype'); font-weight: 700; font-style: normal; font-display: swap; }
 @font-face { font-family: 'Rock Salt'; src: url('/marketing/fonts/RockSalt.ttf') format('truetype'); font-weight: 400; font-style: normal; font-display: swap; }
 
-:root { --nv-primary-accent:#ff1514; --nv-secondary-accent:#ff1514; --nv-site-bg:#121212; --nv-light-bg:#1a1a1a; --nv-dark-bg:#000000; --nv-text-color:#ffffff; }
-
-body.marketing-page { background:#121212; color:#ffffff; font-family:'Source Sans 3', Arial, Helvetica, sans-serif; }
-body.marketing-page h1, body.marketing-page h2, body.marketing-page h3, body.marketing-page h4, body.marketing-page h5, body.marketing-page h6 { color:#ffffff; font-family:'Archivo Black','Bebas Neue',Arial,Helvetica,sans-serif; line-height:1.2; }
-body.marketing-page a { color:#ffffff; }
-body.marketing-page .MuiTypography-body1, 
-body.marketing-page .MuiTypography-body2 { color:#ffffff; }
-
-/* Heading scale approximated to example */
-body.marketing-page h1 { font-size:40px; }
-body.marketing-page h2 { font-size:32px; }
-body.marketing-page h3 { font-size:28px; }
-@media (min-width: 576px) {
-  body.marketing-page h1 { font-size:38px; }
-  body.marketing-page h2 { font-size:30px; }
-  body.marketing-page h3 { font-size:26px; }
+/* ── CSS variables ── */
+:root {
+  --an-black: #0A0A0A;
+  --an-lime: #CCFF00;
+  --an-white: #FFFFFF;
+  --an-lime-dark: #B8E600;
+  --an-lime-glow: rgba(204, 255, 0, 0.15);
+  --an-gradient-dark: linear-gradient(135deg, #0A0A0A 0%, #141414 50%, #0A0A0A 100%);
+  --an-gradient-lime: linear-gradient(135deg, #CCFF00 0%, #B8E600 60%, #A0CC00 100%);
+  --an-speed-lines: repeating-linear-gradient(135deg, transparent, transparent 40px, rgba(204, 255, 0, 0.015) 40px, rgba(204, 255, 0, 0.015) 41px);
 }
+
+/* ── Body ── */
+body.marketing-page {
+  background: var(--an-black);
+  background-image: var(--an-speed-lines);
+  color: var(--an-white);
+  font-family: 'Source Sans 3', Arial, Helvetica, sans-serif;
+  margin: 0;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Headings ── */
+body.marketing-page h1,
+body.marketing-page h2,
+body.marketing-page h3,
+body.marketing-page h4,
+body.marketing-page h5,
+body.marketing-page h6 {
+  color: var(--an-white);
+  font-family: 'Bebas Neue', 'Archivo Black', Arial, Helvetica, sans-serif;
+  line-height: 1.05;
+  letter-spacing: 0.02em;
+}
+
+body.marketing-page h1 { font-size: 3.5rem; }
+body.marketing-page h2 { font-size: 2.8rem; }
+body.marketing-page h3 { font-size: 2.2rem; }
+body.marketing-page h4 { font-size: 1.8rem; }
+
 @media (min-width: 960px) {
-  body.marketing-page h1 { font-size:40px; }
-  body.marketing-page h2 { font-size:32px; }
-  body.marketing-page h3 { font-size:28px; }
+  body.marketing-page h1 { font-size: 4.5rem; }
+  body.marketing-page h2 { font-size: 3.2rem; }
+  body.marketing-page h3 { font-size: 2.6rem; }
 }
 
-.marketing-logo {
-  display: inline-flex;
-  align-items: center;
-  gap: 12px;
-}
-.marketing-logo img {
-  height: 32px;
-  width: auto;
-}
+/* ── Links ── */
+body.marketing-page a { color: var(--an-lime); text-decoration: none; }
+body.marketing-page a:hover { text-decoration: underline; }
 
-/* Containers to mimic wide marketing layout */
+/* ── Text overrides ── */
+body.marketing-page .MuiTypography-body1,
+body.marketing-page .MuiTypography-body2 { color: rgba(255, 255, 255, 0.85); }
+
+/* ── Container ── */
 .MuiContainer-root {
   max-width: 1170px !important;
 }
 
-/* Buttons */
-.MuiButton-root {
-  text-transform: none;
-  letter-spacing: 0.2px;
+/* ── Buttons — Nike angular clip-path ── */
+body.marketing-page .MuiButton-root {
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 700;
+  border-radius: 0;
+  clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px));
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Header styling for dark background parity */
+body.marketing-page .MuiButton-text {
+  color: var(--an-white);
+  clip-path: none;
+}
+
+body.marketing-page .MuiButton-contained {
+  background: var(--an-gradient-lime);
+  color: var(--an-black);
+  box-shadow: none;
+}
+body.marketing-page .MuiButton-contained:hover {
+  background: linear-gradient(135deg, #D4FF1A 0%, #CCFF00 100%);
+  box-shadow: 0 4px 20px var(--an-lime-glow);
+  transform: translateY(-1px);
+}
+
+body.marketing-page .MuiButton-outlined {
+  border-color: var(--an-lime);
+  border-width: 2px;
+  color: var(--an-lime);
+}
+body.marketing-page .MuiButton-outlined:hover {
+  border-color: var(--an-lime-dark);
+  background: rgba(204, 255, 0, 0.08);
+  border-width: 2px;
+}
+
+/* ── Header — gradient with lime accent line ── */
 .marketing-header {
-  background-color: #121212 !important;
-  color: #ffffff !important;
-  border-bottom: 1px solid #1a1a1a;
+  background: linear-gradient(90deg, #0A0A0A 0%, #111111 50%, #0A0A0A 100%) !important;
+  color: var(--an-white) !important;
+  border-bottom: none !important;
+  position: relative;
 }
-.marketing-header .MuiButton-text { color:#ffffff; }
-.marketing-header .MuiButton-contained { background:#aafb00; color:#0b0b0b; }
-.marketing-header .MuiButton-outlined { border-color:#ffffff; color:#ffffff; }
+.marketing-header::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent 0%, rgba(204, 255, 0, 0.4) 50%, transparent 100%);
+}
+.marketing-header .MuiButton-text { color: var(--an-white); }
+.marketing-header .MuiButton-contained {
+  background: var(--an-gradient-lime);
+  color: var(--an-black);
+}
 
-/* Hero overlay text */
+/* ── Hero overlay ── */
 .marketing-hero-title {
-  font-family:'Archivo Black','Bebas Neue',Arial,Helvetica,sans-serif;
-  letter-spacing: 0.2px;
-  color:#ffffff;
+  font-family: 'Bebas Neue', 'Archivo Black', Arial, Helvetica, sans-serif;
+  letter-spacing: 0.03em;
+  color: var(--an-white);
 }
 
+/* ── Angular section dividers ── */
+.marketing-section-angular {
+  clip-path: polygon(0 0, 100% 4%, 100% 96%, 0 100%);
+}
 
+/* ── Testimonial cards ── */
+body.marketing-page .testimonial-card {
+  background: var(--an-gradient-dark);
+  clip-path: polygon(0 0, calc(100% - 16px) 0, 100% 16px, 100% 100%, 16px 100%, 0 calc(100% - 16px));
+  padding: 24px;
+  transition: box-shadow 0.3s ease, transform 0.2s ease;
+}
+body.marketing-page .testimonial-card:hover {
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 0 20px rgba(204, 255, 0, 0.06);
+  transform: translateY(-4px);
+}
+
+/* ── Feature cards ── */
+body.marketing-page .feature-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 12px 100%, 0 calc(100% - 12px));
+  padding: 32px;
+  transition: all 0.25s ease;
+}
+body.marketing-page .feature-card:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(204, 255, 0, 0.15);
+  box-shadow: 0 0 24px rgba(204, 255, 0, 0.04);
+}
+
+/* ── Lime accent text ── */
+.text-lime { color: var(--an-lime) !important; }
+
+/* ── Check marks ── */
+body.marketing-page .check-mark {
+  color: var(--an-lime);
+  font-weight: 700;
+  font-size: 1.2em;
+}
+
+/* ── Footer ── */
+body.marketing-page footer {
+  border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+body.marketing-page footer a {
+  color: rgba(255, 255, 255, 0.5);
+  transition: color 0.15s ease;
+}
+body.marketing-page footer a:hover {
+  color: var(--an-lime);
+  text-decoration: none;
+}
+
+/* ── Image angular treatment ── */
+body.marketing-page .img-angular {
+  clip-path: polygon(0 0, calc(100% - 20px) 0, 100% 20px, 100% 100%, 20px 100%, 0 calc(100% - 20px));
+}
+
+/* ── Scrollbar ── */
+body.marketing-page::-webkit-scrollbar { width: 8px; }
+body.marketing-page::-webkit-scrollbar-track { background: #0A0A0A; }
+body.marketing-page::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
+body.marketing-page::-webkit-scrollbar-thumb:hover { background: #CCFF00; }

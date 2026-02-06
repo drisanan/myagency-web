@@ -1,6 +1,7 @@
 'use client';
 import React from 'react';
-import { Stack, Typography, CircularProgress, Box } from '@mui/material';
+import { Stack, Typography, Box } from '@mui/material';
+import { LoadingState } from '@/components/LoadingState';
 import { CommitsTable } from './CommitsTable';
 import { Commit } from '@/services/commits';
 import { useQuery } from '@tanstack/react-query';
@@ -39,10 +40,7 @@ export function CommitsSection({ sport }: { sport: 'Football' | 'Basketball' }) 
     return (
       <Stack spacing={2}>
         <Typography variant="h5">{sport} Commits</Typography>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 2 }}>
-          <CircularProgress size={20} />
-          <Typography color="text.secondary">Loading recruits...</Typography>
-        </Box>
+        <LoadingState message="Loading recruits..." />
       </Stack>
     );
   }

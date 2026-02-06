@@ -15,12 +15,12 @@ type RecruitingPeriod = {
 };
 
 const typeColor: Record<RecruitingPeriod['type'], string> = {
-  dead: '#f04438', // red
-  contact: '#15b79f', // green
-  quiet: '#5D4AFB',
-  eval: '#5D4AFB',
-  test: '#5D4AFB',
-  other: '#999DAA',
+  dead: '#FF3B3B',       // red – functional status
+  contact: '#CCFF00',    // lime – functional status
+  quiet: '#0A0A0A60',    // muted black
+  eval: '#0A0A0A60',
+  test: '#0A0A0A60',
+  other: '#0A0A0A40',
 };
 
 function useRecruitingPeriods(sport: string) {
@@ -99,7 +99,7 @@ export function RecruitingCalendarCard() {
   const weekDays = getWeekDays(today);
 
   return (
-    <Paper variant="outlined" sx={{ p: 2, mb: 3, borderRadius: '16px' }}>
+    <Paper variant="outlined" sx={{ p: 2, mb: 3, borderRadius: 0 }}>
       <Stack direction={{ xs: 'column', md: 'row' }} alignItems="center" justifyContent="space-between" spacing={2} sx={{ mb: 2 }}>
         <Typography variant="h6">Recruiting Calendar</Typography>
         <Select
@@ -119,7 +119,7 @@ export function RecruitingCalendarCard() {
         <Chip size="small" label="Contact" sx={{ bgcolor: typeColor.contact, color: '#fff' }} />
         <Chip size="small" label="Quiet" sx={{ bgcolor: typeColor.quiet, color: '#fff' }} />
         <Chip size="small" label="Other/Test" sx={{ bgcolor: typeColor.test, color: '#fff' }} />
-        <Chip size="small" label="Today" sx={{ bgcolor: '#fff', color: '#14151E', border: '1px solid #dcdfe4' }} />
+        <Chip size="small" label="Today" sx={{ bgcolor: '#fff', color: '#0A0A0A', border: '1px solid #E0E0E0' }} />
       </Stack>
 
       {isLoading ? (
@@ -130,7 +130,7 @@ export function RecruitingCalendarCard() {
         <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(110px, 1fr))', gap: 1 }}>
           {weekDays.map((day) => {
             const dayPeriods = findDayPeriods(day, data);
-            const color = dayPeriods[0] ? typeColor[dayPeriods[0].type] || typeColor.other : '#dcdfe4';
+            const color = dayPeriods[0] ? typeColor[dayPeriods[0].type] || typeColor.other : '#E0E0E0';
             const isToday = day.toDateString() === today.toDateString();
             return (
               <Paper
@@ -140,10 +140,11 @@ export function RecruitingCalendarCard() {
                 sx={{
                   position: 'relative',
                   p: 1.25,
-                  borderRadius: '12px',
+                  borderRadius: 0,
+                  clipPath: 'polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px))',
                   minHeight: 90,
                   bgcolor: isToday ? '#fff' : dayPeriods[0] ? `${color}1a` : '#fff',
-                  border: `1px solid ${isToday ? '#dcdfe4' : dayPeriods[0] ? color : '#dcdfe4'}`,
+                  border: `1px solid ${isToday ? '#E0E0E0' : dayPeriods[0] ? color : '#E0E0E0'}`,
                 }}
               >
                 <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
@@ -162,7 +163,7 @@ export function RecruitingCalendarCard() {
                       );
                     })}
                     {dayPeriods.length > 2 ? (
-                      <Chip size="small" label={`+${dayPeriods.length - 2}`} sx={{ bgcolor: '#999DAA', color: '#fff' }} />
+                      <Chip size="small" label={`+${dayPeriods.length - 2}`} sx={{ bgcolor: '#0A0A0A60', color: '#fff' }} />
                     ) : null}
                   </Stack>
                 </Stack>

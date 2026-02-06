@@ -7,13 +7,15 @@ import CircularProgress from '@mui/material/CircularProgress';
 import Alert from '@mui/material/Alert';
 import AlertTitle from '@mui/material/AlertTitle';
 import { validateEmail } from '@/features/auth/validators';
+import { colors, gradients } from '@/theme/colors';
 
 type Credentials = { email: string; phone: string; accessCode: string };
 type Props = {
   onSubmit: (creds: Credentials) => Promise<void> | void;
+  darkMode?: boolean;
 };
 
-export function LoginForm({ onSubmit }: Props) {
+export function LoginForm({ onSubmit, darkMode }: Props) {
   const [email, setEmail] = React.useState('');
   const [phone, setPhone] = React.useState('');
   const [accessCode, setAccessCode] = React.useState('');
@@ -41,6 +43,18 @@ export function LoginForm({ onSubmit }: Props) {
     }
   };
 
+  const darkFieldSx = darkMode ? {
+    '& .MuiOutlinedInput-root': {
+      color: colors.white,
+      '& fieldset': { borderColor: '#FFFFFF30' },
+      '&:hover fieldset': { borderColor: '#FFFFFF50' },
+      '&.Mui-focused fieldset': { borderColor: colors.lime },
+    },
+    '& .MuiInputLabel-root': { color: '#FFFFFF80' },
+    '& .MuiInputLabel-root.Mui-focused': { color: colors.lime },
+    '& .MuiFormHelperText-root': { color: colors.error },
+  } : {};
+
   return (
     <form onSubmit={handleSubmit} noValidate autoComplete="off">
       <Stack spacing={2} sx={{ maxWidth: 480 }}>
@@ -62,6 +76,7 @@ export function LoginForm({ onSubmit }: Props) {
           onChange={(e) => setEmail(e.target.value)}
           error={Boolean(errors.email)}
           helperText={errors.email}
+          sx={darkFieldSx}
         />
         <TextField
           label="Phone"
@@ -71,6 +86,7 @@ export function LoginForm({ onSubmit }: Props) {
           onChange={(e) => setPhone(e.target.value)}
           error={Boolean(errors.phone)}
           helperText={errors.phone}
+          sx={darkFieldSx}
         />
         <TextField
           label="Access Code"
@@ -81,19 +97,38 @@ export function LoginForm({ onSubmit }: Props) {
           onChange={(e) => setAccessCode(e.target.value.replace(/\D+/g, ''))}
           error={Boolean(errors.accessCode)}
           helperText={errors.accessCode}
+          sx={darkFieldSx}
         />
         <MuiButton
           type="submit"
           variant="contained"
           disabled={submitting}
           data-testid="login-submit"
-          startIcon={submitting ? <CircularProgress size={18} data-testid="login-spinner" /> : null}
+          startIcon={submitting ? <CircularProgress size={18} data-testid="login-spinner" sx={{ color: colors.black }} /> : null}
+          sx={{
+            background: gradients.limeButton,
+            color: colors.black,
+            fontFamily: '"Bebas Neue", sans-serif',
+            fontSize: '1.2rem',
+            letterSpacing: '0.08em',
+            py: 1.5,
+            borderRadius: 0,
+            clipPath: 'polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 12px 100%, 0 calc(100% - 12px))',
+            boxShadow: `0 4px 20px ${colors.lime}30`,
+            transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+            '&:hover': {
+              background: `linear-gradient(135deg, #D4FF1A 0%, #CCFF00 100%)`,
+              boxShadow: `0 6px 28px ${colors.lime}50`,
+              transform: 'translateY(-2px)',
+            },
+            '&:active': {
+              transform: 'translateY(0)',
+            },
+          }}
         >
-          {submitting ? 'Signing in…' : 'Sign in'}
+          {submitting ? 'Signing in...' : 'Sign in'}
         </MuiButton>
       </Stack>
     </form>
   );
 }
-
-

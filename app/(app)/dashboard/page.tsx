@@ -140,9 +140,9 @@ export default function DashboardPage() {
           icon={<IoPaperPlaneOutline size={20} />}
           footer={
             <>
-              <IoTrendingUpOutline color="#15b79f" size={18} />
-              <Typography variant="body2" sx={{ color: '#667085' }}>
-                <Box component="span" sx={{ color: '#15b79f' }}>{formatDelta(emailsDelta)}</Box> vs last 30d
+              <IoTrendingUpOutline color="#CCFF00" size={18} />
+              <Typography variant="body2" sx={{ color: '#FFFFFF60' }}>
+                <Box component="span" sx={{ color: '#CCFF00' }}>{formatDelta(emailsDelta)}</Box> vs last 30d
               </Typography>
             </>
           }
@@ -153,9 +153,9 @@ export default function DashboardPage() {
           icon={<IoMailOpenOutline size={20} />}
           footer={
             <>
-              <IoTrendingUpOutline color="#15b79f" size={18} />
-              <Typography variant="body2" sx={{ color: '#667085' }}>
-                <Box component="span" sx={{ color: '#15b79f' }}>{formatDelta(openRateDelta)}</Box> vs last 30d
+              <IoTrendingUpOutline color="#CCFF00" size={18} />
+              <Typography variant="body2" sx={{ color: '#FFFFFF60' }}>
+                <Box component="span" sx={{ color: '#CCFF00' }}>{formatDelta(openRateDelta)}</Box> vs last 30d
               </Typography>
             </>
           }
@@ -166,9 +166,9 @@ export default function DashboardPage() {
           icon={<IoPersonAddOutline size={20} />}
           footer={
             <>
-              <IoTrendingUpOutline color="#15b79f" size={18} />
-              <Typography variant="body2" sx={{ color: '#667085' }}>
-                <Box component="span" sx={{ color: '#15b79f' }}>+{addedThisMonth}</Box> added this month
+              <IoTrendingUpOutline color="#CCFF00" size={18} />
+              <Typography variant="body2" sx={{ color: '#FFFFFF60' }}>
+                <Box component="span" sx={{ color: '#CCFF00' }}>+{addedThisMonth}</Box> added this month
               </Typography>
             </>
           }
@@ -190,9 +190,7 @@ export default function DashboardPage() {
             title={`Class of ${y}`}
             value={byYear[y] || 0}
             icon={<IoFastFoodOutline size={20} />}
-            bgColor={idx === 0 ? '#5D4AFB' : undefined}
-            textColor={idx === 0 ? '#FFFFFF' : undefined}
-            bgImage={idx === 0 ? '/marketing/bg-an.png' : undefined}
+            
           />
         ))}
       </Box>

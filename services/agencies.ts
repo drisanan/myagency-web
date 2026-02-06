@@ -71,8 +71,8 @@ export type Agency = {
 };
 
 const SEED_AGENCIES: Agency[] = [
-  { id: 'agency-001', name: 'Prime Sports', email: 'agency1@an.test', settings: { primaryColor: '#1976d2' } },
-  { id: 'agency-002', name: 'NextGen', email: 'agency2@an.test', settings: { primaryColor: '#9c27b0' } },
+  { id: 'agency-001', name: 'Prime Sports', email: 'agency1@an.test', settings: { primaryColor: '#0A0A0A' } },
+  { id: 'agency-002', name: 'NextGen', email: 'agency2@an.test', settings: { primaryColor: '#0A0A0A' } },
   { id: 'agency-003', name: 'Elite Edge', email: 'agency3@an.test', settings: { primaryColor: '#2e7d32' } },
 ];
 

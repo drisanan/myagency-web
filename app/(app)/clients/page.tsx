@@ -3,7 +3,8 @@
 import React from 'react';
 import Link from 'next/link';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Typography, Button, Stack, TextField, CircularProgress, Box } from '@mui/material';
+import { Typography, Button, Stack, TextField, Box } from '@mui/material';
+import { LoadingState } from '@/components/LoadingState';
 import AddIcon from '@mui/icons-material/Add';
 
 import { ClientsList } from '@/features/clients/ClientsList';
@@ -128,12 +129,7 @@ export default function ClientsPage() {
 
   // 2. Loading State
   if (loading) {
-    return (
-      <Stack spacing={2} alignItems="center" sx={{ py: 4 }}>
-        <CircularProgress size={24} />
-        <Typography>Verifying session…</Typography>
-      </Stack>
-    );
+    return <LoadingState message="Verifying session..." />;
   }
 
   // 3. Not Logged In State
@@ -219,22 +215,16 @@ export default function ClientsPage() {
           title="Total Athletes"
           value={clientsMetricsQuery.isLoading ? '—' : totalCount}
           icon={<IoPeopleOutline size={20} />}
-          bgColor="#EFF4FF"
-          textColor="#1D4ED8"
         />
         <MetricCard
           title="New This Month"
           value={clientsMetricsQuery.isLoading ? '—' : newThisMonth}
           icon={<IoPersonAddOutline size={20} />}
-          bgColor="#ECFDF3"
-          textColor="#027A48"
         />
         <MetricCard
           title="Accounts Suspended"
           value={clientsMetricsQuery.isLoading ? '—' : suspendedCount}
           icon={<IoAlertCircleOutline size={20} />}
-          bgColor="#FEF3F2"
-          textColor="#B42318"
         />
       </Box>
 
@@ -243,7 +233,7 @@ export default function ClientsPage() {
       )}
 
       {inviteUrl && (
-        <Stack data-tour="invite-section" direction={{ xs: 'column', md: 'row' }} spacing={1} alignItems="center" sx={{ p: 2, bgcolor: '#f5f5f5', borderRadius: 1 }}>
+        <Stack data-tour="invite-section" direction={{ xs: 'column', md: 'row' }} spacing={1} alignItems="center" sx={{ p: 2, bgcolor: '#0A0A0A08', borderRadius: 1 }}>
           <TextField 
             label="Intake Link" 
             value={inviteUrl} 

@@ -965,7 +965,7 @@ CRITICAL INSTRUCTIONS:
                 variant={senderType === 'client' ? 'contained' : 'outlined'}
                 size="small"
                 onClick={() => { setSenderType('client'); setSelectedAgentId(''); }}
-                sx={senderType === 'client' ? { bgcolor: '#000', color: '#b7ff00' } : {}}
+                sx={senderType === 'client' ? { bgcolor: '#0A0A0A', color: '#CCFF00' } : {}}
               >
                 Client
               </Button>
@@ -975,7 +975,7 @@ CRITICAL INSTRUCTIONS:
                   variant={senderType === 'agent' ? 'contained' : 'outlined'}
                   size="small"
                   onClick={() => { setSenderType('agent'); setClientId(''); }}
-                  sx={senderType === 'agent' ? { bgcolor: '#000', color: '#b7ff00' } : {}}
+                  sx={senderType === 'agent' ? { bgcolor: '#0A0A0A', color: '#CCFF00' } : {}}
                   data-testid="agent-mode-btn"
                 >
                   Agent
@@ -1133,7 +1133,7 @@ CRITICAL INSTRUCTIONS:
                     sx={{
                       width: 260,
                       cursor: 'pointer',
-                      outline: selectedSchoolName === u.name ? '2px solid #1976d2' : 'none',
+                      outline: selectedSchoolName === u.name ? '2px solid #CCFF00' : 'none',
                     }}
                   >
                     <CardContent>
@@ -1305,7 +1305,7 @@ CRITICAL INSTRUCTIONS:
         )}
         {activeStep === 3 && senderType === 'agent' && (
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, maxWidth: 900 }}>
-            <Box sx={{ bgcolor: '#f5f5f5', p: 2, borderRadius: 1, mb: 1 }}>
+            <Box sx={{ bgcolor: '#f5f5f5', p: 2, borderRadius: 0, clipPath: 'polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px))', mb: 1 }}>
               <Typography variant="subtitle2" color="text.secondary">
                 Sending as Agent: <strong>{currentAgent?.firstName} {currentAgent?.lastName}</strong> ({currentAgent?.email})
               </Typography>
@@ -1333,7 +1333,7 @@ CRITICAL INSTRUCTIONS:
 
             {/* CC Team Members Selection for Agent Mode */}
             {ccableAgents.length > 0 && (
-              <Box sx={{ border: '1px solid #e0e0e0', borderRadius: 1, p: 2, bgcolor: '#f9f9f9' }}>
+              <Box sx={{ border: '1px solid #e0e0e0', borderRadius: 0, clipPath: 'polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px))', p: 2, bgcolor: '#F5F5F5' }}>
                 <Typography variant="subtitle2" sx={{ mb: 1 }}>CC Team Members (optional)</Typography>
                 <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
                   {ccableAgents.map((agent) => (
@@ -1360,14 +1360,15 @@ CRITICAL INSTRUCTIONS:
             )}
 
             {/* Freeform Email Composer for Agent */}
-            <Box sx={{ border: '1px solid #ddd', borderRadius: 1, p: 2, bgcolor: '#fafafa' }}>
+            <Box sx={{ border: '1px solid #E0E0E0', borderRadius: 0, clipPath: 'polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px))', p: 2, bgcolor: '#F5F5F5' }}>
               <Typography variant="h6" sx={{ mb: 2 }}>Compose Email</Typography>
               <Box sx={{ 
                 bgcolor: '#fff', 
-                borderRadius: 1,
+                borderRadius: 0,
+                clipPath: 'polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px))',
                 '& .ql-container': { minHeight: 300, fontSize: '14px', fontFamily: 'inherit' },
                 '& .ql-editor': { minHeight: 300 },
-                '& .ql-toolbar': { borderTopLeftRadius: 4, borderTopRightRadius: 4 },
+                '& .ql-toolbar': { borderTopLeftRadius: 0, borderTopRightRadius: 0 },
               }}>
                 <ReactQuill
                   theme="snow"
@@ -1392,14 +1393,14 @@ CRITICAL INSTRUCTIONS:
               <Button
                 size="small"
                 onClick={() => navigator.clipboard.writeText(agentEmailBody)}
-                sx={{ bgcolor: '#000', color: '#b7ff00', '&:hover': { bgcolor: '#111' } }}
+                sx={{ bgcolor: '#0A0A0A', color: '#CCFF00', '&:hover': { bgcolor: '#1A1A1A' } }}
               >
                 Copy Rich Text
               </Button>
               <Button
                 variant="contained"
                 disabled={!selectedCoaches.length || !agentEmailBody.trim()}
-                sx={{ bgcolor: '#b7ff00', color: '#000', '&:hover': { bgcolor: '#a0e600' } }}
+                sx={{ bgcolor: '#CCFF00', color: '#0A0A0A', '&:hover': { bgcolor: '#B8E600' } }}
                 onClick={() => {
                   // For now, just copy - Gmail integration for agent can be added later
                   setSendMessage(`Ready to send to ${selectedCoaches.length} recipient(s). Copy the content and paste into your email client.`);
@@ -1506,7 +1507,7 @@ CRITICAL INSTRUCTIONS:
 
               {/* CC Team Members Selection */}
               {ccableAgents.length > 0 && (
-                <Box sx={{ border: '1px solid #e0e0e0', borderRadius: 1, p: 2, bgcolor: '#f9f9f9' }}>
+                <Box sx={{ border: '1px solid #e0e0e0', borderRadius: 0, clipPath: 'polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px))', p: 2, bgcolor: '#F5F5F5' }}>
                   <Typography variant="subtitle2" sx={{ mb: 1 }}>CC Team Members (optional)</Typography>
                   <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
                     {ccableAgents.map((agent) => (
@@ -1532,7 +1533,7 @@ CRITICAL INSTRUCTIONS:
                 </Box>
               )}
 
-              <Box sx={{ border: '1px solid #ddd', borderRadius: 1, p: 2, bgcolor: '#fafafa' }}>
+              <Box sx={{ border: '1px solid #E0E0E0', borderRadius: 0, clipPath: 'polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px))', p: 2, bgcolor: '#F5F5F5' }}>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
                   <Typography variant="h6">Preview</Typography>
                   <Stack direction="row" spacing={1}>
@@ -1540,14 +1541,14 @@ CRITICAL INSTRUCTIONS:
                       size="small"
                       variant={isEditingPreview ? 'contained' : 'outlined'}
                       onClick={() => setIsEditingPreview(!isEditingPreview)}
-                      sx={isEditingPreview ? { bgcolor: '#1976d2' } : {}}
+                      sx={isEditingPreview ? { bgcolor: '#CCFF00', color: '#0A0A0A' } : {}}
                     >
                       {isEditingPreview ? 'Done Editing' : 'Edit'}
                     </Button>
                     <Button
                       size="small"
                       onClick={() => navigator.clipboard.writeText(aiHtml || buildEmailPreview())}
-                      sx={{ bgcolor: '#000', color: '#b7ff00', '&:hover': { bgcolor: '#111' } }}
+                      sx={{ bgcolor: '#0A0A0A', color: '#CCFF00', '&:hover': { bgcolor: '#1A1A1A' } }}
                     >
                       Copy Rich Text
                     </Button>
@@ -1556,7 +1557,8 @@ CRITICAL INSTRUCTIONS:
                 {isEditingPreview ? (
                   <Box sx={{ 
                     bgcolor: '#fff', 
-                    borderRadius: 1,
+                    borderRadius: 0,
+                    clipPath: 'polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px))',
                     '& .ql-container': { 
                       minHeight: 200,
                       fontSize: '14px',
@@ -1587,7 +1589,7 @@ CRITICAL INSTRUCTIONS:
                     />
                   </Box>
                 ) : (
-                  <Box sx={{ bgcolor: '#fff', p: 2, borderRadius: 1, minHeight: 200 }}>
+                  <Box sx={{ bgcolor: '#fff', p: 2, borderRadius: 0, clipPath: 'polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px))', minHeight: 200 }}>
                     <div dangerouslySetInnerHTML={{ __html: aiHtml || buildEmailPreview() }} />
                   </Box>
                 )}
@@ -1595,10 +1597,10 @@ CRITICAL INSTRUCTIONS:
                   <Button
                     onClick={handleImproveWithAI}
                     sx={{
-                      bgcolor: '#000',
-                      color: '#b7ff00',
-                      '&:hover': { bgcolor: '#111' },
-                      '&.Mui-disabled': { bgcolor: '#000', color: '#b7ff00', opacity: 1 },
+                      bgcolor: '#0A0A0A',
+                      color: '#CCFF00',
+                      '&:hover': { bgcolor: '#1A1A1A' },
+                      '&.Mui-disabled': { bgcolor: '#0A0A0A', color: '#CCFF00', opacity: 1 },
                     }}
                     disabled={aiLoading || !selectedCoaches.length || (!universityName && !listMode)}
                     startIcon={improvingBusy ? <CircularProgress size={16} color="inherit" /> : null}
@@ -1638,7 +1640,7 @@ CRITICAL INSTRUCTIONS:
                   <Button
                     variant="contained"
                     onClick={handleConnectGmail}
-                    sx={{ bgcolor: '#b7ff00', color: '#000', '&:hover': { bgcolor: '#a0e600' } }}
+                    sx={{ bgcolor: '#CCFF00', color: '#0A0A0A', '&:hover': { bgcolor: '#B8E600' } }}
                     disabled={gmailConnecting}
                     startIcon={gmailConnectingBusy ? <CircularProgress size={16} color="inherit" /> : null}
                   >
@@ -1646,7 +1648,7 @@ CRITICAL INSTRUCTIONS:
                   </Button>
                 )}
                 {gmailConnected && (
-                  <Typography variant="body2" sx={{ bgcolor: '#e8fbe0', px: 1.5, py: 0.75, borderRadius: 1 }}>
+                  <Typography variant="body2" sx={{ bgcolor: '#CCFF0020', px: 1.5, py: 0.75, borderRadius: 0, clipPath: 'polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 6px 100%, 0 calc(100% - 6px))' }}>
                     Mailing from: {userEmail || 'Connected Gmail'}
                   </Typography>
                 )}
@@ -1671,16 +1673,16 @@ CRITICAL INSTRUCTIONS:
                   sx={
                     gmailConnected
                       ? {
-                          bgcolor: '#b7ff00',
-                          color: '#000',
-                          '&:hover': { bgcolor: '#a0e600' },
-                          '&.Mui-disabled': { bgcolor: '#b7ff00', color: '#000', opacity: 0.6 },
+                          bgcolor: '#CCFF00',
+                          color: '#0A0A0A',
+                          '&:hover': { bgcolor: '#B8E600' },
+                          '&.Mui-disabled': { bgcolor: '#CCFF00', color: '#0A0A0A', opacity: 0.6 },
                         }
                       : {
-                          borderColor: '#b7ff00',
-                          color: '#000',
-                          '&:hover': { borderColor: '#a0e600', bgcolor: 'rgba(183,255,0,0.1)' },
-                          '&.Mui-disabled': { borderColor: '#b7ff00', color: '#000', opacity: 0.6 },
+                          borderColor: '#CCFF00',
+                          color: '#0A0A0A',
+                          '&:hover': { borderColor: '#B8E600', bgcolor: '#CCFF001A' },
+                          '&.Mui-disabled': { borderColor: '#CCFF00', color: '#0A0A0A', opacity: 0.6 },
                         }
                   }
                 >

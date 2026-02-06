@@ -174,13 +174,13 @@ export function meetingToCalendarEvent(meeting: {
 export function getEventColor(event: CalendarEvent, meetingStatus?: string): string {
   if (event.source === 'platform') {
     switch (meetingStatus) {
-      case 'confirmed': return '#15b79f'; // Green
-      case 'pending': return '#f79009';   // Orange
-      case 'declined': return '#f04438';   // Red
-      case 'cancelled': return '#667085';  // Gray
-      default: return '#5D4AFB';           // Purple (default)
+      case 'confirmed': return '#CCFF00'; // Lime – confirmed
+      case 'pending': return '#FFB800';   // Warning – pending
+      case 'declined': return '#FF3B3B';   // Red
+      case 'cancelled': return '#0A0A0A60';  // Muted
+      default: return '#CCFF00';           // Lime (default)
     }
   }
   // Google Calendar events
-  return '#4285f4'; // Google Blue
+  return '#CCFF00'; // Brand lime
 }

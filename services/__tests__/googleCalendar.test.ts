@@ -95,28 +95,28 @@ describe('googleCalendar service', () => {
       const event = createEvent('google');
       const color = getEventColor(event);
       
-      expect(color).toBe('#4285f4');
+      expect(color).toBe('#CCFF00');
     });
 
     it('should return green for confirmed platform meetings', () => {
       const event = createEvent('platform');
       const color = getEventColor(event, 'confirmed');
       
-      expect(color).toBe('#15b79f');
+      expect(color).toBe('#CCFF00');
     });
 
     it('should return orange for pending platform meetings', () => {
       const event = createEvent('platform');
       const color = getEventColor(event, 'pending');
       
-      expect(color).toBe('#f79009');
+      expect(color).toBe('#FFB800');
     });
 
     it('should return red for declined platform meetings', () => {
       const event = createEvent('platform');
       const color = getEventColor(event, 'declined');
       
-      expect(color).toBe('#f04438');
+      expect(color).toBe('#FF3B3B');
     });
 
     it('should return gray for cancelled platform meetings', () => {
@@ -130,7 +130,7 @@ describe('googleCalendar service', () => {
       const event = createEvent('platform');
       const color = getEventColor(event);
       
-      expect(color).toBe('#5D4AFB');
+      expect(color).toBe('#CCFF00');
     });
   });
 });

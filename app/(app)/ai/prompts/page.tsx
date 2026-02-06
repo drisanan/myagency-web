@@ -319,7 +319,7 @@ CRITICAL INSTRUCTIONS:
           icon={<IoTrashOutline size={20} />}
         />
       </Box>
-      <Paper variant="outlined" sx={{ p: 2, borderRadius: 2.5, borderColor: '#dcdfe4' }}>
+      <Paper variant="outlined" sx={{ p: 2, borderRadius: 2.5, borderColor: 'divider' }}>
         <Box sx={{ display: 'grid', gap: 2 }}>
         <Typography variant="h5">Introduction Generator</Typography>
         <Typography variant="body2" color="text.secondary">
@@ -397,7 +397,7 @@ CRITICAL INSTRUCTIONS:
             />
           </Stack>
 
-          <Box sx={{ borderLeft: { xs: 'none', lg: '1px solid #eaecf0' }, pl: { xs: 0, lg: 2 } }}>
+          <Box sx={{ borderLeft: { xs: 'none', lg: '1px solid' }, borderColor: 'divider', pl: { xs: 0, lg: 2 } }}>
             <Typography variant="subtitle1" sx={{ mb: 1 }}>Saved Prompts</Typography>
             <TextField
               size="small"

@@ -5,8 +5,8 @@ const acme: TenantConfig = {
   id: 'acme',
   name: 'Acme Athletics',
   brand: {
-    primary: '#1976d2',
-    secondary: '#ff4081'
+    primary: '#0A0A0A',
+    secondary: '#CCFF00'
   },
   flags: {}
 };
@@ -14,8 +14,8 @@ const acme: TenantConfig = {
 describe('themeBuilder', () => {
   test('builds MUI theme with tenant colors', () => {
     const theme = createTenantTheme(acme);
-    expect(theme.palette.primary.main).toBe('#1976d2');
-    expect(theme.palette.secondary.main).toBe('#ff4081');
+    expect(theme.palette.primary.main).toBe('#0A0A0A');
+    expect(theme.palette.secondary.main).toBe('#CCFF00');
   });
 });
 

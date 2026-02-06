@@ -224,7 +224,7 @@ export function TasksPanel({ assigneeClientId }: Props) {
       </Box>
 
       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '2fr 1fr' }, gap: 3 }}>
-        <Paper variant="outlined" sx={{ p: 2, borderRadius: 2.5, borderColor: '#dcdfe4' }}>
+        <Paper variant="outlined" sx={{ p: 2, borderRadius: 2.5, borderColor: 'divider' }}>
           <Stack spacing={1.5}>
             <Stack direction="row" alignItems="center" justifyContent="space-between">
               <Typography variant="h6">Create Task</Typography>
@@ -238,7 +238,7 @@ export function TasksPanel({ assigneeClientId }: Props) {
           </Stack>
         </Paper>
 
-        <Paper variant="outlined" sx={{ p: 2, borderRadius: 2.5, borderColor: '#dcdfe4' }}>
+        <Paper variant="outlined" sx={{ p: 2, borderRadius: 2.5, borderColor: 'divider' }}>
           <Typography variant="h6" sx={{ mb: 1 }}>
             Tasks Queue
           </Typography>

@@ -74,7 +74,7 @@ function EmailMetricsSection({ clientId }: { clientId: string }) {
     return (
       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(4, 1fr)' }, gap: 2, mb: 3 }}>
         {[1, 2, 3, 4].map((k) => (
-          <Box key={k} sx={{ height: 100, bgcolor: '#f5f5f5', borderRadius: '20px' }} />
+          <Box key={k} sx={{ height: 100, bgcolor: '#0A0A0A08', borderRadius: 0, clipPath: 'polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 12px 100%, 0 calc(100% - 12px))' }} />
         ))}
       </Box>
     );
@@ -88,8 +88,8 @@ function EmailMetricsSection({ clientId }: { clientId: string }) {
         icon={<IoPaperPlaneOutline size={20} />}
         footer={
           <>
-            <IoTrendingUpOutline color="#15b79f" size={18} />
-            <Typography variant="body2" sx={{ color: '#667085' }}>
+            <IoTrendingUpOutline color="#CCFF00" size={18} />
+            <Typography variant="body2" sx={{ color: '#FFFFFF60' }}>
               Last 30 days
             </Typography>
           </>
@@ -101,8 +101,8 @@ function EmailMetricsSection({ clientId }: { clientId: string }) {
         icon={<IoHandLeftOutline size={20} />}
         footer={
           <>
-            <IoTrendingUpOutline color="#15b79f" size={18} />
-            <Typography variant="body2" sx={{ color: '#667085' }}>
+            <IoTrendingUpOutline color="#CCFF00" size={18} />
+            <Typography variant="body2" sx={{ color: '#FFFFFF60' }}>
               Coach engagement
             </Typography>
           </>
@@ -113,7 +113,7 @@ function EmailMetricsSection({ clientId }: { clientId: string }) {
         value={`${clickRate}%`}
         icon={<IoTrendingUpOutline size={20} />}
         footer={
-          <Typography variant="body2" sx={{ color: '#667085' }}>
+          <Typography variant="body2" sx={{ color: '#FFFFFF60' }}>
             {stats.clickCount} / {stats.sentCount} emails
           </Typography>
         }
@@ -123,7 +123,7 @@ function EmailMetricsSection({ clientId }: { clientId: string }) {
         value={stats.uniqueClickers || 0}
         icon={<IoPeopleOutline size={20} />}
         footer={
-          <Typography variant="body2" sx={{ color: '#667085' }}>
+          <Typography variant="body2" sx={{ color: '#FFFFFF60' }}>
             Unique responders
           </Typography>
         }
@@ -232,7 +232,7 @@ export default function ClientProfilePage() {
   const handleMenuClose = () => setAnchorEl(null);
 
   return (
-    <Box sx={{ p: 3, bgcolor: '#fff', borderRadius: 2 }}>
+    <Box sx={{ p: 3, bgcolor: 'background.paper', borderRadius: 2 }}>
       <Stack direction="row" alignItems="center" spacing={2} sx={{ mb: 2 }}>
         <Avatar src={photo} alt={name} sx={{ width: 56, height: 56 }} />
         <Box sx={{ flex: 1, minWidth: 0 }}>
@@ -250,7 +250,7 @@ export default function ClientProfilePage() {
           <MenuItem onClick={() => { handleMenuClose(); router.push(`/clients/${client.id}/edit`); }}>Edit</MenuItem>
           <MenuItem
             onClick={() => { handleMenuClose(); router.push(`/clients/${client.id}/delete`); }}
-            sx={{ color: '#f04438' }}
+            sx={{ color: 'error.main' }}
           >
             Delete account
           </MenuItem>

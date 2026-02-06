@@ -39,8 +39,8 @@ function SystemSettingsStep({ value, onChange }: { value: Record<string, any>; o
   const [previewTheme] = React.useState(() =>
     createTheme({
       palette: {
-        primary: { main: value.settings?.primaryColor || '#1976d2' },
-        secondary: { main: value.settings?.secondaryColor || '#9c27b0' },
+        primary: { main: value.settings?.primaryColor || '#0A0A0A' },
+        secondary: { main: value.settings?.secondaryColor || '#CCFF00' },
       },
     })
   );
@@ -48,8 +48,8 @@ function SystemSettingsStep({ value, onChange }: { value: Record<string, any>; o
     () =>
       createTheme({
         palette: {
-          primary: { main: value.settings?.primaryColor || '#1976d2' },
-          secondary: { main: value.settings?.secondaryColor || '#9c27b0' },
+          primary: { main: value.settings?.primaryColor || '#0A0A0A' },
+          secondary: { main: value.settings?.secondaryColor || '#CCFF00' },
         },
       }),
     [value.settings?.primaryColor, value.settings?.secondaryColor]
@@ -76,23 +76,23 @@ function SystemSettingsStep({ value, onChange }: { value: Record<string, any>; o
       </ThemeProvider>
       <Box sx={{ gridColumn: '1 / -1' }}>
         <Typography variant="body2" data-testid="theme-color-preview">
-          Current color: {value.settings?.primaryColor || '#1976d2'}
+          Current color: {value.settings?.primaryColor || '#0A0A0A'}
         </Typography>
         <Typography variant="body2" data-testid="theme-secondary-color-preview">
-          Current secondary color: {value.settings?.secondaryColor || '#9c27b0'}
+          Current secondary color: {value.settings?.secondaryColor || '#CCFF00'}
         </Typography>
       </Box>
       <TextField
         label="Agency color"
         type="color"
-        value={value.settings?.primaryColor || '#1976d2'}
+        value={value.settings?.primaryColor || '#0A0A0A'}
         onChange={(e)=> set('settings', { ...(value.settings ?? {}), primaryColor: e.target.value })}
         sx={{ width: 200 }}
       />
       <TextField
         label="Secondary color"
         type="color"
-        value={value.settings?.secondaryColor || '#9c27b0'}
+        value={value.settings?.secondaryColor || '#CCFF00'}
         onChange={(e)=> set('settings', { ...(value.settings ?? {}), secondaryColor: e.target.value })}
         sx={{ width: 200 }}
       />
@@ -118,7 +118,7 @@ function SystemSettingsStep({ value, onChange }: { value: Record<string, any>; o
 export function AgencyWizard() {
   const router = useRouter();
   const [activeStep, setActiveStep] = React.useState(0);
-  const [form, setForm] = React.useState<Record<string, any>>({ settings: { primaryColor: '#1976d2' } });
+  const [form, setForm] = React.useState<Record<string, any>>({ settings: { primaryColor: '#0A0A0A' } });
   const isLast = activeStep === steps.length - 1;
 
   const handleNext = async () => {
@@ -165,12 +165,12 @@ export function AgencyWizard() {
                 <Typography variant="subtitle2" color="text.secondary">Brand</Typography>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mt: 1 }}>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <Box sx={{ width: 24, height: 24, borderRadius: '4px', bgcolor: form.settings?.primaryColor || '#1976d2', border: '1px solid #ccc' }} />
-                    <Typography>Primary: {form.settings?.primaryColor || '#1976d2'}</Typography>
+                    <Box sx={{ width: 24, height: 24, borderRadius: 0, clipPath: 'polygon(0 0, calc(100% - 4px) 0, 100% 4px, 100% 100%, 4px 100%, 0 calc(100% - 4px))', bgcolor: form.settings?.primaryColor || '#0A0A0A', border: '1px solid #ccc' }} />
+                    <Typography>Primary: {form.settings?.primaryColor || '#0A0A0A'}</Typography>
                   </Box>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <Box sx={{ width: 24, height: 24, borderRadius: '4px', bgcolor: form.settings?.secondaryColor || '#9c27b0', border: '1px solid #ccc' }} />
-                    <Typography>Secondary: {form.settings?.secondaryColor || '#9c27b0'}</Typography>
+                    <Box sx={{ width: 24, height: 24, borderRadius: 0, clipPath: 'polygon(0 0, calc(100% - 4px) 0, 100% 4px, 100% 100%, 4px 100%, 0 calc(100% - 4px))', bgcolor: form.settings?.secondaryColor || '#CCFF00', border: '1px solid #ccc' }} />
+                    <Typography>Secondary: {form.settings?.secondaryColor || '#CCFF00'}</Typography>
                   </Box>
                 </Box>
                 {form.settings?.logoDataUrl && (

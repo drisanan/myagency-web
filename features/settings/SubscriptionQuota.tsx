@@ -57,7 +57,7 @@ export function SubscriptionQuota({ showUpgradeButton = true, compact = false }:
     <Box 
       sx={{ 
         p: 2, 
-        bgcolor: isAtLimit ? 'error.light' : '#f5f5f5', 
+        bgcolor: isAtLimit ? 'error.light' : '#0A0A0A08', 
         borderRadius: 2,
         border: isAtLimit ? '1px solid' : 'none',
         borderColor: 'error.main',

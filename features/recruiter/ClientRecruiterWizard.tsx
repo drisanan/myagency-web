@@ -511,7 +511,7 @@ CRITICAL INSTRUCTIONS:
               </TextField>
             )}
             {selectedList && (
-              <Box sx={{ mt: 2, p: 2, bgcolor: '#f5f5f5', borderRadius: 1 }}>
+              <Box sx={{ mt: 2, p: 2, bgcolor: '#F5F5F5', borderRadius: 0, clipPath: 'polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px))' }}>
                 <Typography variant="subtitle2">List Preview:</Typography>
                 <Typography variant="body2" color="text.secondary">
                   {(selectedList.items || []).slice(0, 5).map((it) => 
@@ -561,11 +561,12 @@ CRITICAL INSTRUCTIONS:
                         </Box>
                       }
                       sx={{
-                        border: '1px solid #e0e0e0',
-                        borderRadius: 1,
+                        border: '1px solid #E0E0E0',
+                        borderRadius: 0,
+                        clipPath: 'polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px))',
                         p: 1,
                         m: 0,
-                        '&:hover': { bgcolor: '#f5f5f5' },
+                        '&:hover': { bgcolor: '#F5F5F5' },
                       }}
                     />
                   );
@@ -595,7 +596,7 @@ CRITICAL INSTRUCTIONS:
               )}
 
               {/* Email Preview/Editor */}
-              <Box sx={{ border: '1px solid #ddd', borderRadius: 1, p: 2, bgcolor: '#fafafa' }}>
+              <Box sx={{ border: '1px solid #E0E0E0', borderRadius: 0, clipPath: 'polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px))', p: 2, bgcolor: '#F5F5F5' }}>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
                   <Typography variant="h6">Email Preview</Typography>
                   <Stack direction="row" spacing={1}>
@@ -628,7 +629,7 @@ CRITICAL INSTRUCTIONS:
                   />
                 ) : (
                   <Box
-                    sx={{ bgcolor: '#fff', p: 2, borderRadius: 1, minHeight: 200 }}
+                    sx={{ bgcolor: '#fff', p: 2, borderRadius: 0, clipPath: 'polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px))', minHeight: 200 }}
                     dangerouslySetInnerHTML={{ __html: emailHtml || buildEmailPreview() }}
                   />
                 )}
@@ -639,8 +640,8 @@ CRITICAL INSTRUCTIONS:
                     disabled={profileIncomplete || aiLoading || !selectedCoach}
                     startIcon={aiLoading ? <CircularProgress size={16} color="inherit" /> : null}
                     sx={{
-                      bgcolor: '#000',
-                      color: '#b7ff00',
+                      bgcolor: '#0A0A0A',
+                      color: '#CCFF00',
                       '&:hover': { bgcolor: '#111' },
                     }}
                   >
@@ -657,13 +658,13 @@ CRITICAL INSTRUCTIONS:
                     onClick={handleConnectGmail}
                     disabled={profileIncomplete || gmailConnecting}
                     startIcon={gmailConnecting ? <CircularProgress size={16} color="inherit" /> : null}
-                    sx={{ bgcolor: '#4285f4', '&:hover': { bgcolor: '#3367d6' } }}
+                    sx={{ bgcolor: '#CCFF00', color: '#0A0A0A', '&:hover': { bgcolor: '#B8E600' } }}
                   >
                     {gmailConnecting ? 'Connecting…' : 'Connect Gmail'}
                   </Button>
                 )}
                 {gmailConnected && (
-                  <Typography variant="body2" sx={{ bgcolor: '#e8fbe0', px: 1.5, py: 0.75, borderRadius: 1 }}>
+                  <Typography variant="body2" sx={{ bgcolor: '#CCFF0020', px: 1.5, py: 0.75, borderRadius: 0, clipPath: 'polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 6px 100%, 0 calc(100% - 6px))' }}>
                     ✓ Gmail Connected
                   </Typography>
                 )}
@@ -673,7 +674,7 @@ CRITICAL INSTRUCTIONS:
                     onClick={handleCreateDraft}
                     disabled={profileIncomplete || !selectedCoach?.email || isCreatingDraft}
                     startIcon={isCreatingDraft ? <CircularProgress size={16} color="inherit" /> : null}
-                    sx={{ bgcolor: '#b7ff00', color: '#000', '&:hover': { bgcolor: '#a0e600' } }}
+                    sx={{ bgcolor: '#CCFF00', color: '#0A0A0A', '&:hover': { bgcolor: '#B8E600' } }}
                   >
                     {isCreatingDraft ? 'Sending…' : 'Send Email'}
                   </Button>

@@ -7,13 +7,14 @@ import { useSession } from '@/features/auth/session';
 import { useRouter } from 'next/navigation';
 import { Box, Container, Typography, Paper, TextField } from '@mui/material';
 import { MarketingHeader } from '@/features/marketing/MarketingHeader';
+import { colors, gradients } from '@/theme/colors';
 
 export default function LoginPage() {
   const { setSession } = useSession();
   const router = useRouter();
   const [error, setError] = React.useState<string | null>(null);
   const [mode, setMode] = React.useState<'agency' | 'agent' | 'client'>('agency');
-  const [agencyName, setAgencyName] = React.useState(''); // For agent login (slug or UUID)
+  const [agencyName, setAgencyName] = React.useState('');
 
   const onSubmit = async (creds: { email: string; phone: string; accessCode: string }) => {
     try {
@@ -23,12 +24,10 @@ export default function LoginPage() {
         setSession(s);
         router.push('/dashboard');
       } else if (mode === 'agent') {
-        // Agent login requires agency name or ID
         if (!agencyName.trim()) {
           setError('Agency name is required for agent login');
           return;
         }
-        // Determine if it's a UUID or a friendly slug
         const trimmed = agencyName.trim();
         const isUuid = trimmed.startsWith('agency-');
         const result = await agentLogin({ 
@@ -41,7 +40,6 @@ export default function LoginPage() {
           setError(result.error || 'Agent login failed');
           return;
         }
-        // Session cookie is set by the API, refresh session context
         setSession({ 
           email: creds.email, 
           role: 'agent', 
@@ -52,7 +50,6 @@ export default function LoginPage() {
         router.push('/dashboard');
       } else {
         await clientLogin({ email: creds.email, phone: creds.phone, accessCode: creds.accessCode });
-        // refresh session via clientLogin: assume session cookie set
         setSession({ email: creds.email, role: 'client', clientId: undefined } as any);
         router.push('/client/lists');
       }
@@ -66,28 +63,65 @@ export default function LoginPage() {
       <Box
         sx={{
           minHeight: '100vh',
-          bgcolor: '#121212',
-          color: '#fff',
+          background: gradients.loginBg,
+          color: colors.white,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           py: 8,
+          position: 'relative',
+          overflow: 'hidden',
+          // Diagonal speed-line pattern overlay
+          '&::before': {
+            content: '""',
+            position: 'absolute',
+            inset: 0,
+            background: gradients.speedLines,
+            pointerEvents: 'none',
+            zIndex: 0,
+          },
+          // Dramatic corner glow
+          '&::after': {
+            content: '""',
+            position: 'absolute',
+            bottom: '-20%',
+            right: '-10%',
+            width: '60%',
+            height: '60%',
+            background: `radial-gradient(ellipse, ${colors.lime}0A 0%, transparent 60%)`,
+            pointerEvents: 'none',
+            zIndex: 0,
+          },
         }}
       >
-        <Container maxWidth="xs" sx={{ display: 'flex', justifyContent: 'center' }}>
+        <Container maxWidth="xs" sx={{ display: 'flex', justifyContent: 'center', position: 'relative', zIndex: 1 }}>
           <Paper
             data-testid="login-card"
-            elevation={4}
+            elevation={0}
             sx={{
               p: 4,
-              borderRadius: 2,
-              bgcolor: '#fff',
-              color: 'inherit',
+              borderRadius: 0,
+              // Angular Nike clip-path
+              clipPath: 'polygon(0 0, calc(100% - 20px) 0, 100% 20px, 100% 100%, 20px 100%, 0 calc(100% - 20px))',
+              background: 'linear-gradient(135deg, #0A0A0A 0%, #111111 100%)',
+              color: colors.white,
+              border: 'none',
               width: '100%',
               maxWidth: 420,
+              position: 'relative',
+              // Top accent line
+              '&::before': {
+                content: '""',
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: '20px',
+                height: '3px',
+                background: gradients.limeButton,
+              },
             }}
           >
-            <Typography variant="h4" gutterBottom color="text.primary">
+            <Typography variant="h4" gutterBottom sx={{ color: colors.white }}>
               Sign in
             </Typography>
             <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
@@ -101,12 +135,20 @@ export default function LoginPage() {
                   }}
                   style={{
                     flex: 1,
-                    padding: '10px 12px',
-                    borderRadius: 8,
-                    border: mode === m ? '2px solid #1976d2' : '1px solid #ccc',
-                    background: mode === m ? '#e3f2fd' : '#f7f7f7',
+                    padding: '12px 14px',
+                    borderRadius: 0,
+                    border: mode === m ? 'none' : '1px solid rgba(255,255,255,0.15)',
+                    background: mode === m
+                      ? 'linear-gradient(135deg, #CCFF00 0%, #B8E600 100%)'
+                      : 'rgba(255,255,255,0.05)',
+                    color: mode === m ? '#0A0A0A' : '#FFFFFF',
                     cursor: 'pointer',
-                    fontWeight: mode === m ? 600 : 400,
+                    fontWeight: 700,
+                    fontSize: '0.8rem',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.08em',
+                    clipPath: 'polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 6px 100%, 0 calc(100% - 6px))',
+                    transition: 'all 0.2s ease',
                   }}
                 >
                   {m === 'client' ? 'Athlete' : m.charAt(0).toUpperCase() + m.slice(1)}
@@ -123,22 +165,31 @@ export default function LoginPage() {
                 fullWidth
                 required
                 size="small"
-                sx={{ mb: 2 }}
+                sx={{
+                  mb: 2,
+                  '& .MuiOutlinedInput-root': {
+                    color: colors.white,
+                    '& fieldset': { borderColor: '#FFFFFF30' },
+                    '&:hover fieldset': { borderColor: '#FFFFFF50' },
+                    '&.Mui-focused fieldset': { borderColor: colors.lime },
+                  },
+                  '& .MuiInputLabel-root': { color: '#FFFFFF80' },
+                  '& .MuiInputLabel-root.Mui-focused': { color: colors.lime },
+                }}
                 placeholder="e.g., myrecruiteragency"
                 helperText="The friendly name your agency set up (ask your admin)"
+                FormHelperTextProps={{ sx: { color: '#FFFFFF60' } }}
               />
             )}
             {error ? (
-              <Typography color="error" sx={{ mb: 2 }}>
+              <Typography sx={{ mb: 2, color: colors.error }}>
                 {error}
               </Typography>
             ) : null}
-            <LoginForm key={mode} onSubmit={onSubmit} />
+            <LoginForm key={mode} onSubmit={onSubmit} darkMode />
           </Paper>
         </Container>
       </Box>
     </>
   );
 }
-
-

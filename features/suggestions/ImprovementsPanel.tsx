@@ -50,6 +50,8 @@ import {
   SuggestionStatus,
 } from '@/services/suggestions';
 import { mobileCardSx, responsiveTableContainerSx, dashboardTableSx } from '@/components/tableStyles';
+import { LoadingState } from '@/components/LoadingState';
+import { ErrorState } from '@/components/ErrorState';
 
 const STATUS_COLORS: Record<SuggestionStatus, 'warning' | 'success' | 'error'> = {
   pending: 'warning',
@@ -167,19 +169,11 @@ Copy and paste this into the AI terminal to implement.`;
   };
 
   if (isLoading) {
-    return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
-        <CircularProgress />
-      </Box>
-    );
+    return <LoadingState message="Loading suggestions..." />;
   }
 
   if (error) {
-    return (
-      <Alert severity="error">
-        Failed to load suggestions: {(error as Error).message}
-      </Alert>
-    );
+    return <ErrorState message={(error as Error).message} />;
   }
 
   return (
@@ -255,7 +249,7 @@ Copy and paste this into the AI terminal to implement.`;
                 </Stack>
               </Box>
               <Collapse in={expandedId === suggestion.id}>
-                <Box sx={{ p: 2, bgcolor: '#fafbfc', borderTop: '1px solid #eaecf0' }}>
+                <Box sx={{ p: 2, bgcolor: 'background.default', borderTop: '1px solid', borderColor: 'divider' }}>
                   <Typography variant="subtitle2" fontWeight={600} sx={{ mb: 1 }}>Original Suggestion</Typography>
                   <Paper variant="outlined" sx={{ p: 1.5, bgcolor: 'white', mb: 2 }}>
                     <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', fontSize: 13 }}>
@@ -300,7 +294,7 @@ Copy and paste this into the AI terminal to implement.`;
         <TableContainer component={Paper} sx={responsiveTableContainerSx}>
           <Table size={compact ? 'small' : 'medium'} sx={dashboardTableSx}>
             <TableHead>
-              <TableRow sx={{ bgcolor: '#f9fafb' }}>
+              <TableRow>
                 <TableCell width={40}></TableCell>
                 <TableCell>Screen</TableCell>
                 <TableCell>Submitted By</TableCell>
@@ -404,7 +398,7 @@ Copy and paste this into the AI terminal to implement.`;
                   <TableRow>
                     <TableCell colSpan={6} sx={{ p: 0, border: 0 }}>
                       <Collapse in={expandedId === suggestion.id}>
-                        <Box sx={{ p: 3, bgcolor: '#fafbfc' }}>
+                        <Box sx={{ p: 3, bgcolor: 'background.default' }}>
                           <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 3 }}>
                             {/* Original Suggestion */}
                             <Box>

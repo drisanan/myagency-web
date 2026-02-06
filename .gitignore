@@ -46,3 +46,10 @@ tmp/
 
 # Serverless
 .serverless/
+
+# Cursor transcripts
+cursor_*.md
+
+# Playwright test results
+test-results/
+playwright-report/

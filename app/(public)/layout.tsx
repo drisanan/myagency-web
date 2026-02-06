@@ -5,10 +5,9 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
     <html lang="en">
       <head>
         <link rel="stylesheet" href="/marketing/marketing.css" />
+        <link rel="stylesheet" href="/marketing/fonts/bebas.css" />
       </head>
       <body className="marketing-page">{children}</body>
     </html>
   );
 }
-
-

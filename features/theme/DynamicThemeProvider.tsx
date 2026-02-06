@@ -3,28 +3,28 @@
 import React from 'react';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import { useSession } from '@/features/auth/session';
-import { colors } from '@/theme/colors';
+import { colors, gradients } from '@/theme/colors';
 import { typography } from '@/theme/typography';
 
-// Default color palette - matches SettingsForm defaults
+// Default color palette — 3-color sporty system (black / lime / white)
 const defaults = {
-  primaryColor: '#14151E',
-  secondaryColor: '#AAFB00',
-  buttonText: '#14151E',
-  textPrimary: '#1A1A2E',
-  textSecondary: '#6B7280',
-  linkColor: '#3B82F6',
-  contentBg: '#F9FAFB',
-  cardBg: '#FFFFFF',
-  navText: '#999DAA',
-  navActiveText: '#14151E',
+  primaryColor: colors.black,
+  secondaryColor: colors.lime,
+  buttonText: colors.black,
+  textPrimary: colors.black,
+  textSecondary: '#0A0A0A99',
+  linkColor: colors.lime,
+  contentBg: colors.contentBg,
+  cardBg: colors.white,
+  navText: '#FFFFFF80',
+  navActiveText: colors.black,
   navHoverBg: 'rgba(255,255,255,0.08)',
-  successColor: '#10B981',
-  warningColor: '#F59E0B',
-  errorColor: '#EF4444',
-  infoColor: '#3B82F6',
-  borderColor: '#E5E7EB',
-  dividerColor: '#E5E7EB',
+  successColor: colors.lime,
+  warningColor: colors.warning,
+  errorColor: colors.error,
+  infoColor: colors.lime,
+  borderColor: '#E0E0E0',
+  dividerColor: '#E0E0E0',
 };
 
 type AgencySettings = Partial<typeof defaults> & { logoDataUrl?: string };
@@ -40,23 +40,23 @@ function buildTheme(settings: AgencySettings) {
       },
       secondary: { 
         main: s.primaryColor,
-        contrastText: '#FFFFFF',
+        contrastText: colors.white,
       },
       success: {
         main: s.successColor,
-        contrastText: '#FFFFFF',
+        contrastText: colors.black,
       },
       warning: {
         main: s.warningColor,
-        contrastText: '#FFFFFF',
+        contrastText: colors.white,
       },
       error: {
         main: s.errorColor,
-        contrastText: '#FFFFFF',
+        contrastText: colors.white,
       },
       info: {
         main: s.infoColor,
-        contrastText: '#FFFFFF',
+        contrastText: colors.black,
       },
       text: {
         primary: s.textPrimary,
@@ -73,41 +73,96 @@ function buildTheme(settings: AgencySettings) {
       MuiButton: {
         styleOverrides: {
           root: {
-            borderRadius: 8,
+            borderRadius: 0,
+            fontWeight: 700,
+            textTransform: 'uppercase',
+            letterSpacing: '0.06em',
+            position: 'relative' as const,
+            // Nike angular clip-path — sliced corner
+            clipPath: 'polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px))',
+            transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
           },
+          sizeSmall: {
+            clipPath: 'polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 6px 100%, 0 calc(100% - 6px))',
+          },
+          sizeLarge: {
+            clipPath: 'polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 14px 100%, 0 calc(100% - 14px))',
+            fontSize: '1rem',
+            padding: '12px 28px',
+          },
+          // ── Lime bg / black text (default)
           containedPrimary: {
-            backgroundColor: s.secondaryColor,
-            color: s.buttonText,
-            '&:hover': { 
-              backgroundColor: adjustBrightness(s.secondaryColor, -10),
+            background: gradients.limeButton,
+            color: colors.black,
+            boxShadow: 'none',
+            '&:hover': {
+              background: 'linear-gradient(135deg, #D4FF1A 0%, #B8E600 100%)',
+              boxShadow: `0 4px 20px ${colors.lime}40`,
+              transform: 'translateY(-1px)',
+            },
+            '&:active': { transform: 'translateY(0)' },
+          },
+          // ── Black bg / lime text (invert)
+          containedSecondary: {
+            background: colors.black,
+            color: colors.lime,
+            boxShadow: 'none',
+            '&:hover': {
+              background: '#1A1A1A',
+              boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
+              transform: 'translateY(-1px)',
             },
           },
+          // All semantic variants → black bg / lime text
           containedSuccess: {
-            backgroundColor: s.successColor,
-            '&:hover': { backgroundColor: adjustBrightness(s.successColor, -10) },
+            background: colors.black,
+            color: colors.lime,
+            '&:hover': { background: '#1A1A1A', transform: 'translateY(-1px)' },
           },
           containedWarning: {
-            backgroundColor: s.warningColor,
-            '&:hover': { backgroundColor: adjustBrightness(s.warningColor, -10) },
+            background: colors.black,
+            color: colors.lime,
+            '&:hover': { background: '#1A1A1A', transform: 'translateY(-1px)' },
           },
           containedError: {
-            backgroundColor: s.errorColor,
-            '&:hover': { backgroundColor: adjustBrightness(s.errorColor, -10) },
+            background: colors.black,
+            color: colors.lime,
+            '&:hover': { background: '#1A1A1A', transform: 'translateY(-1px)' },
           },
           containedInfo: {
-            backgroundColor: s.infoColor,
-            '&:hover': { backgroundColor: adjustBrightness(s.infoColor, -10) },
+            background: colors.black,
+            color: colors.lime,
+            '&:hover': { background: '#1A1A1A', transform: 'translateY(-1px)' },
           },
+          // ── Outlined → black border / black text
           outlinedPrimary: {
-            borderColor: s.secondaryColor,
-            color: s.secondaryColor,
-            '&:hover': { 
-              borderColor: adjustBrightness(s.secondaryColor, -10), 
-              backgroundColor: `${s.secondaryColor}14`,
+            borderColor: colors.black,
+            color: colors.black,
+            borderWidth: 2,
+            '&:hover': {
+              borderColor: colors.black,
+              backgroundColor: `${colors.black}0A`,
+              borderWidth: 2,
             },
           },
+          outlinedSecondary: {
+            borderColor: colors.lime,
+            color: colors.lime,
+            borderWidth: 2,
+            '&:hover': {
+              borderColor: colors.lime,
+              backgroundColor: `${colors.lime}14`,
+              borderWidth: 2,
+            },
+          },
+          // ── Text → black
           textPrimary: {
-            color: s.secondaryColor,
+            color: colors.black,
+            clipPath: 'none',
+          },
+          textSecondary: {
+            color: colors.black,
+            clipPath: 'none',
           },
         },
       },
@@ -137,21 +192,27 @@ function buildTheme(settings: AgencySettings) {
       },
       MuiChip: {
         styleOverrides: {
+          root: {
+            borderRadius: 0,
+            clipPath: 'polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 6px 100%, 0 calc(100% - 6px))',
+            fontWeight: 600,
+            letterSpacing: '0.03em',
+          },
           colorPrimary: {
-            backgroundColor: s.secondaryColor,
+            background: gradients.limeButton,
             color: s.buttonText,
           },
           colorSuccess: {
-            backgroundColor: s.successColor,
+            background: `linear-gradient(135deg, ${s.successColor} 0%, ${adjustBrightness(s.successColor, -15)} 100%)`,
           },
           colorWarning: {
-            backgroundColor: s.warningColor,
+            background: `linear-gradient(135deg, ${s.warningColor} 0%, ${adjustBrightness(s.warningColor, -15)} 100%)`,
           },
           colorError: {
-            backgroundColor: s.errorColor,
+            background: `linear-gradient(135deg, ${s.errorColor} 0%, ${adjustBrightness(s.errorColor, -15)} 100%)`,
           },
           colorInfo: {
-            backgroundColor: s.infoColor,
+            background: `linear-gradient(135deg, ${s.infoColor} 0%, ${adjustBrightness(s.infoColor, -15)} 100%)`,
           },
         },
       },
@@ -164,10 +225,14 @@ function buildTheme(settings: AgencySettings) {
       },
       MuiLinearProgress: {
         styleOverrides: {
+          root: {
+            borderRadius: 0,
+          },
           colorPrimary: {
             backgroundColor: `${s.secondaryColor}33`,
             '& .MuiLinearProgress-bar': {
-              backgroundColor: s.secondaryColor,
+              background: gradients.limeButton,
+              borderRadius: 0,
             },
           },
         },
@@ -183,6 +248,25 @@ function buildTheme(settings: AgencySettings) {
         styleOverrides: {
           root: {
             backgroundColor: s.cardBg,
+            borderRadius: 0,
+            clipPath: 'polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 12px 100%, 0 calc(100% - 12px))',
+            position: 'relative',
+            overflow: 'hidden',
+            transition: 'box-shadow 0.25s ease, transform 0.2s ease',
+            // Dark accent bar on left (inverted MetricCard style)
+            '&::before': {
+              content: '""',
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              bottom: 0,
+              width: '3px',
+              background: `linear-gradient(180deg, ${s.primaryColor} 0%, ${s.primaryColor}40 100%)`,
+              zIndex: 1,
+            },
+            '&:hover': {
+              boxShadow: `0 4px 20px rgba(0,0,0,0.08), 0 0 16px ${s.secondaryColor}06`,
+            },
           },
         },
       },
@@ -191,6 +275,37 @@ function buildTheme(settings: AgencySettings) {
           root: {
             backgroundColor: s.cardBg,
             borderColor: s.borderColor,
+            borderRadius: 0,
+            clipPath: 'polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 12px 100%, 0 calc(100% - 12px))',
+            position: 'relative',
+            overflow: 'hidden',
+            transition: 'box-shadow 0.25s ease, transform 0.2s ease',
+            // Dark accent bar on left
+            '&::before': {
+              content: '""',
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              bottom: 0,
+              width: '3px',
+              background: `linear-gradient(180deg, ${s.primaryColor} 0%, ${s.primaryColor}40 100%)`,
+              zIndex: 1,
+            },
+            // Subtle glow in top-right corner (inverted MetricCard style)
+            '&::after': {
+              content: '""',
+              position: 'absolute',
+              top: '-20%',
+              right: '-10%',
+              width: '50%',
+              height: '60%',
+              background: `radial-gradient(ellipse, ${s.secondaryColor}06 0%, transparent 70%)`,
+              pointerEvents: 'none',
+            },
+            '&:hover': {
+              boxShadow: `0 6px 28px rgba(0,0,0,0.08), 0 0 20px ${s.secondaryColor}08`,
+              transform: 'translateY(-1px)',
+            },
           },
         },
       },
@@ -204,12 +319,15 @@ function buildTheme(settings: AgencySettings) {
       MuiOutlinedInput: {
         styleOverrides: {
           root: {
+            borderRadius: 0,
+            clipPath: 'polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px))',
             '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
               borderColor: s.secondaryColor,
             },
           },
           notchedOutline: {
             borderColor: s.borderColor,
+            borderRadius: 0,
           },
         },
       },
@@ -254,6 +372,10 @@ function buildTheme(settings: AgencySettings) {
       },
       MuiAlert: {
         styleOverrides: {
+          root: {
+            borderRadius: 0,
+            clipPath: 'polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px))',
+          },
           standardSuccess: {
             backgroundColor: `${s.successColor}1A`,
             color: s.successColor,
@@ -280,8 +402,12 @@ function buildTheme(settings: AgencySettings) {
         styleOverrides: {
           root: {
             '& .MuiTableCell-head': {
-              backgroundColor: s.primaryColor,
-              color: '#FFFFFF',
+              background: gradients.darkCard,
+              color: colors.white,
+              fontWeight: 700,
+              textTransform: 'uppercase',
+              letterSpacing: '0.06em',
+              fontSize: '0.75rem',
             },
           },
         },
@@ -301,10 +427,13 @@ function buildTheme(settings: AgencySettings) {
       MuiFab: {
         styleOverrides: {
           primary: {
-            backgroundColor: s.secondaryColor,
+            background: gradients.limeButton,
             color: s.buttonText,
+            boxShadow: `0 4px 16px ${s.secondaryColor}30`,
             '&:hover': {
-              backgroundColor: adjustBrightness(s.secondaryColor, -10),
+              background: `linear-gradient(135deg, ${adjustBrightness(s.secondaryColor, 5)} 0%, ${adjustBrightness(s.secondaryColor, -10)} 100%)`,
+              boxShadow: `0 6px 24px ${s.secondaryColor}50`,
+              transform: 'translateY(-2px)',
             },
           },
         },
@@ -320,6 +449,7 @@ function buildTheme(settings: AgencySettings) {
       MuiToggleButton: {
         styleOverrides: {
           root: {
+            borderRadius: 0,
             '&.Mui-selected': {
               backgroundColor: `${s.secondaryColor}33`,
               color: s.secondaryColor,
@@ -327,6 +457,55 @@ function buildTheme(settings: AgencySettings) {
                 backgroundColor: `${s.secondaryColor}4D`,
               },
             },
+          },
+        },
+      },
+      MuiToggleButtonGroup: {
+        styleOverrides: {
+          root: {
+            borderRadius: 0,
+            clipPath: 'polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px))',
+          },
+        },
+      },
+      MuiDialog: {
+        styleOverrides: {
+          paper: {
+            borderRadius: 0,
+            clipPath: 'polygon(0 0, calc(100% - 16px) 0, 100% 16px, 100% 100%, 16px 100%, 0 calc(100% - 16px))',
+          },
+        },
+      },
+      MuiMenu: {
+        styleOverrides: {
+          paper: {
+            borderRadius: 0,
+            clipPath: 'polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px))',
+          },
+        },
+      },
+      MuiPopover: {
+        styleOverrides: {
+          paper: {
+            borderRadius: 0,
+            clipPath: 'polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px))',
+          },
+        },
+      },
+      MuiAccordion: {
+        styleOverrides: {
+          root: {
+            borderRadius: '0 !important',
+            clipPath: 'polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 12px 100%, 0 calc(100% - 12px))',
+            '&::before': { display: 'none' },
+          },
+        },
+      },
+      MuiTab: {
+        styleOverrides: {
+          root: {
+            borderRadius: 0,
+            '&.Mui-selected': { color: s.secondaryColor },
           },
         },
       },

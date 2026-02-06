@@ -12,6 +12,7 @@ import {
   Tooltip,
 } from '@mui/material';
 import { FaGoogle, FaCalendarAlt, FaExternalLinkAlt, FaVideo, FaLink } from 'react-icons/fa';
+import { LoadingState } from '@/components/LoadingState';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSession } from '@/features/auth/session';
 import { listCalendarEvents, CalendarEvent } from '@/services/googleCalendar';
@@ -106,8 +107,9 @@ export function GoogleCalendarWidget({ compact = false, clientId }: Props) {
       start: e.start || undefined,
       end: e.end || undefined,
       allDay: e.allDay,
-      backgroundColor: '#4285f4',
-      borderColor: '#4285f4',
+      backgroundColor: '#CCFF00',
+      borderColor: '#CCFF00',
+      textColor: '#0A0A0A',
       extendedProps: { event: e },
     }));
   }, [events]);
@@ -126,11 +128,8 @@ export function GoogleCalendarWidget({ compact = false, clientId }: Props) {
 
   if (isLoading) {
     return (
-      <Paper variant="outlined" sx={{ p: 3, textAlign: 'center', borderRadius: '16px' }}>
-        <CircularProgress size={24} />
-        <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-          Loading calendar...
-        </Typography>
+      <Paper variant="outlined" sx={{ p: 3, textAlign: 'center', borderRadius: 0 }}>
+        <LoadingState message="Loading calendar..." />
       </Paper>
     );
   }
@@ -140,10 +139,10 @@ export function GoogleCalendarWidget({ compact = false, clientId }: Props) {
     const errorMessage = (error as any)?.message || 'Unable to load calendar events.';
     
     return (
-      <Paper variant="outlined" sx={{ p: 2, borderRadius: '16px' }} data-testid="google-calendar-widget">
+      <Paper variant="outlined" sx={{ p: 2, borderRadius: 0 }} data-testid="google-calendar-widget">
         <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 2 }}>
           <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <FaGoogle color="#4285f4" /> My Schedule
+            <FaGoogle color="#CCFF00" /> My Schedule
           </Typography>
         </Stack>
         
@@ -168,9 +167,9 @@ export function GoogleCalendarWidget({ compact = false, clientId }: Props) {
             disabled={connecting}
             startIcon={connecting ? <CircularProgress size={16} color="inherit" /> : <FaLink />}
             sx={{ 
-              bgcolor: '#4285f4', 
-              color: '#fff', 
-              '&:hover': { bgcolor: '#3367d6' },
+              bgcolor: '#CCFF00', 
+              color: '#0A0A0A', 
+              '&:hover': { bgcolor: '#B8E600' },
             }}
             data-testid="reconnect-google-btn"
           >
@@ -184,10 +183,10 @@ export function GoogleCalendarWidget({ compact = false, clientId }: Props) {
   if (compact) {
     // Compact list view for dashboard sidebar
     return (
-      <Paper variant="outlined" sx={{ p: 2, borderRadius: '16px' }} data-testid="google-calendar-widget">
+      <Paper variant="outlined" sx={{ p: 2, borderRadius: 0 }} data-testid="google-calendar-widget">
         <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 2 }}>
           <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <FaGoogle color="#4285f4" /> My Schedule
+            <FaGoogle color="#CCFF00" /> My Schedule
           </Typography>
           <Chip size="small" label="Google Calendar" variant="outlined" />
         </Stack>
@@ -209,10 +208,10 @@ export function GoogleCalendarWidget({ compact = false, clientId }: Props) {
 
   // Full calendar view
   return (
-    <Paper variant="outlined" sx={{ p: 2, borderRadius: '16px' }} data-testid="google-calendar-widget">
+    <Paper variant="outlined" sx={{ p: 2, borderRadius: 0 }} data-testid="google-calendar-widget">
       <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 2 }}>
         <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <FaGoogle color="#4285f4" /> My Schedule
+          <FaGoogle color="#CCFF00" /> My Schedule
         </Typography>
         <Stack direction="row" spacing={1}>
           <Chip size="small" label={`${events?.length || 0} events`} variant="outlined" />
@@ -266,7 +265,8 @@ function EventCard({ event }: { event: CalendarEvent }) {
     <Box
       sx={{
         p: 1.5,
-        borderRadius: 1,
+        borderRadius: 0,
+        clipPath: 'polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px))',
         bgcolor: isToday ? 'action.selected' : 'background.default',
         border: '1px solid',
         borderColor: isToday ? 'primary.main' : 'divider',

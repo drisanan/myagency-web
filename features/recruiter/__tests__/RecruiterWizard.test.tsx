@@ -33,7 +33,7 @@ describe('RecruiterWizard loading indicators', () => {
       {
         id: 'list-1',
         agencyEmail: 'agency1@an.test',
-        name: 'Selenium List',
+        name: 'Test List',
         items: [
           { id: 'coach-1', firstName: 'Ada', lastName: 'Lovelace', email: 'ada@u.test', title: 'HC', school: 'Test U', division: 'D1', state: 'CA' },
         ],
@@ -74,7 +74,7 @@ describe('RecruiterWizard loading indicators', () => {
     // Step 2: pick list (skips division/state path)
     const listSelect = await screen.findByLabelText(/list/i);
     await user.click(listSelect);
-    await user.click(await screen.findByText(/Selenium List/i));
+    await user.click(await screen.findByText(/Test List/i));
     await user.click(screen.getByRole('button', { name: /next/i }));
 
     // Draft step: trigger Improve Introduction
@@ -186,7 +186,7 @@ describe('RecruiterWizard loading indicators', () => {
     // Step 2 select list
     const listSelect = await screen.findByLabelText(/list/i);
     await user.click(listSelect);
-    await user.click(await screen.findByText(/Selenium List/i));
+    await user.click(await screen.findByText(/Test List/i));
     await user.click(screen.getByRole('button', { name: /next/i }));
 
     // Send step
@@ -216,7 +216,7 @@ describe('RecruiterWizard loading indicators', () => {
     // Step 2: select list
     const listSelect = await screen.findByLabelText(/list/i);
     await user.click(listSelect);
-    await user.click(await screen.findByText(/Selenium List/i));
+    await user.click(await screen.findByText(/Test List/i));
     await user.click(screen.getByRole('button', { name: /next/i }));
 
     // Draft step: verify edit button exists

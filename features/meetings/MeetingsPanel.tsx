@@ -325,8 +325,9 @@ export function MeetingsPanel({ clientId, isAthlete = false }: Props) {
       start: e.start || undefined,
       end: e.end || undefined,
       allDay: e.allDay,
-      backgroundColor: '#4285f4',
-      borderColor: '#4285f4',
+      backgroundColor: '#CCFF00',
+      borderColor: '#CCFF00',
+      textColor: '#0A0A0A',
       extendedProps: { calendarEvent: e },
     }));
 
@@ -522,23 +523,23 @@ export function MeetingsPanel({ clientId, isAthlete = false }: Props) {
         )
       ) : (
         /* Calendar View */
-        <Paper variant="outlined" sx={{ p: 1, borderRadius: 2 }} data-testid="fullcalendar-container">
+        <Paper variant="outlined" sx={{ p: 1, borderRadius: 0 }} data-testid="fullcalendar-container">
           <Box sx={{ mb: 2, display: 'flex', gap: 2, flexWrap: 'wrap' }}>
             <Chip 
               size="small" 
-              icon={<Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: '#15b79f', mr: 0.5 }} />}
+              icon={<Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: '#CCFF00', mr: 0.5 }} />}
               label="Confirmed" 
               variant="outlined"
             />
             <Chip 
               size="small" 
-              icon={<Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: '#f79009', mr: 0.5 }} />}
+              icon={<Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: '#FFB800', mr: 0.5 }} />}
               label="Pending" 
               variant="outlined"
             />
             <Chip 
               size="small" 
-              icon={<Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: '#4285f4', mr: 0.5 }} />}
+              icon={<Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: '#CCFF00', mr: 0.5 }} />}
               label="Google Calendar" 
               variant="outlined"
             />

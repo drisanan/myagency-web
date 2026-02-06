@@ -212,9 +212,10 @@ function GalleryStep({
               position: 'relative',
               width: 120,
               height: 120,
-              borderRadius: 2,
+              borderRadius: 0,
+              clipPath: 'polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px))',
               overflow: 'hidden',
-              border: '1px solid #e5e7eb',
+              border: '1px solid #E0E0E0',
             }}
           >
             <Box
@@ -246,14 +247,15 @@ function GalleryStep({
             sx={{
               width: 120,
               height: 120,
-              borderRadius: 2,
+              borderRadius: 0,
+              clipPath: 'polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px))',
               border: '2px dashed #ccc',
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
               justifyContent: 'center',
               cursor: 'pointer',
-              '&:hover': { borderColor: '#888', bgcolor: '#f9fafb' },
+              '&:hover': { borderColor: '#888', bgcolor: '#F5F5F5' },
             }}
           >
             <FaPlus size={24} color="#888" />
@@ -321,7 +323,7 @@ function GalleryStep({
       </Alert>
 
       {/* Highlight Videos Section */}
-      <Box sx={{ mt: 4, pt: 3, borderTop: '1px solid #e5e7eb' }}>
+      <Box sx={{ mt: 4, pt: 3, borderTop: '1px solid #E0E0E0' }}>
         <Typography variant="subtitle1" fontWeight={600}>Highlight Videos</Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
           Add up to {MAX_HIGHLIGHT_VIDEOS} highlight videos. Upload MP4/MOV/WebM files (max 100MB) or paste video URLs.
@@ -358,7 +360,7 @@ function GalleryStep({
             };
 
             return (
-            <Box key={idx} sx={{ display: 'flex', gap: 1, alignItems: 'center', p: 1.5, bgcolor: '#fafafa', borderRadius: 1, border: '1px solid #e5e7eb', flexWrap: 'wrap' }}>
+            <Box key={idx} sx={{ display: 'flex', gap: 1, alignItems: 'center', p: 1.5, bgcolor: '#F5F5F5', borderRadius: 0, clipPath: 'polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px))', border: '1px solid #E0E0E0', flexWrap: 'wrap' }}>
               <TextField
                 size="small"
                 label={`Video ${idx + 1} Title`}
@@ -393,7 +395,7 @@ function GalleryStep({
                   <FaTrash size={14} />
                 </IconButton>
               )}
-              {/* Hidden file input for Selenium testing */}
+              {/* Hidden file input for E2E testing */}
               <input
                 type="file"
                 accept="video/mp4,video/quicktime,video/webm"
@@ -467,7 +469,7 @@ function EventsMetricsStep({ value, onChange }: { value: RadarDraft; onChange: (
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
           {events.length === 0 && <Typography variant="body2" color="text.secondary">No events added</Typography>}
           {events.map((ev, idx) => (
-            <Box key={idx} sx={{ p: 2, border: '1px solid #e5e7eb', borderRadius: 2, bgcolor: '#fafafa' }}>
+            <Box key={idx} sx={{ p: 2, border: '1px solid #E0E0E0', borderRadius: 0, clipPath: 'polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px))', bgcolor: '#F5F5F5' }}>
               <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 1.5 }}>
                 <TextField 
                   size="small" 
@@ -716,12 +718,12 @@ function BasicInfoStep({
             aspectRatio: '1 / 1',
             borderRadius: '50%',
             overflow: 'hidden',
-            border: '1px solid #e5e7eb',
+            border: '1px solid #E0E0E0',
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            bgcolor: '#fafafa',
+            bgcolor: '#F5F5F5',
             flexShrink: 0,
           }}
           data-testid="photo-preview"
@@ -802,7 +804,7 @@ function BasicInfoStep({
       />
 
       {/* Gmail Connection Section */}
-      <Box sx={{ gridColumn: '1 / -1', mt: 2, p: 2, bgcolor: '#f9fafb', borderRadius: 2, border: errors?.gmail ? '1px solid #d32f2f' : '1px solid #e5e7eb' }}>
+      <Box sx={{ gridColumn: '1 / -1', mt: 2, p: 2, bgcolor: '#F5F5F5', borderRadius: 0, clipPath: 'polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px))', border: errors?.gmail ? '1px solid #FF3B3B' : '1px solid #E0E0E0' }}>
         <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600 }}>
           Gmail Connection <Typography component="span" color="error">*</Typography>
         </Typography>
@@ -825,9 +827,9 @@ function BasicInfoStep({
               disabled={gmailConnecting}
               startIcon={gmailConnecting ? <CircularProgress size={16} color="inherit" /> : <FaGoogle />}
               sx={{ 
-                bgcolor: '#4285f4', 
-                color: '#fff', 
-                '&:hover': { bgcolor: '#3367d6' },
+                bgcolor: '#CCFF00', 
+                color: '#0A0A0A', 
+                '&:hover': { bgcolor: '#B8E600' },
                 alignSelf: 'flex-start',
               }}
             >
@@ -1192,7 +1194,7 @@ export function ClientWizard({
           <Box>
             <Typography variant="h6" gutterBottom>Review</Typography>
             <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '320px 1fr' }, gap: 3, alignItems: 'start' }}>
-              <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1, p: 2, bgcolor: '#f9fafb', borderRadius: 2 }}>
+              <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1, p: 2, bgcolor: '#F5F5F5', borderRadius: 0, clipPath: 'polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 12px 100%, 0 calc(100% - 12px))' }}>
                 <Box
                   sx={{
                     width: 160,
@@ -1200,7 +1202,7 @@ export function ClientWizard({
                     aspectRatio: '1 / 1',
                     borderRadius: '50%',
                     overflow: 'hidden',
-                    border: '1px solid #e5e7eb',
+                    border: '1px solid #E0E0E0',
                     flexShrink: 0,
                   }}
                 >
@@ -1264,7 +1266,7 @@ export function ClientWizard({
                   <Typography variant="subtitle2" color="text.secondary">Upcoming Events</Typography>
                   {(radar.events ?? []).length
                     ? (radar.events ?? []).map((ev: EventItem, i: number) => (
-                        <Box key={i} sx={{ mb: 1.5, pl: 1.5, borderLeft: '2px solid #e5e7eb' }}>
+                        <Box key={i} sx={{ mb: 1.5, pl: 1.5, borderLeft: '2px solid #E0E0E0' }}>
                           <Typography fontWeight={500}>{ev.name || 'Untitled Event'}</Typography>
                           {ev.startTime && <Typography variant="body2" color="text.secondary">Start: {ev.startTime}</Typography>}
                           {ev.endTime && <Typography variant="body2" color="text.secondary">End: {ev.endTime}</Typography>}
@@ -1307,7 +1309,7 @@ export function ClientWizard({
                           component="img"
                           src={img}
                           alt={`Gallery ${i + 1}`}
-                          sx={{ width: 80, height: 80, objectFit: 'cover', borderRadius: 1 }}
+                          sx={{ width: 80, height: 80, objectFit: 'cover', borderRadius: 0, clipPath: 'polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 6px 100%, 0 calc(100% - 6px))' }}
                         />
                       ))}
                     </Box>
@@ -1318,7 +1320,7 @@ export function ClientWizard({
                     <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>Highlight Videos ({basic.highlightVideos.length})</Typography>
                     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
                       {basic.highlightVideos.map((video: HighlightVideoItem, i: number) => (
-                        <Box key={i} sx={{ pl: 1.5, borderLeft: '2px solid #e5e7eb' }}>
+                        <Box key={i} sx={{ pl: 1.5, borderLeft: '2px solid #E0E0E0' }}>
                           <Typography fontWeight={500}>{video.title || `Video ${i + 1}`}</Typography>
                           <Typography variant="body2" color="text.secondary" sx={{ wordBreak: 'break-all' }}>
                             {video.url || 'No URL'}
@@ -1329,7 +1331,7 @@ export function ClientWizard({
                   </Box>
                 )}
                 {basic.username && (
-                  <Box sx={{ gridColumn: '1 / -1', p: 2, bgcolor: '#f0f9ff', borderRadius: 2, border: '1px solid #0ea5e9' }}>
+                  <Box sx={{ gridColumn: '1 / -1', p: 2, bgcolor: '#f0f9ff', borderRadius: 0, clipPath: 'polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px))', border: '1px solid #0ea5e9' }}>
                     <Typography variant="subtitle2" color="primary" sx={{ fontWeight: 600 }}>
                       Public Profile URL
                     </Typography>

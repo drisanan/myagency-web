@@ -39,9 +39,42 @@ export default function UpdateFormPageClient({ token }: { token: string }) {
   }, [decodedToken]);
 
   const theme = React.useMemo(() => {
-    const primary = agency?.settings?.primaryColor || '#1976d2';
-    const secondary = agency?.settings?.secondaryColor || '#9c27b0';
-    return createTheme({ palette: { primary: { main: primary }, secondary: { main: secondary } } });
+    const primary = agency?.settings?.primaryColor || '#0A0A0A';
+    const secondary = agency?.settings?.secondaryColor || '#CCFF00';
+    return createTheme({
+      palette: { primary: { main: primary }, secondary: { main: secondary } },
+      components: {
+        MuiButton: {
+          styleOverrides: {
+            root: {
+              borderRadius: 0,
+              fontWeight: 700,
+              textTransform: 'uppercase' as const,
+              letterSpacing: '0.06em',
+              clipPath: 'polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px))',
+              transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+            },
+            containedPrimary: {
+              background: `linear-gradient(135deg, ${secondary} 0%, ${secondary}DD 100%)`,
+              color: primary,
+              boxShadow: 'none',
+              '&:hover': {
+                boxShadow: `0 4px 20px ${secondary}40`,
+                transform: 'translateY(-1px)',
+              },
+            },
+          },
+        },
+        MuiPaper: {
+          styleOverrides: {
+            root: {
+              borderRadius: 0,
+              clipPath: 'polygon(0 0, calc(100% - 16px) 0, 100% 16px, 100% 100%, 16px 100%, 0 calc(100% - 16px))',
+            },
+          },
+        },
+      },
+    });
   }, [agency?.settings?.primaryColor, agency?.settings?.secondaryColor]);
 
   const updateEvent = (idx: number, patch: Partial<EventRow>) => {
@@ -86,7 +119,17 @@ export default function UpdateFormPageClient({ token }: { token: string }) {
 
   return (
     <ThemeProvider theme={theme}>
-      <Box sx={{ maxWidth: 900, m: '32px auto', px: 2 }}>
+      <Box
+        sx={{
+          maxWidth: 900,
+          m: '0 auto',
+          px: 2,
+          py: 4,
+          minHeight: '100vh',
+          background: 'linear-gradient(160deg, #F2F2F0 0%, #F5F5F5 45%, #EEF2E8 100%)',
+          backgroundImage: 'repeating-linear-gradient(135deg, transparent, transparent 40px, rgba(204,255,0,0.02) 40px, rgba(204,255,0,0.02) 41px), linear-gradient(160deg, #F2F2F0 0%, #F5F5F5 45%, #EEF2E8 100%)',
+        }}
+      >
         <Paper sx={{ p: 3 }}>
           <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 3 }}>
             {agency?.settings?.logoDataUrl ? (

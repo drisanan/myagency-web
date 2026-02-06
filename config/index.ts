@@ -38,8 +38,8 @@ export function getTenantRegistry(): TenantRegistry {
       id: 'default',
       name: 'AthleteNarrative',
       brand: {
-        primary: '#1976d2',
-        secondary: '#9c27b0'
+        primary: '#0A0A0A',
+        secondary: '#CCFF00'
       },
       flags: {
         aiCounselor: true,
@@ -53,8 +53,8 @@ export function getTenantRegistry(): TenantRegistry {
       id: 'acme',
       name: 'Acme Athletics',
       brand: {
-        primary: '#1976d2',
-        secondary: '#ff4081'
+        primary: '#0A0A0A',
+        secondary: '#CCFF00'
       },
       flags: {
         aiCounselor: true,
