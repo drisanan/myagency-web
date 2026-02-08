@@ -9,7 +9,7 @@ import { APIGatewayProxyEventV2 } from 'aws-lambda';
 import { Handler, requireSession } from './common';
 import { newId } from '../lib/ids';
 import { ActivityLogRecord, ActivityType } from '../lib/models';
-import { putItem, queryByPK, queryGSI3 } from '../lib/dynamo';
+import { putItem, queryByPK, queryByPKPaginated, queryGSI3 } from '../lib/dynamo';
 import { response } from './cors';
 import { withSentry } from '../lib/sentry';
 
@@ -97,7 +97,8 @@ const activityHandler: Handler = async (event: APIGatewayProxyEventV2) => {
     const validTypes: ActivityType[] = [
       'login', 'profile_update', 'task_completed', 'email_sent',
       'email_opened', 'profile_viewed_by_coach', 'list_created',
-      'meeting_requested', 'form_submitted'
+      'meeting_requested', 'form_submitted',
+      'impersonation_start', 'impersonation_end'
     ];
     
     if (!validTypes.includes(payload.activityType)) {

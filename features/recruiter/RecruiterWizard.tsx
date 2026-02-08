@@ -18,7 +18,7 @@ import { listLists, CoachList } from '@/services/lists';
 import { hasMailed, markMailed } from '@/services/mailStatus';
 import { listPrompts, PromptRecord } from '@/services/prompts';
 import { wrapLinksWithTracking, recordEmailSends, createOpenPixelUrl } from '@/services/emailTracking';
-import { createCampaign, updateCampaign } from '@/services/campaigns';
+import { createCampaign } from '@/services/campaigns';
 
 type ClientRow = { id: string; email: string; firstName?: string; lastName?: string; sport?: string };
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.API_BASE_URL || '';
@@ -57,8 +57,6 @@ export function RecruiterWizard() {
   const [schoolDetails, setSchoolDetails] = React.useState<any>(null);
   const [selectedCoachIds, setSelectedCoachIds] = React.useState<Record<string, boolean>>({});
 
-  // Draft
-  const [draft, setDraft] = React.useState<string>('');
   const [error, setError] = React.useState<string | null>(null);
   const [sendMessage, setSendMessage] = React.useState<string | null>(null);
 
@@ -413,19 +411,19 @@ export function RecruiterWizard() {
     }
   }
 
-  async function handleCreateGmailDraft() {
+  async function handleSendEmails() {
     try {
       if (!window.confirm('Send this email now?')) {
         return;
       }
       setSendMessage(null);
-      setIsCreatingDraft(true);
+      setIsSendingEmails(true);
       const id = currentClient?.id || lastConnectedClientIdRef.current || clientId || '';
       if (!id) {
         setError('Select a client first');
         return;
       }
-      console.info('[gmail-ui:draft:start]', { clientId: id });
+      console.info('[gmail-ui:send:start]', { clientId: id });
       // Ensure server has tokens for this client; rehydrate from client record if not
       try {
         const statusUrl = API_BASE_URL
@@ -500,7 +498,7 @@ export function RecruiterWizard() {
         senderClientId: id,
         campaignName,
         personalizedMessage: followupMessage || undefined,
-        status: 'draft',
+        status: 'sent',
       });
       const campaignId = campaign?.id;
 
@@ -588,18 +586,13 @@ export function RecruiterWizard() {
         }).catch(err => console.error('[RecruiterWizard] Failed to record sends', err));
       }
 
-      if (campaignId) {
-        updateCampaign(campaignId, { status: 'sent' }).catch((err) => {
-          console.error('[RecruiterWizard] Failed to mark campaign sent', err);
-        });
-      }
       
       setSendMessage(`Sent to ${to.length} recipient${to.length === 1 ? '' : 's'}`);
     } catch (e: any) {
       console.error(e);
       setError(e?.message || 'Failed to send email');
     } finally {
-      setIsCreatingDraft(false);
+      setIsSendingEmails(false);
     }
   }
 
@@ -607,7 +600,7 @@ export function RecruiterWizard() {
   const [aiLoading, setAiLoading] = React.useState(false);
   const [aiHtml, setAiHtml] = React.useState<string>('');
   const [isGenerating, setIsGenerating] = React.useState(false);
-  const [isCreatingDraft, setIsCreatingDraft] = React.useState(false);
+  const [isSendingEmails, setIsSendingEmails] = React.useState(false);
   const [isEditingPreview, setIsEditingPreview] = React.useState(false);
   const [scheduleEnabled, setScheduleEnabled] = React.useState(false);
   const [scheduledAt, setScheduledAt] = React.useState('');
@@ -633,7 +626,7 @@ export function RecruiterWizard() {
   const improvingBusy = useDelayedBusy(aiLoading);
   const generatingBusy = useDelayedBusy(isGenerating);
   const gmailConnectingBusy = useDelayedBusy(gmailConnecting);
-  const draftBusy = useDelayedBusy(isCreatingDraft);
+  const sendingBusy = useDelayedBusy(isSendingEmails);
 
   async function handleImproveWithAI() {
     try {
@@ -869,7 +862,6 @@ CRITICAL INSTRUCTIONS:
         setError(null);
         const html = await generateFullEmailHtml();
         setAiHtml(html);
-        setDraft(html);
       } catch (e: any) {
         setError(e?.message || 'Failed to generate email');
       } finally {
@@ -919,7 +911,6 @@ CRITICAL INSTRUCTIONS:
     if (!t) return;
     const html = applyTemplate(t.html, currentEmailContext());
     setAiHtml(html);
-    setDraft(html);
     if (t.enabledSections) setEnabledSections(t.enabledSections);
     setSelectedTemplateId(id);
   }
@@ -944,7 +935,7 @@ CRITICAL INSTRUCTIONS:
   return (
     <Box>
       <Stepper data-tour="wizard-stepper" activeStep={activeStep} alternativeLabel sx={{ mb: 3 }}>
-        {['Select Client', 'Universities', 'Details & Coaches', 'Draft'].map((label) => (
+        {['Select Client', 'Universities', 'Details & Coaches', 'Compose & Send'].map((label) => (
           <Step key={label}>
             <StepLabel>{label}</StepLabel>
           </Step>
@@ -1440,7 +1431,6 @@ CRITICAL INSTRUCTIONS:
                         // Merge: new greeting + prompt text as intro + rest of email body
                         const merged = `<p>Hello Coach ${coachLast},</p><p>${p.text}</p>${rest}`;
                         setAiHtml(merged);
-                        setDraft(merged);
                       }
                     }}
                     SelectProps={{ MenuProps: { disablePortal: true } }}
@@ -1653,41 +1643,31 @@ CRITICAL INSTRUCTIONS:
                   </Typography>
                 )}
 
-                {gmailConnected && (
+                {gmailConnected ? (
                 <Button
-                  variant="outlined"
-                    onClick={handleCreateGmailDraft}
-                    disabled={!selectedCoaches.length || isCreatingDraft || scheduleEnabled}
-                    startIcon={draftBusy ? <CircularProgress size={16} /> : null}
-                    sx={{ ml: { sm: 'auto' } }}
-                  >
-                    {draftBusy ? 'Sending…' : 'Send Email'}
-                </Button>
-                )}
-
-                <Button
-                  variant={gmailConnected ? 'contained' : 'outlined'}
-                  onClick={() => setDraft(aiHtml || buildEmailPreview())}
-                  disabled={!selectedRecipients.length || isGenerating}
-                  startIcon={generatingBusy ? <CircularProgress size={16} color="inherit" /> : null}
-                  sx={
-                    gmailConnected
-                      ? {
-                          bgcolor: '#CCFF00',
-                          color: '#0A0A0A',
-                          '&:hover': { bgcolor: '#B8E600' },
-                          '&.Mui-disabled': { bgcolor: '#CCFF00', color: '#0A0A0A', opacity: 0.6 },
-                        }
-                      : {
-                          borderColor: '#CCFF00',
-                          color: '#0A0A0A',
-                          '&:hover': { borderColor: '#B8E600', bgcolor: '#CCFF001A' },
-                          '&.Mui-disabled': { borderColor: '#CCFF00', color: '#0A0A0A', opacity: 0.6 },
-                        }
-                  }
+                  variant="contained"
+                  onClick={handleSendEmails}
+                  disabled={!selectedRecipients.length || isSendingEmails || scheduleEnabled}
+                  startIcon={sendingBusy ? <CircularProgress size={16} color="inherit" /> : null}
+                  sx={{
+                    ml: { sm: 'auto' },
+                    bgcolor: '#CCFF00',
+                    color: '#0A0A0A',
+                    fontWeight: 700,
+                    '&:hover': { bgcolor: '#B8E600' },
+                    '&.Mui-disabled': { bgcolor: '#CCFF00', color: '#0A0A0A', opacity: 0.6 },
+                  }}
+                  data-testid="send-emails-btn"
                 >
-                  {generatingBusy ? 'Sending…' : 'Send Emails'}
+                  {sendingBusy
+                    ? `Sending to ${selectedRecipients.length}…`
+                    : `Send Email${selectedRecipients.length > 1 ? 's' : ''} (${selectedRecipients.length})`}
                 </Button>
+                ) : (
+                  <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic' }}>
+                    Connect Gmail above to send emails
+                  </Typography>
+                )}
                 {sendMessage && (
                   <Typography variant="body2" color="success.main" sx={{ ml: 1 }} data-testid="send-confirmation">
                     {sendMessage}

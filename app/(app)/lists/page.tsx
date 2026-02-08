@@ -7,6 +7,7 @@ import {
   DialogContent, DialogActions, CircularProgress, Skeleton
 } from '@mui/material';
 import { MetricCard } from '@/app/(app)/dashboard/MetricCard';
+import { FeatureErrorBoundary } from '@/components/FeatureErrorBoundary';
 import { IoListOutline, IoSchoolOutline, IoPieChartOutline } from 'react-icons/io5';
 
 /** University logo with lazy loading, error fallback, and placeholder */
@@ -87,7 +88,11 @@ export default function ListsPage() {
   const sports = React.useMemo(() => getSports(), []);
 
   React.useEffect(() => {
-    getDivisions().then(setDivisions).catch(() => setDivisions([]));
+    let cancelled = false;
+    getDivisions()
+      .then((d) => { if (!cancelled) setDivisions(d); })
+      .catch(() => { if (!cancelled) setDivisions([]); });
+    return () => { cancelled = true; };
   }, []);
 
   React.useEffect(() => {
@@ -99,7 +104,9 @@ export default function ListsPage() {
       setSchoolDetails(null);
       return;
     }
-    getStates(division).then(setStates);
+    let cancelled = false;
+    getStates(division).then((s) => { if (!cancelled) setStates(s); });
+    return () => { cancelled = true; };
   }, [division]);
 
   React.useEffect(() => {
@@ -109,12 +116,14 @@ export default function ListsPage() {
       setSchoolDetails(null);
       return;
     }
+    let cancelled = false;
     const divisionSlug = DIVISION_API_MAPPING[division] || division;
     setLoadingSchools(true);
     listUniversities({ sport, division: divisionSlug, state: stateCode })
-      .then(setSchools)
-      .catch((e) => { setError(e?.message || 'Failed to load universities'); setSchools([]); })
-      .finally(() => setLoadingSchools(false));
+      .then((s) => { if (!cancelled) setSchools(s); })
+      .catch((e) => { if (!cancelled) { setError(e?.message || 'Failed to load universities'); setSchools([]); } })
+      .finally(() => { if (!cancelled) setLoadingSchools(false); });
+    return () => { cancelled = true; };
   }, [sport, division, stateCode]);
 
   React.useEffect(() => {
@@ -122,24 +131,28 @@ export default function ListsPage() {
       setClients([]);
       return;
     }
+    let cancelled = false;
     setLoadingClients(true);
     listClientsByAgencyEmail(userEmail)
       .then((data: any) => {
-        setClients(Array.isArray(data) ? data : Array.isArray(data?.clients) ? data.clients : []);
+        if (!cancelled) setClients(Array.isArray(data) ? data : Array.isArray(data?.clients) ? data.clients : []);
       })
-      .catch(() => setClients([]))
-      .finally(() => setLoadingClients(false));
+      .catch(() => { if (!cancelled) setClients([]); })
+      .finally(() => { if (!cancelled) setLoadingClients(false); });
+    return () => { cancelled = true; };
   }, [userEmail]);
 
   React.useEffect(() => {
     if (!selectedSchool) { setSchoolDetails(null); return; }
     if (!sport || !division || !stateCode) return;
+    let cancelled = false;
     const divisionSlug = DIVISION_API_MAPPING[division] || division;
     setLoadingSchoolDetails(true);
     getUniversityDetails({ sport, division: divisionSlug, state: stateCode, school: selectedSchool })
-      .then(setSchoolDetails)
-      .catch((e) => { setError(e?.message || 'Failed to load school'); setSchoolDetails(null); })
-      .finally(() => setLoadingSchoolDetails(false));
+      .then((d) => { if (!cancelled) setSchoolDetails(d); })
+      .catch((e) => { if (!cancelled) { setError(e?.message || 'Failed to load school'); setSchoolDetails(null); } })
+      .finally(() => { if (!cancelled) setLoadingSchoolDetails(false); });
+    return () => { cancelled = true; };
   }, [selectedSchool, sport, division, stateCode]);
 
   // FIX: Use userEmail in dependency array and logic
@@ -330,6 +343,7 @@ export default function ListsPage() {
   }, [saved]);
 
   return (
+    <FeatureErrorBoundary name="list-builder">
     <Box sx={{ display: 'grid', gap: 2 }}>
       {loading && (
         <Typography variant="body2" color="text.secondary">
@@ -627,5 +641,6 @@ export default function ListsPage() {
         </Alert>
       </Snackbar>
     </Box>
+    </FeatureErrorBoundary>
   );
 }

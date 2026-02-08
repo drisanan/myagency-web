@@ -2,7 +2,7 @@ import { APIGatewayProxyEventV2 } from 'aws-lambda';
 import { Handler, requireSession } from './common';
 import { newId } from '../lib/ids';
 import { TaskRecord } from '../lib/models';
-import { getItem, putItem, queryByPK } from '../lib/dynamo';
+import { getItem, putItem, queryByPK, queryByPKPaginated } from '../lib/dynamo';
 import { response } from './cors';
 import { withSentry } from '../lib/sentry';
 import { logActivity } from '../lib/activity';
@@ -36,7 +36,6 @@ const tasksHandler: Handler = async (event: APIGatewayProxyEventV2) => {
   if (method === 'GET') {
     if (taskId) {
       const item = await getItem({ PK: `AGENCY#${session.agencyId}`, SK: `TASK#${taskId}` });
-      // Don't return deleted items
       if (item?.deletedAt) {
         return response(404, { ok: false, error: 'Not found' }, origin);
       }
@@ -45,8 +44,24 @@ const tasksHandler: Handler = async (event: APIGatewayProxyEventV2) => {
       }
       return response(200, { ok: true, task: item ?? null }, origin);
     }
+
+    const qs = event.queryStringParameters || {};
+
+    // Paginated path
+    if (qs.limit || qs.cursor) {
+      const { items, nextCursor } = await queryByPKPaginated(`AGENCY#${session.agencyId}`, 'TASK#', {
+        limit: qs.limit ? parseInt(qs.limit, 10) : 50,
+        cursor: qs.cursor || undefined,
+      });
+      let activeTasks = items.filter((t: any) => !t.deletedAt);
+      if (session.role === 'client') {
+        activeTasks = activeTasks.filter((t: any) => t.assigneeClientId === session.clientId);
+      }
+      return response(200, { ok: true, tasks: activeTasks, nextCursor }, origin);
+    }
+
+    // Legacy path
     const items = await queryByPK(`AGENCY#${session.agencyId}`, 'TASK#');
-    // Filter out soft-deleted tasks
     const activeTasks = (items || []).filter((t: any) => !t.deletedAt);
     if (session.role === 'client') {
       const mine = activeTasks.filter((t: any) => t.assigneeClientId === session.clientId);

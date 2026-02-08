@@ -17,14 +17,13 @@ export default function ClientProfileViewsPage() {
     queryKey: ['profileViews', clientId],
     queryFn: () => getProfileViews(clientId, { limit: 50 }),
     enabled: Boolean(clientId),
-    staleTime: 60000,
   });
 
   const digestQuery = useQuery({
     queryKey: ['profileViewsDigest', clientId],
     queryFn: () => getWeeklyDigest(clientId),
     enabled: Boolean(clientId),
-    staleTime: 300000,
+    staleTime: 5 * 60_000, // slow tier
   });
 
   const views = viewsQuery.data?.views || [];

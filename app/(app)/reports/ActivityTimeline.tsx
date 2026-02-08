@@ -68,6 +68,16 @@ const activityMeta: Record<
     color: '#64748B',
     label: 'Profile',
   },
+  impersonation_start: {
+    icon: <IoPersonOutline size={16} />,
+    color: '#F59E0B',
+    label: 'Impersonation',
+  },
+  impersonation_end: {
+    icon: <IoPersonOutline size={16} />,
+    color: '#64748B',
+    label: 'Impersonation',
+  },
 };
 
 /* ---------- relative time helper ---------- */

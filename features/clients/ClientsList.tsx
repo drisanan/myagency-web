@@ -2,11 +2,11 @@
 import React from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { listClientsByAgencyEmail, deleteClient, getGmailStatus, refreshGmailToken } from '@/services/clients';
-import { Button, Stack, Box, Typography, Avatar, Paper, Chip, CircularProgress, Table, TableHead, TableRow, TableCell, TableBody, TablePagination, useMediaQuery, useTheme, IconButton, Menu, MenuItem } from '@mui/material';
+import { Button, Stack, Box, Typography, Avatar, Paper, Chip, CircularProgress, Table, TableHead, TableRow, TableCell, TableBody, TablePagination, useMediaQuery, useTheme, IconButton, Menu, MenuItem, TextField, InputAdornment } from '@mui/material';
 import { useSession } from '@/features/auth/session';
 import { useImpersonation } from '@/hooks/useImpersonation';
 import { dashboardTablePaperSx, dashboardTableSx, responsiveTableContainerSx, hideOnMobile, mobileCardSx } from '@/components/tableStyles';
-import { IoEllipsisVertical } from 'react-icons/io5';
+import { IoEllipsisVertical, IoSearchOutline, IoCloseCircleOutline } from 'react-icons/io5';
 
 function GmailStatusCell({ clientId }: { clientId: string }) {
   const [refreshing, setRefreshing] = React.useState(false);
@@ -93,6 +93,7 @@ export function ClientsList() {
   const { impersonateClient, isImpersonating } = useImpersonation();
   const [page, setPage] = React.useState(0);
   const [rowsPerPage, setRowsPerPage] = React.useState(10);
+  const [search, setSearch] = React.useState('');
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   
@@ -106,14 +107,65 @@ export function ClientsList() {
     enabled: Boolean(agencyEmail), // Now true, so the fetch happens!
   });
 
-  const rows = data as any[];
+  const allRows = data as any[];
+
+  // Client-side search filtering — case-insensitive across name, email, sport
+  const rows = React.useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return allRows;
+    return allRows.filter((row) => {
+      const name = `${row.firstName ?? ''} ${row.lastName ?? ''}`.trim().toLowerCase();
+      const email = (row.email || '').toLowerCase();
+      const sport = (row.sport || '').toLowerCase();
+      return name.includes(q) || email.includes(q) || sport.includes(q);
+    });
+  }, [allRows, search]);
+
   const totalRows = rows.length;
   const pagedRows = rows.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
+
+  // Reset to first page when search changes
+  React.useEffect(() => {
+    setPage(0);
+  }, [search]);
+
+  const searchBar = (
+    <Box sx={{ px: isMobile ? 1.5 : 2, pt: isMobile ? 1.5 : 2, pb: 1 }}>
+      <TextField
+        size="small"
+        fullWidth
+        placeholder="Search athletes by name, email, or sport…"
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        aria-label="Search athletes"
+        InputProps={{
+          startAdornment: (
+            <InputAdornment position="start">
+              <IoSearchOutline size={18} />
+            </InputAdornment>
+          ),
+          endAdornment: search ? (
+            <InputAdornment position="end">
+              <IconButton size="small" onClick={() => setSearch('')} aria-label="Clear search">
+                <IoCloseCircleOutline size={18} />
+              </IconButton>
+            </InputAdornment>
+          ) : null,
+        }}
+      />
+      {search && (
+        <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
+          {totalRows} result{totalRows !== 1 ? 's' : ''} for &ldquo;{search}&rdquo;
+        </Typography>
+      )}
+    </Box>
+  );
 
   // Mobile card view
   if (isMobile) {
     return (
       <Paper variant="outlined" sx={{ width: '100%', p: 0, ...dashboardTablePaperSx }}>
+        {searchBar}
         <Box sx={{ maxHeight: 520, overflow: 'auto', p: 1.5 }}>
           {pagedRows.map((row) => {
             const name = `${row.firstName ?? ''} ${row.lastName ?? ''}`.trim() || 'Unknown';
@@ -145,7 +197,14 @@ export function ClientsList() {
           })}
           {rows.length === 0 && (
             <Box sx={{ textAlign: 'center', py: 4 }}>
-              <Typography color="text.secondary">No athletes found.</Typography>
+              <Typography color="text.secondary">
+                {search ? `No athletes matching "${search}"` : 'No athletes found.'}
+              </Typography>
+              {search && (
+                <Button size="small" onClick={() => setSearch('')} sx={{ mt: 1 }}>
+                  Clear search
+                </Button>
+              )}
             </Box>
           )}
         </Box>
@@ -171,6 +230,7 @@ export function ClientsList() {
   // Desktop table view
   return (
     <Paper variant="outlined" sx={{ width: '100%', p: 0, ...dashboardTablePaperSx }}>
+      {searchBar}
       <Box sx={{ ...responsiveTableContainerSx, maxHeight: 520 }}>
         <Table size="small" stickyHeader sx={{ ...dashboardTableSx, minWidth: 700 }}>
           <TableHead>
@@ -237,8 +297,15 @@ export function ClientsList() {
             })}
             {rows.length === 0 && (
               <TableRow>
-                <TableCell colSpan={5} align="center">
-                  No athletes found.
+                <TableCell colSpan={5} align="center" sx={{ py: 4 }}>
+                  <Typography color="text.secondary">
+                    {search ? `No athletes matching "${search}"` : 'No athletes found.'}
+                  </Typography>
+                  {search && (
+                    <Button size="small" onClick={() => setSearch('')} sx={{ mt: 1 }}>
+                      Clear search
+                    </Button>
+                  )}
                 </TableCell>
               </TableRow>
             )}

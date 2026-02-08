@@ -2,7 +2,7 @@ import { APIGatewayProxyEventV2 } from 'aws-lambda';
 import { Handler, requireSession } from './common';
 import { newId } from '../lib/ids';
 import { CampaignRecord, CampaignFollowupRecord } from '../lib/models';
-import { getItem, putItem, queryByPK, queryGSI3 } from '../lib/dynamo';
+import { getItem, putItem, queryByPK, queryByPKPaginated, queryGSI3 } from '../lib/dynamo';
 import { response } from './cors';
 import { withSentry } from '../lib/sentry';
 
@@ -20,6 +20,18 @@ const campaignsHandler: Handler = async (event: APIGatewayProxyEventV2) => {
 
   if (method === 'GET') {
     const clientId = qs.clientId;
+
+    // Paginated path (only for non-clientId queries)
+    if (!clientId && (qs.limit || qs.cursor)) {
+      const { items, nextCursor } = await queryByPKPaginated(`AGENCY#${session.agencyId}`, 'CAMPAIGN#', {
+        limit: qs.limit ? parseInt(qs.limit, 10) : 50,
+        cursor: qs.cursor || undefined,
+      });
+      const campaigns = (items as CampaignRecord[]).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+      return response(200, { ok: true, campaigns, nextCursor }, origin);
+    }
+
+    // Legacy path
     let campaigns: CampaignRecord[] = [];
     if (clientId) {
       try {

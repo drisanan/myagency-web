@@ -10,9 +10,12 @@ import { colors, gradients } from '@/theme/colors';
 import { IoAppsOutline, IoBarbellOutline, IoFlaskOutline, IoClipboardOutline, IoSchoolOutline, IoPeopleOutline, IoMailOutline, IoListOutline, IoCheckmarkCircleOutline, IoEyeOutline, IoCalendarOutline, IoChatbubblesOutline, IoPersonCircleOutline, IoBulbOutline, IoMenuOutline, IoCloseOutline, IoStatsChartOutline } from 'react-icons/io5';
 import { IoNotificationsOutline } from 'react-icons/io5';
 import { SuggestionButton } from '@/features/suggestions';
+import { GlobalSearch } from '@/components/GlobalSearch';
+import { SupportChatBot } from '@/components/SupportChatBot';
 import { useQuery } from '@tanstack/react-query';
 import { tasksDueSoon, Task } from '@/services/tasks';
 import { listTasks } from '@/services/tasks';
+import { listActivities, Activity } from '@/services/activity';
 const drawerWidth = 240;
 
 export function AppShell({ children }: { children: React.ReactNode }) {
@@ -106,10 +109,27 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     staleTime: 30_000,
   });
 
+  const recentActivitiesQuery = useQuery({
+    queryKey: ['nav-activities', session?.email],
+    enabled: Boolean(session?.email) && session?.role !== 'client',
+    queryFn: async () => {
+      const since = Date.now() - 7 * 24 * 60 * 60 * 1000; // last 7 days
+      return listActivities({ since, limit: 20 });
+    },
+    staleTime: 30_000,
+  });
+
+  const recentActivities = recentActivitiesQuery.data || [];
+
   const allTasks = tasksQuery.data || [];
   const openTasks = allTasks.filter((t) => t.status !== 'done');
   const dueSoon = tasksDueSoon(allTasks);
 
+  // Combined notification count
+  const notificationCount = (openTasks.length || 0) + (recentActivities.length || 0);
+  const hasUrgent = dueSoon.length > 0 || recentActivities.some((a) => a.activityType === 'profile_viewed_by_coach' || a.activityType === 'email_opened' || a.activityType === 'form_submitted');
+
+  const [bellTab, setBellTab] = React.useState<'tasks' | 'activity'>('tasks');
   const [bellAnchor, setBellAnchor] = React.useState<null | HTMLElement>(null);
   const openBell = Boolean(bellAnchor);
   const handleBellOpen = (e: React.MouseEvent<HTMLElement>) => setBellAnchor(e.currentTarget);
@@ -180,6 +200,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <img src="/marketing/an-logo.png" alt="Athlete Narrative" style={{ height: 32, objectFit: 'contain' }} />
             )}
           </Box>
+          <GlobalSearch />
           <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1, sm: 2 } }}>
             {session ? (
               <Stack direction="row" spacing={{ xs: 1, sm: 2 }} alignItems="center">
@@ -198,9 +219,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     </Button>
                   </Stack>
                 )}
-                <Badge color="primary" badgeContent={openTasks.length || null} anchorOrigin={{ vertical: 'top', horizontal: 'left' }}>
-                  <IconButton color="inherit" onClick={handleBellOpen} aria-label="Tasks alerts">
-                    <Badge variant="dot" color="error" invisible={dueSoon.length === 0}>
+                <Badge color="primary" badgeContent={notificationCount || null} anchorOrigin={{ vertical: 'top', horizontal: 'left' }}>
+                  <IconButton color="inherit" onClick={handleBellOpen} aria-label="Notifications">
+                    <Badge variant="dot" color="error" invisible={!hasUrgent}>
                       <IoNotificationsOutline size={20} />
                     </Badge>
                   </IconButton>
@@ -215,31 +236,64 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </Box>
         </Toolbar>
       </AppBar>
-      <Menu anchorEl={bellAnchor} open={openBell} onClose={handleBellClose}>
-        <Box sx={{ px: 2, py: 1 }}>
-          <Typography variant="subtitle2">Tasks</Typography>
-          <Typography variant="caption" color="text.secondary">
-            {openTasks.length} open · {dueSoon.length} due soon
-          </Typography>
+      <Menu anchorEl={bellAnchor} open={openBell} onClose={handleBellClose} PaperProps={{ sx: { minWidth: 320, maxHeight: 420 } }}>
+        <Box sx={{ px: 2, py: 1, display: 'flex', gap: 1 }}>
+          <Button size="small" variant={bellTab === 'tasks' ? 'contained' : 'text'} onClick={() => setBellTab('tasks')} sx={{ fontSize: '0.75rem', textTransform: 'none', ...(bellTab === 'tasks' ? { bgcolor: colors.lime, color: colors.black } : {}) }}>
+            Tasks ({openTasks.length})
+          </Button>
+          <Button size="small" variant={bellTab === 'activity' ? 'contained' : 'text'} onClick={() => setBellTab('activity')} sx={{ fontSize: '0.75rem', textTransform: 'none', ...(bellTab === 'activity' ? { bgcolor: colors.lime, color: colors.black } : {}) }}>
+            Activity ({recentActivities.length})
+          </Button>
         </Box>
         <Divider />
-        {dueSoon.length === 0 ? (
-          <MenuItem disabled>No tasks due soon</MenuItem>
+        {bellTab === 'tasks' ? (
+          <>
+            <Box sx={{ px: 2, py: 0.5 }}>
+              <Typography variant="caption" color="text.secondary">
+                {openTasks.length} open · {dueSoon.length} due soon
+              </Typography>
+            </Box>
+            {dueSoon.length === 0 ? (
+              <MenuItem disabled>No tasks due soon</MenuItem>
+            ) : (
+              dueSoon.slice(0, 5).map((t) => (
+                <MenuItem key={t.id} sx={{ whiteSpace: 'normal', alignItems: 'flex-start' }}>
+                  <Box>
+                    <Typography variant="body2" sx={{ fontWeight: 600 }}>{t.title}</Typography>
+                    {t.dueAt ? (
+                      <Typography variant="caption" color="text.secondary">
+                        Due {new Date(t.dueAt).toLocaleString()}
+                      </Typography>
+                    ) : null}
+                  </Box>
+                </MenuItem>
+              ))
+            )}
+            {dueSoon.length > 5 ? <MenuItem disabled>+{dueSoon.length - 5} more</MenuItem> : null}
+          </>
         ) : (
-          dueSoon.slice(0, 5).map((t) => (
-            <MenuItem key={t.id} sx={{ whiteSpace: 'normal', alignItems: 'flex-start' }}>
-              <Box>
-                <Typography variant="body2" sx={{ fontWeight: 600 }}>{t.title}</Typography>
-                {t.dueAt ? (
-                  <Typography variant="caption" color="text.secondary">
-                    Due {new Date(t.dueAt).toLocaleString()}
-                  </Typography>
-                ) : null}
-              </Box>
-            </MenuItem>
-          ))
+          <>
+            {recentActivities.length === 0 ? (
+              <MenuItem disabled>No recent activity</MenuItem>
+            ) : (
+              recentActivities.slice(0, 8).map((a) => (
+                <MenuItem key={a.id} sx={{ whiteSpace: 'normal', alignItems: 'flex-start' }}>
+                  <Box>
+                    <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.8rem' }}>{a.description}</Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {a.activityType.replace(/_/g, ' ')} · {new Date(a.createdAt).toLocaleDateString()}
+                    </Typography>
+                  </Box>
+                </MenuItem>
+              ))
+            )}
+            {recentActivities.length > 8 && (
+              <MenuItem component={Link} href="/reports" onClick={handleBellClose} sx={{ justifyContent: 'center' }}>
+                <Typography variant="body2" color="primary">View All in Reports</Typography>
+              </MenuItem>
+            )}
+          </>
         )}
-        {dueSoon.length > 5 ? <MenuItem disabled>+{dueSoon.length - 5} more</MenuItem> : null}
       </Menu>
 
       {/* User Account Menu */}
@@ -426,6 +480,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
       {/* Floating suggestion button */}
       <SuggestionButton hidden={session?.role === 'client'} />
+
+      {/* AI Support Chat */}
+      <SupportChatBot />
     </Box>
   );
 }

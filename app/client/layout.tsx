@@ -7,6 +7,8 @@ import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { Box, AppBar, Toolbar, Typography, Drawer, List, ListItemButton, ListItemText, Stack, CssBaseline, Avatar, IconButton, Menu, MenuItem, Divider, Button, Alert, useMediaQuery, useTheme } from '@mui/material';
 import { useQueryClient } from '@tanstack/react-query';
+import { FeatureErrorBoundary } from '@/components/FeatureErrorBoundary';
+import { SupportChatBot } from '@/components/SupportChatBot';
 import { colors, gradients } from '@/theme/colors';
 import { useImpersonation } from '@/hooks/useImpersonation';
 import { IoClipboardOutline, IoSchoolOutline, IoEyeOutline, IoCalendarOutline, IoChatbubblesOutline, IoMenuOutline, IoCloseOutline, IoPersonCircleOutline } from 'react-icons/io5';
@@ -394,8 +396,13 @@ function ClientShell({ children }: { children: React.ReactNode }) {
             You are viewing as: {session?.firstName} {session?.lastName} ({session?.email})
           </Alert>
         )}
-        {children}
+        <FeatureErrorBoundary name="client-portal">
+          {children}
+        </FeatureErrorBoundary>
       </Box>
+
+      {/* AI Support Chat */}
+      <SupportChatBot />
     </Box>
   );
 }

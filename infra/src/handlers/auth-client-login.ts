@@ -1,7 +1,7 @@
 import { APIGatewayProxyEventV2 } from 'aws-lambda';
 import { Handler } from './common';
 import { response } from './cors';
-import { queryGSI1, scanByGSI1PK, getItem } from '../lib/dynamo';
+import { queryGSI1, getItem } from '../lib/dynamo';
 import { encodeSession, buildSessionCookie } from '../lib/session';
 import { verifyAccessCode } from '../lib/auth';
 import { withSentry } from '../lib/sentry';
@@ -52,13 +52,8 @@ const authClientLoginHandler: Handler = async (event: APIGatewayProxyEventV2) =>
   const phoneString = normalizePhone(phone);
 
   // Query by email via GSI1 (GSI1PK = EMAIL#email)
-  let matches = await queryGSI1(`EMAIL#${normalizedEmail}`, 'CLIENT#');
+  const matches = await queryGSI1(`EMAIL#${normalizedEmail}`, 'CLIENT#');
   console.log('[auth-client-login] matches (GSI1)', matches?.length || 0);
-  if (!matches || matches.length === 0) {
-    // Fallback: scan by GSI1PK in case the index is missing/misconfigured
-    matches = await scanByGSI1PK(`EMAIL#${normalizedEmail}`, 'CLIENT#');
-    console.log('[auth-client-login] matches (fallback scan)', matches?.length || 0);
-  }
   const client = (matches || []).find((i: any) => normalizeEmail(i.email) === normalizedEmail && (i.accessCodeHash || i.accessCode));
   if (!client) {
     console.warn('[auth-client-login] no client/accessCodeHash', { email: normalizedEmail });

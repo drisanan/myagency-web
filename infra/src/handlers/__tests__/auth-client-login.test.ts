@@ -16,7 +16,6 @@ jest.mock('../common', () => {
 jest.mock('../../lib/dynamo', () => {
   return {
     queryGSI1: jest.fn(),
-    scanByGSI1PK: jest.fn(),
     getItem: jest.fn(),
   };
 });

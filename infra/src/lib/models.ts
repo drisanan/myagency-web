@@ -448,7 +448,9 @@ export type ActivityType =
   | 'profile_viewed_by_coach'
   | 'list_created'
   | 'meeting_requested'
-  | 'form_submitted';
+  | 'form_submitted'
+  | 'impersonation_start'
+  | 'impersonation_end';
 
 export type ActivityLogRecord = {
   PK: string;                    // AGENCY#<agencyId>

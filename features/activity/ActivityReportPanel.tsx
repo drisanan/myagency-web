@@ -45,6 +45,8 @@ const activityIcons: Record<ActivityType, React.ReactNode> = {
   list_created: <FaList />,
   meeting_requested: <FaCalendarCheck />,
   form_submitted: <FaFileAlt />,
+  impersonation_start: <FaSignInAlt />,
+  impersonation_end: <FaSignInAlt />,
 };
 
 const activityLabels: Record<ActivityType, string> = {
@@ -57,6 +59,8 @@ const activityLabels: Record<ActivityType, string> = {
   list_created: 'List Created',
   meeting_requested: 'Meeting Requested',
   form_submitted: 'Form Submitted',
+  impersonation_start: 'Impersonation Started',
+  impersonation_end: 'Impersonation Ended',
 };
 
 export function ActivityReportPanel({ clientId }: Props) {

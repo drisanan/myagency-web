@@ -1,6 +1,7 @@
 'use client';
 import React from 'react';
 import {
+  Autocomplete,
   Avatar,
   Box,
   Button,
@@ -29,6 +30,8 @@ import {
 } from '@mui/material';
 import { FaEnvelope, FaPaperPlane, FaReply, FaInbox, FaUser, FaUserTie } from 'react-icons/fa';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useSession } from '@/features/auth/session';
+import { listClientsByAgencyEmail } from '@/services/clients';
 import { 
   listCommunications, 
   sendCommunication, 
@@ -38,6 +41,15 @@ import {
   CommunicationThread,
   CommunicationType,
 } from '@/services/communications';
+
+type AthleteOption = {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  sport?: string;
+  photoUrl?: string;
+};
 
 type Props = {
   athleteId?: string;
@@ -56,9 +68,12 @@ const typeLabels: Record<CommunicationType, { label: string; icon: React.ReactNo
 
 export function CommunicationsPanel({ athleteId, coachEmail, defaultType, isAthlete = false }: Props) {
   const queryClient = useQueryClient();
+  const { session } = useSession();
   const [tab, setTab] = React.useState(0);
   const [selectedThread, setSelectedThread] = React.useState<string | null>(null);
   const [composeOpen, setComposeOpen] = React.useState(false);
+  const [selectedAthletes, setSelectedAthletes] = React.useState<AthleteOption[]>([]);
+  const [sending, setSending] = React.useState(false);
   const [snackbar, setSnackbar] = React.useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({
     open: false,
     message: '',
@@ -80,6 +95,29 @@ export function CommunicationsPanel({ athleteId, coachEmail, defaultType, isAthl
     threadId: '',
   });
 
+  // Fetch athletes for the picker (agents/agency only)
+  const agencyEmail = session?.agencyEmail || session?.email || '';
+  const athletesQuery = useQuery({
+    queryKey: ['comms-athlete-picker', agencyEmail],
+    queryFn: () => listClientsByAgencyEmail(agencyEmail),
+    enabled: !isAthlete && Boolean(agencyEmail),
+    staleTime: 5 * 60_000,
+  });
+
+  const athleteOptions = React.useMemo<AthleteOption[]>(() => {
+    const raw = Array.isArray(athletesQuery.data) ? athletesQuery.data : (athletesQuery.data as any)?.clients ?? [];
+    return raw
+      .filter((c: any) => c && !c.deletedAt && c.email)
+      .map((c: any) => ({
+        id: c.id,
+        email: c.email,
+        firstName: c.firstName || '',
+        lastName: c.lastName || '',
+        sport: c.sport,
+        photoUrl: c.photoUrl || c.profileImageUrl,
+      }));
+  }, [athletesQuery.data]);
+
   const threadsQuery = useQuery({
     queryKey: ['communicationThreads', athleteId],
     queryFn: () => listThreads(athleteId),
@@ -99,7 +137,8 @@ export function CommunicationsPanel({ athleteId, coachEmail, defaultType, isAthl
       queryClient.invalidateQueries({ queryKey: ['communicationThreads'] });
       queryClient.invalidateQueries({ queryKey: ['communications'] });
       setComposeOpen(false);
-      setForm(f => ({ ...f, subject: '', body: '', threadId: '' }));
+      setForm(f => ({ ...f, subject: '', body: '', threadId: '', toEmail: '', toName: '' }));
+      setSelectedAthletes([]);
       setSnackbar({ open: true, message: 'Message sent', severity: 'success' });
     },
     onError: (err: Error) => {
@@ -116,8 +155,56 @@ export function CommunicationsPanel({ athleteId, coachEmail, defaultType, isAthl
   });
 
   const handleSend = async () => {
-    if (!form.toEmail.trim() || !form.body.trim()) return;
+    const isAthleteType = form.type === 'agent_to_athlete';
     
+    // For athlete messages: require selected athletes; for others: require email
+    if (isAthleteType && !isAthlete) {
+      if (selectedAthletes.length === 0) return;
+    } else {
+      if (!form.toEmail.trim()) return;
+    }
+    if (!form.body.trim()) return;
+
+    // Batch send to multiple athletes if selected
+    if (isAthleteType && !isAthlete && selectedAthletes.length > 0) {
+      setSending(true);
+      let successCount = 0;
+      let failCount = 0;
+
+      for (const athlete of selectedAthletes) {
+        try {
+          await sendCommunication({
+            type: form.type,
+            toEmail: athlete.email,
+            toName: `${athlete.firstName} ${athlete.lastName}`.trim() || undefined,
+            athleteId: athlete.id,
+            coachEmail,
+            subject: form.subject || undefined,
+            body: form.body,
+            threadId: form.threadId || undefined,
+          });
+          successCount++;
+        } catch {
+          failCount++;
+        }
+      }
+
+      queryClient.invalidateQueries({ queryKey: ['communicationThreads'] });
+      queryClient.invalidateQueries({ queryKey: ['communications'] });
+      setComposeOpen(false);
+      setForm(f => ({ ...f, subject: '', body: '', threadId: '', toEmail: '', toName: '' }));
+      setSelectedAthletes([]);
+      setSending(false);
+
+      if (failCount === 0) {
+        setSnackbar({ open: true, message: `Message sent to ${successCount} athlete${successCount > 1 ? 's' : ''}`, severity: 'success' });
+      } else {
+        setSnackbar({ open: true, message: `Sent to ${successCount}, failed for ${failCount} athlete(s)`, severity: failCount === selectedAthletes.length ? 'error' : 'success' });
+      }
+      return;
+    }
+
+    // Single recipient (coach, reply, or athlete-initiated)
     await sendMutation.mutateAsync({
       type: form.type,
       toEmail: form.toEmail,
@@ -315,15 +402,25 @@ export function CommunicationsPanel({ athleteId, coachEmail, defaultType, isAthl
       )}
 
       {/* Compose Dialog */}
-      <Dialog open={composeOpen} onClose={() => setComposeOpen(false)} fullWidth maxWidth="sm">
-        <DialogTitle>New Message</DialogTitle>
+      <Dialog
+        open={composeOpen}
+        onClose={() => !sending && setComposeOpen(false)}
+        fullWidth
+        maxWidth="sm"
+        aria-labelledby="compose-dialog-title"
+      >
+        <DialogTitle id="compose-dialog-title">New Message</DialogTitle>
         <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
           <TextField
             size="small"
             select
             label="Type"
             value={form.type}
-            onChange={(e) => setForm(f => ({ ...f, type: e.target.value as CommunicationType }))}
+            onChange={(e) => {
+              const newType = e.target.value as CommunicationType;
+              setForm(f => ({ ...f, type: newType, toEmail: '', toName: '' }));
+              setSelectedAthletes([]);
+            }}
             SelectProps={{ native: true }}
             data-testid="msg-type"
           >
@@ -339,21 +436,122 @@ export function CommunicationsPanel({ athleteId, coachEmail, defaultType, isAthl
               </>
             )}
           </TextField>
-          <TextField
-            size="small"
-            label="To (Email)"
-            value={form.toEmail}
-            onChange={(e) => setForm(f => ({ ...f, toEmail: e.target.value }))}
-            required
-            data-testid="msg-to"
-          />
-          <TextField
-            size="small"
-            label="To (Name)"
-            value={form.toName}
-            onChange={(e) => setForm(f => ({ ...f, toName: e.target.value }))}
-            data-testid="msg-to-name"
-          />
+
+          {/* Athlete Picker — shown when sending to athletes (agency/agent role) */}
+          {form.type === 'agent_to_athlete' && !isAthlete ? (
+            <Autocomplete
+              multiple
+              options={athleteOptions}
+              value={selectedAthletes}
+              onChange={(_, newValue) => setSelectedAthletes(newValue)}
+              getOptionLabel={(opt) =>
+                `${opt.firstName} ${opt.lastName}`.trim() || opt.email
+              }
+              isOptionEqualToValue={(a, b) => a.id === b.id}
+              loading={athletesQuery.isLoading}
+              filterOptions={(options, { inputValue }) => {
+                const q = inputValue.toLowerCase();
+                if (!q) return options;
+                return options.filter(
+                  (o) =>
+                    o.firstName.toLowerCase().includes(q) ||
+                    o.lastName.toLowerCase().includes(q) ||
+                    o.email.toLowerCase().includes(q) ||
+                    (o.sport || '').toLowerCase().includes(q),
+                );
+              }}
+              renderOption={(props, option) => (
+                <li {...props} key={option.id}>
+                  <Stack direction="row" spacing={1.5} alignItems="center" sx={{ width: '100%' }}>
+                    <Avatar
+                      src={option.photoUrl}
+                      sx={{ width: 32, height: 32, fontSize: '0.75rem' }}
+                    >
+                      {(option.firstName?.[0] || option.email[0] || '?').toUpperCase()}
+                    </Avatar>
+                    <Box sx={{ minWidth: 0, flex: 1 }}>
+                      <Typography variant="body2" noWrap sx={{ fontWeight: 600 }}>
+                        {`${option.firstName} ${option.lastName}`.trim() || 'Unknown'}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary" noWrap>
+                        {option.email}
+                        {option.sport ? ` · ${option.sport.replace(/([a-z])([A-Z])/g, '$1 $2')}` : ''}
+                      </Typography>
+                    </Box>
+                  </Stack>
+                </li>
+              )}
+              renderTags={(tagValue, getTagProps) =>
+                tagValue.map((option, index) => {
+                  const { key, ...chipProps } = getTagProps({ index });
+                  return (
+                    <Chip
+                      key={key}
+                      avatar={
+                        <Avatar
+                          src={option.photoUrl}
+                          sx={{ width: 22, height: 22, fontSize: '0.65rem' }}
+                        >
+                          {(option.firstName?.[0] || '?').toUpperCase()}
+                        </Avatar>
+                      }
+                      label={`${option.firstName} ${option.lastName}`.trim() || option.email}
+                      size="small"
+                      {...chipProps}
+                    />
+                  );
+                })
+              }
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  size="small"
+                  label="To (Athletes)"
+                  placeholder={selectedAthletes.length ? '' : 'Search by name, email, or sport…'}
+                  required
+                  data-testid="msg-athlete-picker"
+                  InputProps={{
+                    ...params.InputProps,
+                    endAdornment: (
+                      <>
+                        {athletesQuery.isLoading ? <CircularProgress size={16} /> : null}
+                        {params.InputProps.endAdornment}
+                      </>
+                    ),
+                  }}
+                />
+              )}
+              noOptionsText="No athletes found"
+              data-testid="athlete-autocomplete"
+            />
+          ) : (
+            /* Manual email entry — for coach messages or athlete-initiated */
+            <>
+              <TextField
+                size="small"
+                label="To (Email)"
+                value={form.toEmail}
+                onChange={(e) => setForm(f => ({ ...f, toEmail: e.target.value }))}
+                required
+                data-testid="msg-to"
+              />
+              <TextField
+                size="small"
+                label="To (Name)"
+                value={form.toName}
+                onChange={(e) => setForm(f => ({ ...f, toName: e.target.value }))}
+                data-testid="msg-to-name"
+              />
+            </>
+          )}
+
+          {/* Selected athletes summary */}
+          {selectedAthletes.length > 1 && (
+            <Alert severity="info" sx={{ py: 0.5 }}>
+              Message will be sent individually to {selectedAthletes.length} athletes
+            </Alert>
+          )}
+
           <TextField
             size="small"
             label="Subject"
@@ -373,15 +571,23 @@ export function CommunicationsPanel({ athleteId, coachEmail, defaultType, isAthl
           />
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setComposeOpen(false)}>Cancel</Button>
+          <Button onClick={() => setComposeOpen(false)} disabled={sending}>
+            Cancel
+          </Button>
           <Button 
             variant="contained" 
             onClick={handleSend}
-            disabled={sendMutation.isPending}
-            startIcon={sendMutation.isPending ? <CircularProgress size={16} /> : <FaPaperPlane />}
+            disabled={sending || sendMutation.isPending}
+            startIcon={
+              sending || sendMutation.isPending
+                ? <CircularProgress size={16} />
+                : <FaPaperPlane />
+            }
             data-testid="send-msg-btn"
           >
-            Send
+            {selectedAthletes.length > 1
+              ? `Send to ${selectedAthletes.length} Athletes`
+              : 'Send'}
           </Button>
         </DialogActions>
       </Dialog>

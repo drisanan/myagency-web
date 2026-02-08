@@ -1,6 +1,6 @@
 import { APIGatewayProxyEventV2 } from 'aws-lambda';
 import { Handler } from './common';
-import { queryGSI3, scanByGSI3PK } from '../lib/dynamo';
+import { queryGSI3 } from '../lib/dynamo';
 import { response } from './cors';
 import { ClientRecord } from '../lib/models';
 import { withSentry } from '../lib/sentry';
@@ -33,19 +33,7 @@ const profilePublicHandler: Handler = async (event: APIGatewayProxyEventV2) => {
     }
 
     try {
-      // Try GSI3 query first, fallback to scan if index doesn't exist
-      let existing: any[] = [];
-      try {
-        existing = await queryGSI3(`USERNAME#${username}`);
-      } catch (e: any) {
-        // GSI3 might not exist yet, fallback to scan
-        if (e.name === 'ValidationException' || e.message?.includes('GSI3')) {
-          existing = await scanByGSI3PK(`USERNAME#${username}`);
-        } else {
-          throw e;
-        }
-      }
-      
+      const existing = await queryGSI3(`USERNAME#${username}`);
       return response(200, { ok: true, available: existing.length === 0 }, origin);
     } catch (e: any) {
       console.error('[profile-public] check-username error:', e);
@@ -62,18 +50,7 @@ const profilePublicHandler: Handler = async (event: APIGatewayProxyEventV2) => {
     }
 
     try {
-      // Try GSI3 query first, fallback to scan if index doesn't exist
-      let items: any[] = [];
-      try {
-        items = await queryGSI3(`USERNAME#${username}`);
-      } catch (e: any) {
-        // GSI3 might not exist yet, fallback to scan
-        if (e.name === 'ValidationException' || e.message?.includes('GSI3')) {
-          items = await scanByGSI3PK(`USERNAME#${username}`);
-        } else {
-          throw e;
-        }
-      }
+      const items = await queryGSI3(`USERNAME#${username}`);
 
       if (items.length === 0) {
         return response(404, { ok: false, error: 'Profile not found' }, origin);

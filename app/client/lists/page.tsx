@@ -1,6 +1,6 @@
 'use client';
 import React from 'react';
-import { listLists, saveList } from '@/services/lists';
+import { listLists, saveList, deleteList } from '@/services/lists';
 import { listAssignments } from '@/services/listAssignments';
 import { listUniversities, DIVISION_API_MAPPING } from '@/services/recruiter';
 import { useSession } from '@/features/auth/session';
@@ -15,13 +15,15 @@ import {
   Checkbox,
   CircularProgress,
   FormControlLabel,
+  IconButton,
   Stack,
   TextField,
   Typography,
   MenuItem,
   Chip,
 } from '@mui/material';
-import { IoSchoolOutline } from 'react-icons/io5';
+import { IoSchoolOutline, IoTrashOutline } from 'react-icons/io5';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { colors, gradients } from '@/theme/colors';
 import { LoadingState } from '@/components/LoadingState';
 
@@ -76,15 +78,20 @@ function AngularCard({
 export default function ClientListsPage() {
   const { session } = useSession();
   const { startTour } = useTour();
-  const [lists, setLists] = React.useState<any[]>([]);
+  const qc = useQueryClient();
   const [assignedLists, setAssignedLists] = React.useState<any[]>([]);
 
   React.useEffect(() => {
     if (session?.role === 'client') startTour('client-lists', clientListsSteps);
   }, [session, startTour]);
-  const [loading, setLoading] = React.useState(true);
   const [loadingAssigned, setLoadingAssigned] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
+
+  // React Query for own interest lists
+  const { data: lists = [], isLoading: loading } = useQuery({
+    queryKey: ['client-own-lists'],
+    queryFn: () => listLists(''),
+  });
 
   const [name, setName] = React.useState('');
   const [sport, setSport] = React.useState('');
@@ -105,20 +112,20 @@ export default function ClientListsPage() {
     return universities.filter((u) => u.name.toLowerCase().includes(term));
   }, [universities, schoolSearch]);
 
-  // Fetch client's own interest lists
-  React.useEffect(() => {
-    (async () => {
-      try {
-        setLoading(true);
-        const data = await listLists('');
-        setLists(data || []);
-      } catch (e: any) {
-        setError(e?.message || 'Failed to load lists');
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, []);
+  // Optimistic delete mutation
+  const deleteMut = useMutation({
+    mutationFn: (id: string) => deleteList(id),
+    onMutate: async (id) => {
+      await qc.cancelQueries({ queryKey: ['client-own-lists'] });
+      const prev = qc.getQueryData<any[]>(['client-own-lists']);
+      qc.setQueryData<any[]>(['client-own-lists'], (old) => (old || []).filter((l) => l.id !== id));
+      return { prev };
+    },
+    onError: (_err, _id, ctx) => {
+      if (ctx?.prev) qc.setQueryData(['client-own-lists'], ctx.prev);
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: ['client-own-lists'] }),
+  });
 
   // Fetch agency-assigned lists (coach lists the agency shared with this client)
   React.useEffect(() => {
@@ -219,7 +226,7 @@ export default function ClientListsPage() {
       if (!name.trim()) throw new Error('List name is required');
       if (items.length === 0) throw new Error('Select at least one university');
       const saved = await saveList({ agencyEmail: session?.agencyEmail || '', name: name.trim(), items });
-      setLists((prev) => [...prev, saved]);
+      qc.setQueryData<any[]>(['client-own-lists'], (old) => [...(old || []), saved]);
       setName('');
       setSelected({});
       setUniversities([]);
@@ -654,6 +661,14 @@ export default function ClientListsPage() {
                           bgcolor: '#F0F0F0',
                         }}
                       />
+                      <IconButton
+                        size="small"
+                        onClick={() => deleteMut.mutate(l.id)}
+                        sx={{ ml: 'auto', color: '#ef4444', '&:hover': { bgcolor: '#fef2f2' } }}
+                        aria-label={`Delete list ${l.name}`}
+                      >
+                        <IoTrashOutline size={16} />
+                      </IconButton>
                     </Stack>
                     {(l.items || []).length > 0 && (
                       <Typography variant="body2" sx={{ mt: 0.5, color: '#0A0A0A80' }}>

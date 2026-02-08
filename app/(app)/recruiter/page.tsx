@@ -2,6 +2,7 @@
 import React from 'react';
 import { Typography } from '@mui/material';
 import { RecruiterWizard } from '@/features/recruiter/RecruiterWizard';
+import { FeatureErrorBoundary } from '@/components/FeatureErrorBoundary';
 import { useTour } from '@/features/tour/TourProvider';
 import { recruiterSteps } from '@/features/tour/recruiterSteps';
 import { useSession } from '@/features/auth/session';
@@ -17,7 +18,9 @@ export default function RecruiterBackofficePage() {
   return (
     <main style={{ padding: 24 }}>
       <Typography variant="h4" gutterBottom>Recruiter</Typography>
-      <RecruiterWizard />
+      <FeatureErrorBoundary name="recruiter-wizard">
+        <RecruiterWizard />
+      </FeatureErrorBoundary>
     </main>
   );
 }

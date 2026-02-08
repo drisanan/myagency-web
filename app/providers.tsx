@@ -25,6 +25,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
     defaultOptions: {
       queries: {
         retry: 1,
+        staleTime: 60_000,           // 1 min default (standard tier)
+        gcTime: 5 * 60_000,          // 5 min garbage collection
+        refetchOnWindowFocus: false,  // Prevent noisy refetches
       },
     },
   }));

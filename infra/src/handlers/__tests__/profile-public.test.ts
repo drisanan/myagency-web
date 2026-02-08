@@ -8,7 +8,6 @@ const ORIGIN = 'http://localhost:3000';
 jest.mock('../../lib/dynamo', () => {
   return {
     queryGSI3: jest.fn(),
-    scanByGSI3PK: jest.fn(),
   };
 });
 

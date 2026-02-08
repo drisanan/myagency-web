@@ -13,7 +13,7 @@ provider:
     SESSION_SECRET: ${env:SESSION_SECRET, '37c9a436-7ea8-4422-9f26-85192414b923'}
     AWS_NODEJS_CONNECTION_REUSE_ENABLED: 1
     NODE_OPTIONS: --enable-source-maps
-    OPENAI_KEY: ${env:OPENAI_KEY}
+    OPENAI_KEY: ${env:OPENAI_KEY, ''}
     # Local development flag - empty in production, 'true' when running serverless-offline
     IS_OFFLINE: ${env:IS_OFFLINE, ''}
     FORMS_SECRET: ${env:FORMS_SECRET, 'ff58bc99-63a5-4493-83dc-6720cb3c7db7'}
@@ -47,32 +47,7 @@ provider:
         - OPTIONS
       allowCredentials: true
   iam:
-    role:
-      statements:
-        - Effect: Allow
-          Action:
-            - dynamodb:DescribeTable
-            - dynamodb:PutItem
-            - dynamodb:GetItem
-            - dynamodb:UpdateItem
-            - dynamodb:DeleteItem
-            - dynamodb:Query
-            - dynamodb:Scan
-          Resource:
-            - arn:aws:dynamodb:${self:provider.region}:*:table/${env:TABLE_NAME, 'agency-narrative-crm'}
-            - arn:aws:dynamodb:${self:provider.region}:*:table/${env:TABLE_NAME, 'agency-narrative-crm'}/index/*
-        - Effect: Allow
-          Action:
-            - s3:PutObject
-            - s3:GetObject
-            - s3:DeleteObject
-          Resource:
-            - arn:aws:s3:::${self:service}-media-${self:provider.stage}/*
-        - Effect: Allow
-          Action:
-            - ses:SendEmail
-            - ses:SendRawEmail
-          Resource: '*'
+    role: arn:aws:iam::522352922712:role/athlete-narrative-api-prod-us-west-1-lambdaRole
 
 plugins:
   # serverless-esbuild removed because Serverless v4 bundles esbuild/TS by default
@@ -392,6 +367,13 @@ functions:
           method: any
       - httpApi:
           path: /google/calendar/events/{eventId}
+          method: any
+  supportChat:
+    handler: infra/src/handlers/support-chat.handler
+    timeout: 30
+    events:
+      - httpApi:
+          path: /support-chat
           method: any
 
 # NOTE: MediaBucket resources commented out - bucket already exists outside CloudFormation

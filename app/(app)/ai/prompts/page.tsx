@@ -96,11 +96,10 @@ export default function PromptPlaygroundPage() {
 
   React.useEffect(() => {
     if (!userEmail) return;
-
-    // Load Clients
-    listClientsByAgencyEmail(userEmail).then(setClients);
-    
-  }, [userEmail]); // FIX: Dependency is now the correct email variable
+    let cancelled = false;
+    listClientsByAgencyEmail(userEmail).then((data) => { if (!cancelled) setClients(data); });
+    return () => { cancelled = true; };
+  }, [userEmail]);
 
   const refreshMetrics = React.useCallback(async () => {
     if (!userEmail) return;
@@ -117,10 +116,11 @@ export default function PromptPlaygroundPage() {
 
   React.useEffect(() => {
     if (!userEmail) return;
-    
+    let cancelled = false;
     listPrompts({ agencyEmail: userEmail, clientId })
-      .then(setTemplates)
-      .catch(() => setTemplates([]));
+      .then((t) => { if (!cancelled) setTemplates(t); })
+      .catch(() => { if (!cancelled) setTemplates([]); });
+    return () => { cancelled = true; };
   }, [userEmail, clientId]);
 
   React.useEffect(() => {
@@ -128,11 +128,13 @@ export default function PromptPlaygroundPage() {
       setClientProfile(null);
       return;
     }
+    let cancelled = false;
     setProfileLoading(true);
     getClient(clientId)
-      .then((profile) => setClientProfile(profile))
-      .catch(() => setClientProfile(null))
-      .finally(() => setProfileLoading(false));
+      .then((profile) => { if (!cancelled) setClientProfile(profile); })
+      .catch(() => { if (!cancelled) setClientProfile(null); })
+      .finally(() => { if (!cancelled) setProfileLoading(false); });
+    return () => { cancelled = true; };
   }, [clientId]);
 
   React.useEffect(() => {

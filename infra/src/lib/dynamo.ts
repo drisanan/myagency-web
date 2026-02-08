@@ -35,6 +35,37 @@ export async function queryByPK(PK: string, beginsWith?: string) {
   return res.Items ?? [];
 }
 
+/**
+ * Paginated variant of queryByPK. Returns `{ items, nextCursor }`.
+ * `nextCursor` is a base64-encoded DynamoDB ExclusiveStartKey (null when no more pages).
+ */
+export async function queryByPKPaginated(
+  PK: string,
+  beginsWith?: string,
+  opts?: { limit?: number; cursor?: string },
+) {
+  const limit = opts?.limit ?? 50;
+  const exclusiveStartKey = opts?.cursor
+    ? JSON.parse(Buffer.from(opts.cursor, 'base64').toString('utf-8'))
+    : undefined;
+
+  const res = await docClient.send(
+    new QueryCommand({
+      TableName: TABLE_NAME,
+      KeyConditionExpression: beginsWith ? 'PK = :pk AND begins_with(SK, :sk)' : 'PK = :pk',
+      ExpressionAttributeValues: beginsWith ? { ':pk': PK, ':sk': beginsWith } : { ':pk': PK },
+      Limit: limit,
+      ...(exclusiveStartKey ? { ExclusiveStartKey: exclusiveStartKey } : {}),
+    }),
+  );
+
+  const nextCursor = res.LastEvaluatedKey
+    ? Buffer.from(JSON.stringify(res.LastEvaluatedKey)).toString('base64')
+    : null;
+
+  return { items: res.Items ?? [], nextCursor };
+}
+
 export async function queryGSI1(GSI1PK: string, beginsWith?: string) {
   const res = await docClient.send(
     new QueryCommand({
@@ -49,45 +80,14 @@ export async function queryGSI1(GSI1PK: string, beginsWith?: string) {
 
 // Query GSI2 for agency slug lookups (friendly names)
 export async function queryGSI2(GSI2PK: string, beginsWith?: string) {
-  try {
-    const res = await docClient.send(
-      new QueryCommand({
-        TableName: TABLE_NAME,
-        IndexName: 'GSI2',
-        KeyConditionExpression: beginsWith ? 'GSI2PK = :g2pk AND begins_with(GSI2SK, :g2sk)' : 'GSI2PK = :g2pk',
-        ExpressionAttributeValues: beginsWith ? { ':g2pk': GSI2PK, ':g2sk': beginsWith } : { ':g2pk': GSI2PK },
-      }),
-    );
-    return res.Items ?? [];
-  } catch (e: any) {
-    // GSI2 may not exist yet, fallback to scan
-    console.warn('[queryGSI2] Index query failed, falling back to scan:', e.message);
-    return scanByGSI2PK(GSI2PK);
-  }
-}
-
-// Scan fallback for GSI2 if index doesn't exist yet
-export async function scanByGSI2PK(GSI2PK: string) {
-  const params: any = {
-    TableName: TABLE_NAME,
-    FilterExpression: 'GSI2PK = :g2pk',
-    ExpressionAttributeValues: { ':g2pk': GSI2PK },
-  };
-  const res = await docClient.send(new ScanCommand(params));
-  return res.Items ?? [];
-}
-
-// Fallback query without specifying IndexName (only works if GSI1PK exists on base table projection)
-// Fallback scan when GSI1 is misconfigured or absent; use sparingly (costly)
-export async function scanByGSI1PK(GSI1PK: string, beginsWith?: string) {
-  const params: any = {
-    TableName: TABLE_NAME,
-    FilterExpression: beginsWith ? 'GSI1PK = :g1pk AND begins_with(GSI1SK, :g1sk)' : 'GSI1PK = :g1pk',
-    ExpressionAttributeValues: beginsWith
-      ? { ':g1pk': GSI1PK, ':g1sk': beginsWith }
-      : { ':g1pk': GSI1PK },
-  };
-  const res = await docClient.send(new ScanCommand(params));
+  const res = await docClient.send(
+    new QueryCommand({
+      TableName: TABLE_NAME,
+      IndexName: 'GSI2',
+      KeyConditionExpression: beginsWith ? 'GSI2PK = :g2pk AND begins_with(GSI2SK, :g2sk)' : 'GSI2PK = :g2pk',
+      ExpressionAttributeValues: beginsWith ? { ':g2pk': GSI2PK, ':g2sk': beginsWith } : { ':g2pk': GSI2PK },
+    }),
+  );
   return res.Items ?? [];
 }
 
@@ -126,7 +126,9 @@ export async function deleteItem(key: { PK: string; SK: string }) {
   await docClient.send(new DeleteCommand({ TableName: TABLE_NAME, Key: key }));
 }
 
+/** @deprecated Use a GSI query instead. Scans are expensive on large tables. */
 export async function scanBySKPrefix(prefix: string) {
+  console.warn(`[dynamo] DEPRECATED scanBySKPrefix('${prefix}') — migrate to GSI query`);
   const params: any = {
     TableName: TABLE_NAME,
     FilterExpression: 'begins_with(SK, :sk)',
@@ -149,23 +151,13 @@ export async function queryGSI3(GSI3PK: string, beginsWith?: string) {
   return res.Items ?? [];
 }
 
-// Scan fallback for GSI3 if index doesn't exist yet
-export async function scanByGSI3PK(GSI3PK: string) {
-  const params: any = {
-    TableName: TABLE_NAME,
-    FilterExpression: 'GSI3PK = :g3pk',
-    ExpressionAttributeValues: { ':g3pk': GSI3PK },
-  };
-  const res = await docClient.send(new ScanCommand(params));
-  return res.Items ?? [];
-}
-
-// Generic scan with custom filter expression
+/** @deprecated Prefer GSI queries. Scans are expensive on large tables. */
 export async function scanTable(params: {
   FilterExpression: string;
   ExpressionAttributeValues: Record<string, unknown>;
   ExpressionAttributeNames?: Record<string, string>;
 }) {
+  console.warn('[dynamo] DEPRECATED scanTable — migrate to GSI query');
   const res = await docClient.send(new ScanCommand({
     TableName: TABLE_NAME,
     FilterExpression: params.FilterExpression,

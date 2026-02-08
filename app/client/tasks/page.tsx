@@ -1,14 +1,15 @@
 'use client';
 
 import React from 'react';
-import { Box, Typography, Chip, Button, Stack } from '@mui/material';
+import { Box, Typography, Chip, Button, Stack, TextField } from '@mui/material';
 import { useSession } from '@/features/auth/session';
 import { listTasks, updateTask, Task } from '@/services/tasks';
 import { useTour } from '@/features/tour/TourProvider';
 import { clientTasksSteps } from '@/features/tour/clientSteps';
 import { colors, gradients } from '@/theme/colors';
 import { LoadingState } from '@/components/LoadingState';
-import { IoCheckmarkCircleOutline } from 'react-icons/io5';
+import { IoCheckmarkCircleOutline, IoSearchOutline } from 'react-icons/io5';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 const statusColor: Record<string, string> = {
   todo: '#64748B',
@@ -19,49 +20,57 @@ const statusColor: Record<string, string> = {
 export default function ClientTasksPage() {
   const { session, loading } = useSession();
   const { startTour } = useTour();
+  const queryClient = useQueryClient();
+  const [search, setSearch] = React.useState('');
+  const [statusFilter, setStatusFilter] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     if (!loading && session?.role === 'client') startTour('client-tasks', clientTasksSteps);
   }, [loading, session, startTour]);
-  const [tasks, setTasks] = React.useState<Task[]>([]);
-  const [fetching, setFetching] = React.useState(false);
-  const [error, setError] = React.useState<string | null>(null);
 
-  const load = React.useCallback(async () => {
-    if (!session || session.role !== 'client') return;
-    setFetching(true);
-    setError(null);
-    try {
-      const data = await listTasks({});
-      setTasks(data);
-    } catch (e: any) {
-      setError(e?.message || 'Failed to load tasks');
-    } finally {
-      setFetching(false);
-    }
-  }, [session]);
+  const { data: tasks = [], isLoading: fetching, error: queryError } = useQuery({
+    queryKey: ['client-tasks'],
+    enabled: !loading && session?.role === 'client',
+    queryFn: () => listTasks({}),
+  });
 
-  React.useEffect(() => {
-    if (!loading && session?.role === 'client') {
-      load();
-    }
-  }, [loading, session?.role, load]);
+  const error = queryError ? (queryError as Error).message : null;
 
-  const markDone = async (id: string) => {
-    try {
-      await updateTask(id, { status: 'done' });
-      setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, status: 'done' } : t)));
-    } catch (e: any) {
-      setError(e?.message || 'Failed to update task');
-    }
-  };
+  // Optimistic mark-done mutation
+  const markDoneMut = useMutation({
+    mutationFn: (id: string) => updateTask(id, { status: 'done' }),
+    onMutate: async (id) => {
+      await queryClient.cancelQueries({ queryKey: ['client-tasks'] });
+      const prev = queryClient.getQueryData<Task[]>(['client-tasks']);
+      queryClient.setQueryData<Task[]>(['client-tasks'], (old) =>
+        (old || []).map((t) => (t.id === id ? { ...t, status: 'done' } : t)),
+      );
+      return { prev };
+    },
+    onError: (_err, _id, ctx) => {
+      if (ctx?.prev) queryClient.setQueryData(['client-tasks'], ctx.prev);
+    },
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ['client-tasks'] }),
+  });
+
+  const markDone = (id: string) => markDoneMut.mutate(id);
 
   if (loading || (session && session.role !== 'client')) {
     return <LoadingState message="Loading tasks..." />;
   }
 
-  const openTasks = tasks.filter((t) => t.status !== 'done');
-  const doneTasks = tasks.filter((t) => t.status === 'done');
+  // Filtering
+  const filtered = tasks.filter((t) => {
+    if (search) {
+      const q = search.toLowerCase();
+      if (!t.title?.toLowerCase().includes(q) && !t.description?.toLowerCase().includes(q)) return false;
+    }
+    if (statusFilter && t.status !== statusFilter) return false;
+    return true;
+  });
+
+  const openTasks = filtered.filter((t) => t.status !== 'done');
+  const doneTasks = filtered.filter((t) => t.status === 'done');
 
   return (
     <Box sx={{ maxWidth: 1200, mx: 'auto', position: 'relative', zIndex: 1 }}>
@@ -71,11 +80,42 @@ export default function ClientTasksPage() {
           fontWeight: 800,
           letterSpacing: '-0.02em',
           color: colors.black,
-          mb: 3,
+          mb: 2,
         }}
       >
         Tasks
       </Typography>
+
+      {/* Search and filter */}
+      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ mb: 2 }} alignItems="center">
+        <TextField
+          size="small"
+          placeholder="Search tasks..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          InputProps={{ startAdornment: <IoSearchOutline style={{ marginRight: 8, color: '#999' }} /> }}
+          sx={{ flex: 1, maxWidth: 320 }}
+        />
+        <Stack direction="row" spacing={0.5}>
+          {(['todo', 'in-progress', 'done'] as const).map((s) => (
+            <Chip
+              key={s}
+              label={s}
+              size="small"
+              onClick={() => setStatusFilter(statusFilter === s ? null : s)}
+              sx={{
+                fontWeight: 700,
+                fontSize: 10,
+                textTransform: 'uppercase',
+                cursor: 'pointer',
+                bgcolor: statusFilter === s ? `${statusColor[s]}20` : 'transparent',
+                color: statusFilter === s ? statusColor[s] : '#999',
+                border: `1px solid ${statusFilter === s ? statusColor[s] : '#ddd'}`,
+              }}
+            />
+          ))}
+        </Stack>
+      </Stack>
 
       {/* Task card */}
       <Box

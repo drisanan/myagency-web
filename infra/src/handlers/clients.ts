@@ -3,7 +3,7 @@ import { Handler, requireSession } from './common';
 import { newId } from '../lib/ids';
 import { ClientRecord, AgencyRecord, STARTER_USER_LIMIT, EmailDripRecord, DripEnrollmentRecord } from '../lib/models';
 import { hashAccessCode } from '../lib/auth';
-import { getItem, putItem, queryByPK, queryGSI3, scanByGSI3PK } from '../lib/dynamo';
+import { getItem, putItem, queryByPK, queryByPKPaginated, queryGSI3 } from '../lib/dynamo';
 import { response } from './cors';
 import { withSentry, captureMessage } from '../lib/sentry';
 import { logAuditEvent, extractAuditContext } from '../lib/audit';
@@ -45,27 +45,33 @@ const clientsHandler: Handler = async (event: APIGatewayProxyEventV2) => {
       return response(200, { ok: true, client: item ?? null }, origin);
     }
     
-    // B. List All Clients
+    const qs = event.queryStringParameters || {};
     const pk = `AGENCY#${cleanAgencyId}`;
+
+    // Paginated path: if `limit` or `cursor` is provided
+    if (qs.limit || qs.cursor) {
+      const { items, nextCursor } = await queryByPKPaginated(pk, 'CLIENT#', {
+        limit: qs.limit ? parseInt(qs.limit, 10) : 50,
+        cursor: qs.cursor || undefined,
+      });
+      const activeClients = items.filter((c: any) => !c.deletedAt);
+      return response(200, { ok: true, clients: activeClients, nextCursor }, origin);
+    }
     
-    // Attempt 1: Standard Optimized Query
+    // Legacy path: return all clients (backward-compatible)
     let items = await queryByPK(pk, 'CLIENT#');
 
-    // Attempt 2: Fallback (If DynamoDB SK filtering is behaving unexpectedly)
-    // If we get 0 results, but we know data exists, try querying JUST the PK.
+    // Fallback (If DynamoDB SK filtering is behaving unexpectedly)
     if (items.length === 0) {
       console.log('[Clients] WARN: Standard query returned 0. Attempting PK-only fallback.', { pk });
       
-      const allAgencyItems = await queryByPK(pk); // Fetch PROFILE, TASKS, CLIENTS, etc.
-      
-      // Filter for clients in memory
+      const allAgencyItems = await queryByPK(pk);
       const recoveredClients = allAgencyItems.filter((i: any) => i.SK && i.SK.startsWith('CLIENT#'));
       
       if (recoveredClients.length > 0) {
         console.log('[Clients] RECOVERED: Found clients via manual memory filter.', { count: recoveredClients.length });
         items = recoveredClients;
       } else {
-        // Only log as warning if agency has other items but no clients (unexpected)
         if (allAgencyItems.length > 1) {
           captureMessage('Agency has items but no clients found', 'warning', {
             agencyId: cleanAgencyId,
@@ -73,7 +79,6 @@ const clientsHandler: Handler = async (event: APIGatewayProxyEventV2) => {
             typesFound: allAgencyItems.map((i: any) => i.SK?.split('#')[0]),
         });
         }
-        // Otherwise it's a normal case: new agency with just a profile
       }
     }
 
@@ -129,17 +134,7 @@ const clientsHandler: Handler = async (event: APIGatewayProxyEventV2) => {
     let username = payload.username?.toLowerCase().replace(/[^a-z0-9-]/g, '');
     if (username) {
       try {
-        let existing: any[] = [];
-        try {
-          existing = await queryGSI3(`USERNAME#${username}`);
-        } catch (e: any) {
-          // GSI3 might not exist yet, fallback to scan
-          if (e.name === 'ValidationException' || e.message?.includes('GSI3')) {
-            existing = await scanByGSI3PK(`USERNAME#${username}`);
-          } else {
-            console.error('[clients] GSI3 query error:', e);
-          }
-        }
+        const existing = await queryGSI3(`USERNAME#${username}`);
         if (existing.length > 0) {
           return badRequest(origin, 'Username is already taken');
         }
@@ -231,24 +226,12 @@ const clientsHandler: Handler = async (event: APIGatewayProxyEventV2) => {
     let username = payload.username?.toLowerCase().replace(/[^a-z0-9-]/g, '');
     if (username && username !== existing.username) {
       try {
-        let usernameCheck: any[] = [];
-        try {
-          usernameCheck = await queryGSI3(`USERNAME#${username}`);
-        } catch (e: any) {
-          // GSI3 might not exist yet, fallback to scan
-          if (e.name === 'ValidationException' || e.message?.includes('GSI3')) {
-            usernameCheck = await scanByGSI3PK(`USERNAME#${username}`);
-          } else {
-            console.error('[clients] GSI3 query error:', e);
-            // Continue anyway - uniqueness will be enforced by GSI3 constraint if it exists
-          }
-        }
+        const usernameCheck = await queryGSI3(`USERNAME#${username}`);
         if (usernameCheck.length > 0) {
           return badRequest(origin, 'Username is already taken');
         }
       } catch (e) {
         console.error('[clients] Username uniqueness check failed:', e);
-        // Continue with the update - if GSI3 is functioning, it will enforce uniqueness
       }
     }
     

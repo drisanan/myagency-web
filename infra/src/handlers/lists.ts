@@ -2,7 +2,7 @@ import { APIGatewayProxyEventV2 } from 'aws-lambda';
 import { Handler, requireSession } from './common';
 import { newId } from '../lib/ids';
 import { CoachListRecord } from '../lib/models';
-import { getItem, putItem, queryByPK } from '../lib/dynamo';
+import { getItem, putItem, queryByPK, queryByPKPaginated } from '../lib/dynamo';
 import { response } from './cors';
 import { withSentry } from '../lib/sentry';
 
@@ -33,7 +33,22 @@ const listsHandler: Handler = async (event: APIGatewayProxyEventV2) => {
       const item = await getItem({ PK: `AGENCY#${session.agencyId}`, SK: `LIST#${listId}` });
       return response(200, { ok: true, list: item ?? null }, origin);
     }
-    // If client, return only their lists (via PK filter + clientId match)
+
+    const qs = event.queryStringParameters || {};
+
+    // Paginated path
+    if (qs.limit || qs.cursor) {
+      const { items, nextCursor } = await queryByPKPaginated(`AGENCY#${session.agencyId}`, 'LIST#', {
+        limit: qs.limit ? parseInt(qs.limit, 10) : 50,
+        cursor: qs.cursor || undefined,
+      });
+      const filtered = session.role === 'client'
+        ? items.filter((i: any) => i.clientId === session.clientId && i.type === 'CLIENT_INTEREST')
+        : items;
+      return response(200, { ok: true, lists: filtered, nextCursor }, origin);
+    }
+
+    // Legacy path
     const items = await queryByPK(`AGENCY#${session.agencyId}`, 'LIST#');
     const filtered = session.role === 'client'
       ? items.filter((i: any) => i.clientId === session.clientId && i.type === 'CLIENT_INTEREST')

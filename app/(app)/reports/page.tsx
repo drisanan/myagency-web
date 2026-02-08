@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Box, Typography, Stack } from '@mui/material';
+import { Box, Typography, Stack, Button } from '@mui/material';
 import { useRouter } from 'next/navigation';
 import { useSession } from '@/features/auth/session';
 import { useQuery } from '@tanstack/react-query';
@@ -16,9 +16,12 @@ import {
 } from 'react-icons/io5';
 
 import { MetricCard } from '../dashboard/MetricCard';
+import { FeatureErrorBoundary } from '@/components/FeatureErrorBoundary';
 import { EmailActivityChart, ProfileViewsChart } from './ReportCharts';
 import { ClientLeaderboard, type LeaderboardRow } from './ClientLeaderboard';
 import { ActivityTimeline } from './ActivityTimeline';
+import { EmailReportDialog } from './EmailReportDialog';
+import { type ReportEmailData, type ReportSection } from './reportEmailTemplate';
 
 import { getClients, type Client } from '@/services/clients';
 import { getActivityReport, listActivities, type Activity } from '@/services/activity';
@@ -100,56 +103,49 @@ export default function ReportsPage() {
     queryKey: ['reports-clients'],
     queryFn: () => getClients(),
     enabled: session?.role === 'agency',
-    staleTime: 60_000,
   });
 
   const activityReportQ = useQuery({
     queryKey: ['reports-activity-report'],
     queryFn: () => getActivityReport(),
     enabled: session?.role === 'agency',
-    staleTime: 60_000,
   });
 
   const recentActivitiesQ = useQuery({
     queryKey: ['reports-recent-activities'],
     queryFn: () => listActivities({ limit: 20 }),
     enabled: session?.role === 'agency',
-    staleTime: 30_000,
+    staleTime: 30_000, // real-time tier
   });
 
   const emailMetricsQ = useQuery({
     queryKey: ['reports-email-metrics', 30],
     queryFn: () => fetchEmailMetrics({ days: 30 }),
     enabled: session?.role === 'agency',
-    staleTime: 60_000,
   });
 
   const emailMetricsPrevQ = useQuery({
     queryKey: ['reports-email-metrics-prev', 60],
     queryFn: () => fetchEmailMetrics({ days: 60 }),
     enabled: session?.role === 'agency',
-    staleTime: 60_000,
   });
 
   const profileDigestQ = useQuery({
     queryKey: ['reports-profile-digest'],
     queryFn: () => getWeeklyDigest(),
     enabled: session?.role === 'agency',
-    staleTime: 60_000,
   });
 
   const tasksQ = useQuery({
     queryKey: ['reports-tasks'],
     queryFn: () => listTasks({}),
     enabled: session?.role === 'agency',
-    staleTime: 60_000,
   });
 
   const campaignsQ = useQuery({
     queryKey: ['reports-campaigns'],
     queryFn: () => listCampaigns(),
     enabled: session?.role === 'agency',
-    staleTime: 60_000,
   });
 
   /* ---- guard rendering ---- */
@@ -314,22 +310,61 @@ export default function ReportsPage() {
     .map((row, i) => ({ ...row, rank: i + 1 }))
     .slice(0, 25);
 
+  // Build data for email report dialog
+  const [emailDialogOpen, setEmailDialogOpen] = React.useState(false);
+  const reportEmailData: ReportEmailData = {
+    agencyName: session?.agencyEmail || 'Agency',
+    generatedAt: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
+    kpis: {
+      totalAthletes,
+      emailsSent: emailsSent30d,
+      profileViews: profileViewsTotal,
+      clickRate: `${openRate}%`,
+      tasksDone: completedTasks,
+      campaigns: activeCampaigns,
+    },
+    emailActivity: emailChartData,
+    profileViews: viewChartData,
+    leaderboard: leaderboardRows,
+  };
+
   /* ---- render ---- */
 
   return (
     <Box sx={{ position: 'relative', zIndex: 1 }}>
       {/* Page title */}
-      <Typography
-        variant="h4"
-        sx={{
-          fontWeight: 800,
-          letterSpacing: '-0.02em',
-          color: colors.black,
-          mb: 3,
-        }}
-      >
-        Reports
-      </Typography>
+      <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 3 }}>
+        <Typography
+          variant="h4"
+          sx={{
+            fontWeight: 800,
+            letterSpacing: '-0.02em',
+            color: colors.black,
+          }}
+        >
+          Reports
+        </Typography>
+        <Button
+          variant="contained"
+          onClick={() => setEmailDialogOpen(true)}
+          sx={{
+            bgcolor: colors.lime,
+            color: colors.black,
+            fontWeight: 700,
+            borderRadius: 0,
+            clipPath: 'polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 6px 100%, 0 calc(100% - 6px))',
+            '&:hover': { bgcolor: '#B8E600' },
+          }}
+        >
+          Email Report
+        </Button>
+      </Stack>
+
+      <EmailReportDialog
+        open={emailDialogOpen}
+        onClose={() => setEmailDialogOpen(false)}
+        reportData={reportEmailData}
+      />
 
       {/* ── KPI Summary Row ── */}
       <Box
@@ -419,29 +454,33 @@ export default function ReportsPage() {
       </Box>
 
       {/* ── Trend Charts ── */}
-      <Box
-        sx={{
-          display: 'grid',
-          gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' },
-          gap: 3,
-          mb: 4,
-        }}
-      >
-        <EmailActivityChart data={emailChartData} />
-        <ProfileViewsChart data={viewChartData} />
-      </Box>
+      <FeatureErrorBoundary name="report-charts">
+        <Box
+          sx={{
+            display: 'grid',
+            gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' },
+            gap: 3,
+            mb: 4,
+          }}
+        >
+          <EmailActivityChart data={emailChartData} />
+          <ProfileViewsChart data={viewChartData} />
+        </Box>
+      </FeatureErrorBoundary>
 
       {/* ── Leaderboard + Timeline ── */}
-      <Box
-        sx={{
-          display: 'grid',
-          gridTemplateColumns: { xs: '1fr', md: '7fr 5fr' },
-          gap: 3,
-        }}
-      >
-        <ClientLeaderboard rows={leaderboardRows} />
-        <ActivityTimeline activities={recentActivities} />
-      </Box>
+      <FeatureErrorBoundary name="report-leaderboard">
+        <Box
+          sx={{
+            display: 'grid',
+            gridTemplateColumns: { xs: '1fr', md: '7fr 5fr' },
+            gap: 3,
+          }}
+        >
+          <ClientLeaderboard rows={leaderboardRows} />
+          <ActivityTimeline activities={recentActivities} />
+        </Box>
+      </FeatureErrorBoundary>
     </Box>
   );
 }

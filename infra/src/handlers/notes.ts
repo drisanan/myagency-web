@@ -5,7 +5,7 @@ import { APIGatewayProxyEventV2 } from 'aws-lambda';
 import { randomUUID } from 'crypto';
 import { Handler } from './common';
 import { response } from './cors';
-import { putItem, getItem, queryByPK, deleteItem } from '../lib/dynamo';
+import { putItem, getItem, queryByPK, queryByPKPaginated, deleteItem } from '../lib/dynamo';
 import { parseSessionFromRequest } from '../lib/session';
 import { withSentry } from '../lib/sentry';
 
@@ -57,19 +57,27 @@ const notesHandler: Handler = async (event: APIGatewayProxyEventV2) => {
       }
       return response(200, { ok: true, note: item ?? null }, origin);
     }
+
+    // Paginated path
+    if (qs.limit || qs.cursor) {
+      const { items, nextCursor } = await queryByPKPaginated(`AGENCY#${agencyId}`, 'NOTE#', {
+        limit: qs.limit ? parseInt(qs.limit, 10) : 50,
+        cursor: qs.cursor || undefined,
+      });
+      let notes = (items as NoteRecord[]).filter(n => !n.deletedAt);
+      if (qs.athleteId) {
+        notes = notes.filter(n => n.athleteId === qs.athleteId);
+      }
+      notes.sort((a, b) => b.createdAt - a.createdAt);
+      return response(200, { ok: true, notes, nextCursor }, origin);
+    }
     
-    // List notes with optional filter by athleteId
+    // Legacy path
     let notes = (await queryByPK(`AGENCY#${agencyId}`, 'NOTE#')) as NoteRecord[];
-    
-    // Filter out soft-deleted notes
     notes = notes.filter(n => !n.deletedAt);
-    
-    // Filter by athleteId if provided
     if (qs.athleteId) {
       notes = notes.filter(n => n.athleteId === qs.athleteId);
     }
-    
-    // Sort by createdAt descending
     notes.sort((a, b) => b.createdAt - a.createdAt);
     
     return response(200, { ok: true, notes }, origin);
