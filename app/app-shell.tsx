@@ -7,7 +7,7 @@ import { useSession } from '@/features/auth/session';
 import { useQueryClient } from '@tanstack/react-query';
 import { useImpersonation } from '@/hooks/useImpersonation';
 import { colors, gradients } from '@/theme/colors';
-import { IoAppsOutline, IoBarbellOutline, IoFlaskOutline, IoClipboardOutline, IoSchoolOutline, IoPeopleOutline, IoMailOutline, IoListOutline, IoCheckmarkCircleOutline, IoEyeOutline, IoCalendarOutline, IoChatbubblesOutline, IoPersonCircleOutline, IoBulbOutline, IoMenuOutline, IoCloseOutline } from 'react-icons/io5';
+import { IoAppsOutline, IoBarbellOutline, IoFlaskOutline, IoClipboardOutline, IoSchoolOutline, IoPeopleOutline, IoMailOutline, IoListOutline, IoCheckmarkCircleOutline, IoEyeOutline, IoCalendarOutline, IoChatbubblesOutline, IoPersonCircleOutline, IoBulbOutline, IoMenuOutline, IoCloseOutline, IoStatsChartOutline } from 'react-icons/io5';
 import { IoNotificationsOutline } from 'react-icons/io5';
 import { SuggestionButton } from '@/features/suggestions';
 import { useQuery } from '@tanstack/react-query';
@@ -72,6 +72,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const allNavItems = [
     { href: '/dashboard', label: 'Dashboard', icon: <IoAppsOutline /> },
     ...(session?.role === 'parent' && !session?.impersonatedBy ? [{ href: '/agencies', label: 'Agencies', icon: <IoAppsOutline /> }] : []),
+    ...(session?.role === 'agency' ? [{ href: '/reports', label: 'Reports', icon: <IoStatsChartOutline /> }] : []),
     { href: '/clients', label: 'Athletes', icon: <IoBarbellOutline /> },
     // Only show Agents management to agency owners, not to agents themselves
     ...(session?.role !== 'agent' ? [{ href: '/agents', label: 'Agents', icon: <IoPeopleOutline /> }] : []),

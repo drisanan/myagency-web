@@ -20,9 +20,10 @@ module.exports = {
     '^@/utils/(.*)$': '<rootDir>/utils/$1',
     '^@/tests/(.*)$': '<rootDir>/tests/$1',
     '^@/theme/(.*)$': '<rootDir>/theme/$1',
+    '^@/hooks/(.*)$': '<rootDir>/hooks/$1',
   },
   modulePathIgnorePatterns: ['<rootDir>/.serverless/'],
-  testPathIgnorePatterns: ['/node_modules/', '/.next/', '/.serverless/'],
+  testPathIgnorePatterns: ['/node_modules/', '/.next/', '/.serverless/', '<rootDir>/tests/e2e/', '\\.stub\\.tsx?$', '_barrel\\.ts$'],
   collectCoverage,
   collectCoverageFrom: collectCoverage
     ? [

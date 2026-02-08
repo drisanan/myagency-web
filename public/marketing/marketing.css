@@ -192,9 +192,7 @@ body.marketing-page footer a:hover {
 /* ── Image angular treatment ── */
 body.marketing-page .img-angular {
   clip-path: polygon(0 0, calc(100% - 20px) 0, 100% 20px, 100% 100%, 20px 100%, 0 calc(100% - 20px));
-}
-
-/* ── Scrollbar ── */
+}/* ── Scrollbar ── */
 body.marketing-page::-webkit-scrollbar { width: 8px; }
 body.marketing-page::-webkit-scrollbar-track { background: #0A0A0A; }
 body.marketing-page::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }

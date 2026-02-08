@@ -5,11 +5,11 @@ import { TourProvider } from '@/features/tour/TourProvider';
 import { DynamicThemeProvider } from '@/features/theme/DynamicThemeProvider';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { Box, AppBar, Toolbar, Typography, Drawer, List, ListItemButton, ListItemText, Stack, CssBaseline, Avatar, IconButton, Menu, MenuItem, Divider, Button, useMediaQuery, useTheme } from '@mui/material';
+import { Box, AppBar, Toolbar, Typography, Drawer, List, ListItemButton, ListItemText, Stack, CssBaseline, Avatar, IconButton, Menu, MenuItem, Divider, Button, Alert, useMediaQuery, useTheme } from '@mui/material';
 import { useQueryClient } from '@tanstack/react-query';
 import { colors, gradients } from '@/theme/colors';
 import { useImpersonation } from '@/hooks/useImpersonation';
-import { IoClipboardOutline, IoSchoolOutline, IoEyeOutline, IoCalendarOutline, IoChatbubblesOutline, IoMenuOutline, IoCloseOutline } from 'react-icons/io5';
+import { IoClipboardOutline, IoSchoolOutline, IoEyeOutline, IoCalendarOutline, IoChatbubblesOutline, IoMenuOutline, IoCloseOutline, IoPersonCircleOutline } from 'react-icons/io5';
 
 const drawerWidth = 240;
 
@@ -40,6 +40,7 @@ const navItems = [
   { label: 'Profile Views', href: '/client/views', icon: <IoEyeOutline /> },
   { label: 'Meetings', href: '/client/meetings', icon: <IoCalendarOutline /> },
   { label: 'Messages', href: '/client/messages', icon: <IoChatbubblesOutline /> },
+  { label: 'Profile', href: '/client/profile', icon: <IoPersonCircleOutline /> },
 ];
 
 function ClientShell({ children }: { children: React.ReactNode }) {
@@ -92,14 +93,20 @@ function ClientShell({ children }: { children: React.ReactNode }) {
     px: 1.25,
     color: navText,
     borderRadius: 0,
-    clipPath: 'polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px))',
     py: 0.5,
+    fontSize: '0.8rem',
+    fontWeight: 700,
+    textTransform: 'uppercase' as const,
+    letterSpacing: '0.06em',
+    clipPath: 'polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 6px 100%, 0 calc(100% - 6px))',
+    transition: 'all 0.15s ease',
     '&:hover': {
       bgcolor: 'rgba(255, 255, 255, 0.08)',
     },
     '&.Mui-selected, &.Mui-selected:hover': {
-      bgcolor: secondaryColor,
+      background: `linear-gradient(135deg, ${secondaryColor} 0%, ${secondaryColor}DD 100%)`,
       color: navActiveText,
+      boxShadow: `0 0 12px ${secondaryColor}30`,
     },
     justifyContent: 'flex-start',
   };
@@ -121,6 +128,7 @@ function ClientShell({ children }: { children: React.ReactNode }) {
           boxShadow: '0 1px 0 rgba(255,255,255,0.05)',
           color: colors.headerText,
           overflow: 'hidden',
+          // Animated streak-of-light bottom border
           '&::after': {
             content: '""',
             position: 'absolute',
@@ -138,7 +146,7 @@ function ClientShell({ children }: { children: React.ReactNode }) {
         }}
       >
         <Toolbar sx={{ justifyContent: 'space-between', px: { xs: 1, sm: 2 } }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', minHeight: 48 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', minHeight: 48, mr: 'auto' }}>
             {/* Hamburger menu for mobile */}
             <IconButton
               color="inherit"
@@ -160,15 +168,30 @@ function ClientShell({ children }: { children: React.ReactNode }) {
               <Stack direction="row" spacing={{ xs: 1, sm: 2 }} alignItems="center">
                 {isImpersonating && (
                   <Stack direction="row" spacing={1} alignItems="center">
-                    <Typography variant="body2" sx={{ fontWeight: 600, display: { xs: 'none', sm: 'block' } }}>
-                      Impersonating:
+                    <Typography variant="body2" sx={{ fontWeight: 600, display: { xs: 'none', sm: 'block' }, color: colors.white }}>
+                      Viewing as:
                     </Typography>
-                    <Typography variant="body2" color="text.secondary" sx={{ display: { xs: 'none', md: 'block' } }}>
+                    <Typography variant="body2" sx={{ display: { xs: 'none', md: 'block' }, color: '#FFFFFF80' }}>
                       {session.firstName || session.lastName
                         ? `${session.firstName || ''} ${session.lastName || ''}`.trim()
                         : session.email}
                     </Typography>
-                    <Button size="small" variant="outlined" onClick={stopImpersonation} sx={{ fontSize: { xs: 11, sm: 13 }, px: { xs: 1, sm: 2 } }}>
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      onClick={stopImpersonation}
+                      sx={{
+                        fontSize: { xs: 11, sm: 13 },
+                        px: { xs: 1, sm: 2 },
+                        borderColor: colors.lime,
+                        color: colors.lime,
+                        fontWeight: 700,
+                        '&:hover': {
+                          borderColor: colors.lime,
+                          bgcolor: `${colors.lime}15`,
+                        },
+                      }}
+                    >
                       End
                     </Button>
                   </Stack>
@@ -198,10 +221,28 @@ function ClientShell({ children }: { children: React.ReactNode }) {
             {session?.firstName} {session?.lastName}
           </Typography>
           <Typography variant="caption" color="text.secondary">
-            Athlete
+            {isImpersonating ? 'Impersonated Athlete' : 'Athlete'}
           </Typography>
         </Box>
         <Divider />
+        {isImpersonating && (
+          <MenuItem
+            onClick={() => {
+              handleUserClose();
+              stopImpersonation();
+            }}
+            sx={{ color: colors.lime, fontWeight: 600 }}
+          >
+            Back to Agency
+          </MenuItem>
+        )}
+        {isImpersonating && <Divider />}
+        {!isImpersonating && (
+          <MenuItem component={Link} href="/client/profile" onClick={handleUserClose}>
+            Profile
+          </MenuItem>
+        )}
+        {!isImpersonating && <Divider />}
         <MenuItem onClick={handleLogout} sx={{ color: 'error.main' }}>
           Logout
         </MenuItem>
@@ -238,7 +279,7 @@ function ClientShell({ children }: { children: React.ReactNode }) {
               >
                 <Stack direction="row" spacing={2} alignItems="center">
                   {item.icon}
-                  <ListItemText primary={item.label} />
+                  <ListItemText primary={item.label} primaryTypographyProps={{ sx: { fontSize: '0.8rem', fontWeight: 600, letterSpacing: '0.05em' } }} />
                 </Stack>
               </ListItemButton>
             );
@@ -258,6 +299,7 @@ function ClientShell({ children }: { children: React.ReactNode }) {
             background: gradients.sidebar,
             color: navText,
             borderRight: 'none',
+            // Right-edge lime accent
             '&::after': {
               content: '""',
               position: 'absolute',
@@ -284,7 +326,7 @@ function ClientShell({ children }: { children: React.ReactNode }) {
               >
                 <Stack direction="row" spacing={2} alignItems="center">
                   {item.icon}
-                  <ListItemText primary={item.label} />
+                  <ListItemText primary={item.label} primaryTypographyProps={{ sx: { fontSize: '0.8rem', fontWeight: 600, letterSpacing: '0.05em' } }} />
                 </Stack>
               </ListItemButton>
             );
@@ -296,8 +338,10 @@ function ClientShell({ children }: { children: React.ReactNode }) {
         sx={{
           flexGrow: 1,
           p: { xs: 1.5, sm: 2, md: 3 },
+          // Dotted grid texture over content gradient
           background: `${gradients.dottedGrid}, ${gradients.contentPane}`,
           backgroundSize: '24px 24px, 100% 100%',
+          // Subtle lime radial glow in the top-left corner for energy
           '&::before': {
             content: '""',
             position: 'fixed',
@@ -311,10 +355,45 @@ function ClientShell({ children }: { children: React.ReactNode }) {
           },
           position: 'relative',
           width: { xs: '100%', md: `calc(100% - ${drawerWidth}px)` },
+          ml: { md: 0 },
           minHeight: '100vh',
         }}
       >
         <Toolbar />
+        {/* Impersonation Banner */}
+        {isImpersonating && (
+          <Alert
+            severity="warning"
+            sx={{
+              mb: 2,
+              display: 'flex',
+              alignItems: 'center',
+              '& .MuiAlert-message': {
+                flexGrow: 1,
+              },
+              '& .MuiAlert-action': {
+                pt: 0,
+                alignItems: 'center',
+              },
+            }}
+            action={
+              <Button
+                color="inherit"
+                size="small"
+                variant="outlined"
+                onClick={stopImpersonation}
+                sx={{
+                  whiteSpace: 'nowrap',
+                  minWidth: 'auto',
+                }}
+              >
+                Stop Impersonating
+              </Button>
+            }
+          >
+            You are viewing as: {session?.firstName} {session?.lastName} ({session?.email})
+          </Alert>
+        )}
         {children}
       </Box>
     </Box>

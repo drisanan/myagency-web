@@ -1,6 +1,7 @@
 'use client';
 import React from 'react';
 import { listLists, saveList } from '@/services/lists';
+import { listAssignments } from '@/services/listAssignments';
 import { listUniversities, DIVISION_API_MAPPING } from '@/services/recruiter';
 import { useSession } from '@/features/auth/session';
 import { useTour } from '@/features/tour/TourProvider';
@@ -11,31 +12,78 @@ import { getClient } from '@/services/clients';
 import {
   Box,
   Button,
-  Card,
-  CardContent,
-  CardHeader,
   Checkbox,
   CircularProgress,
-  Divider,
   FormControlLabel,
   Stack,
   TextField,
   Typography,
   MenuItem,
+  Chip,
 } from '@mui/material';
-import Grid from '@mui/material/Grid';
+import { IoSchoolOutline } from 'react-icons/io5';
+import { colors, gradients } from '@/theme/colors';
+import { LoadingState } from '@/components/LoadingState';
 
 type Uni = { name: string };
+
+/** Reusable angular card wrapper matching the agency design system */
+function AngularCard({
+  children,
+  dark,
+  ...rest
+}: {
+  children: React.ReactNode;
+  dark?: boolean;
+} & React.ComponentProps<typeof Box>) {
+  return (
+    <Box
+      {...rest}
+      sx={{
+        borderRadius: 0,
+        clipPath:
+          'polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 12px 100%, 0 calc(100% - 12px))',
+        bgcolor: dark ? undefined : colors.white,
+        background: dark ? gradients.darkCard : undefined,
+        color: dark ? colors.white : colors.black,
+        overflow: 'hidden',
+        position: 'relative',
+        boxShadow: 'none',
+        transition: 'box-shadow 0.25s ease',
+        '&::before': {
+          content: '""',
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          bottom: 0,
+          width: '3px',
+          background: dark
+            ? `linear-gradient(180deg, ${colors.lime} 0%, ${colors.lime}60 100%)`
+            : `linear-gradient(180deg, ${colors.black} 0%, ${colors.black}40 100%)`,
+          zIndex: 1,
+        },
+        '&:hover': {
+          boxShadow: `0 4px 20px rgba(0,0,0,0.08), 0 0 16px ${colors.lime}06`,
+        },
+        ...(rest.sx as any),
+      }}
+    >
+      {children}
+    </Box>
+  );
+}
 
 export default function ClientListsPage() {
   const { session } = useSession();
   const { startTour } = useTour();
   const [lists, setLists] = React.useState<any[]>([]);
+  const [assignedLists, setAssignedLists] = React.useState<any[]>([]);
 
   React.useEffect(() => {
     if (session?.role === 'client') startTour('client-lists', clientListsSteps);
   }, [session, startTour]);
   const [loading, setLoading] = React.useState(true);
+  const [loadingAssigned, setLoadingAssigned] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
 
   const [name, setName] = React.useState('');
@@ -57,6 +105,7 @@ export default function ClientListsPage() {
     return universities.filter((u) => u.name.toLowerCase().includes(term));
   }, [universities, schoolSearch]);
 
+  // Fetch client's own interest lists
   React.useEffect(() => {
     (async () => {
       try {
@@ -70,6 +119,26 @@ export default function ClientListsPage() {
       }
     })();
   }, []);
+
+  // Fetch agency-assigned lists (coach lists the agency shared with this client)
+  React.useEffect(() => {
+    if (!session?.clientId) {
+      setLoadingAssigned(false);
+      return;
+    }
+    (async () => {
+      try {
+        setLoadingAssigned(true);
+        const data = await listAssignments({ clientId: session.clientId, includeLists: true });
+        setAssignedLists((data?.lists as any[]) || []);
+      } catch {
+        // Silently fail — assigned lists are supplemental
+        setAssignedLists([]);
+      } finally {
+        setLoadingAssigned(false);
+      }
+    })();
+  }, [session?.clientId]);
 
   React.useEffect(() => {
     const sportsList = getSports();
@@ -161,17 +230,49 @@ export default function ClientListsPage() {
     }
   };
 
+  const selectedCount = Object.values(selected).filter(Boolean).length;
+
   return (
-    <Box sx={{ maxWidth: 1200, mx: 'auto' }}>
+    <Box sx={{ maxWidth: 1200, mx: 'auto', position: 'relative', zIndex: 1 }}>
+      <Typography
+        variant="h4"
+        sx={{
+          fontWeight: 800,
+          letterSpacing: '-0.02em',
+          color: colors.black,
+          mb: 3,
+        }}
+      >
+        My Lists
+      </Typography>
+
       <Stack spacing={3}>
-        <Card variant="outlined" sx={{ borderRadius: 2 }}>
-          <CardHeader
-            title="Create Interest List"
-            subheader="Select universities and save your list"
-            sx={{ px: 3, pt: 3, pb: 2 }}
-          />
-          <Divider />
-          <CardContent sx={{ px: 3, pb: 3 }}>
+        {/* Create Interest List */}
+        <AngularCard>
+          <Box
+            sx={{
+              background: gradients.darkCard,
+              px: 3,
+              py: 1.5,
+            }}
+          >
+            <Typography
+              variant="h6"
+              sx={{
+                fontWeight: 700,
+                textTransform: 'uppercase',
+                letterSpacing: '0.06em',
+                fontSize: '0.8rem',
+                color: colors.white,
+              }}
+            >
+              Create Interest List
+            </Typography>
+            <Typography variant="caption" sx={{ color: '#FFFFFF60' }}>
+              Select universities and save your list
+            </Typography>
+          </Box>
+          <Box sx={{ px: 3, py: 2.5 }}>
             <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 2 }}>
               <TextField
                 size="small"
@@ -212,15 +313,50 @@ export default function ClientListsPage() {
               </TextField>
             </Box>
             <Box sx={{ mt: 2 }}>
-              <Button variant="contained" onClick={loadUniversities} disabled={loadingUnis}>
+              <Button
+                variant="contained"
+                onClick={loadUniversities}
+                disabled={loadingUnis}
+                sx={{
+                  bgcolor: colors.lime,
+                  color: colors.black,
+                  fontWeight: 700,
+                  borderRadius: 0,
+                  clipPath: 'polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 6px 100%, 0 calc(100% - 6px))',
+                  '&:hover': { bgcolor: '#B8E600' },
+                }}
+              >
                 {loadingUnis ? <CircularProgress size={18} /> : 'Load Universities'}
               </Button>
             </Box>
             {universities.length > 0 && (
               <Box sx={{ mt: 2 }}>
-                <Typography variant="subtitle1" gutterBottom>
-                  Select universities
-                </Typography>
+                <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1.5 }}>
+                  <Typography
+                    variant="h6"
+                    sx={{
+                      fontWeight: 700,
+                      fontSize: '0.8rem',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.06em',
+                    }}
+                  >
+                    Select Universities
+                  </Typography>
+                  {selectedCount > 0 && (
+                    <Chip
+                      label={`${selectedCount} selected`}
+                      size="small"
+                      sx={{
+                        bgcolor: `${colors.lime}20`,
+                        color: colors.black,
+                        fontWeight: 700,
+                        fontSize: 11,
+                        height: 22,
+                      }}
+                    />
+                  )}
+                </Stack>
                 <TextField
                   size="small"
                   label="Search school"
@@ -229,8 +365,17 @@ export default function ClientListsPage() {
                   placeholder="Type a school name"
                   sx={{ mb: 2 }}
                 />
-                <Box sx={{ maxHeight: 280, overflow: 'auto', border: '1px solid #eee', p: 1, borderRadius: 1 }}>
-                  <Stack spacing={1}>
+                <Box
+                  sx={{
+                    maxHeight: 280,
+                    overflow: 'auto',
+                    border: '1px solid #E0E0E0',
+                    p: 1,
+                    borderRadius: 0,
+                    clipPath: 'polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px))',
+                  }}
+                >
+                  <Stack spacing={0.5}>
                     {visibleUniversities.map((u) => (
                       <FormControlLabel
                         key={u.name}
@@ -238,48 +383,280 @@ export default function ClientListsPage() {
                           <Checkbox
                             checked={!!selected[u.name]}
                             onChange={() => toggleUni(u.name)}
+                            sx={{
+                              '&.Mui-checked': { color: colors.lime },
+                            }}
                           />
                         }
                         label={u.name}
+                        sx={{
+                          m: 0,
+                          px: 1,
+                          py: 0.25,
+                          borderRadius: 0,
+                          '&:hover': { bgcolor: `${colors.lime}08` },
+                        }}
                       />
                     ))}
                   </Stack>
                 </Box>
                 <Box sx={{ mt: 2, display: 'flex', gap: 1, alignItems: 'center' }}>
-                  <Button variant="contained" onClick={doSave} disabled={saving}>
+                  <Button
+                    variant="contained"
+                    onClick={doSave}
+                    disabled={saving}
+                    sx={{
+                      bgcolor: colors.lime,
+                      color: colors.black,
+                      fontWeight: 700,
+                      borderRadius: 0,
+                      clipPath: 'polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 6px 100%, 0 calc(100% - 6px))',
+                      '&:hover': { bgcolor: '#B8E600' },
+                    }}
+                  >
                     {saving ? <CircularProgress size={18} /> : 'Save List'}
                   </Button>
-                  {error ? <Typography color="error">{error}</Typography> : null}
+                  {error ? (
+                    <Typography sx={{ color: colors.error, fontSize: 13 }}>{error}</Typography>
+                  ) : null}
                 </Box>
               </Box>
             )}
             {!universities.length && error ? (
-              <Typography color="error" sx={{ mt: 2 }}>
+              <Typography sx={{ color: colors.error, mt: 2, fontSize: 13 }}>
                 {error}
               </Typography>
             ) : null}
-          </CardContent>
-        </Card>
+          </Box>
+        </AngularCard>
 
-        <Card data-tour="client-lists" variant="outlined" sx={{ borderRadius: 2 }}>
-          <CardHeader title="Your Interest Lists" sx={{ px: 3, pt: 3, pb: 2 }} />
-          <Divider />
-          <CardContent sx={{ px: 3, pb: 3 }}>
-            {loading ? (
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <CircularProgress size={18} />
-                <Typography>Loading…</Typography>
-              </Box>
+        {/* Agency-Assigned Coach Lists */}
+        <AngularCard>
+          <Box
+            sx={{
+              background: gradients.darkCard,
+              px: 3,
+              py: 1.5,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1,
+            }}
+          >
+            <IoSchoolOutline color={colors.lime} size={18} />
+            <Typography
+              variant="h6"
+              sx={{
+                fontWeight: 700,
+                textTransform: 'uppercase',
+                letterSpacing: '0.06em',
+                fontSize: '0.8rem',
+                color: colors.white,
+              }}
+            >
+              Coach Lists From Your Agency
+            </Typography>
+            {!loadingAssigned && (
+              <Chip
+                label={`${assignedLists.length} lists`}
+                size="small"
+                sx={{
+                  ml: 'auto',
+                  bgcolor: `${colors.lime}20`,
+                  color: colors.lime,
+                  fontWeight: 700,
+                  fontSize: 11,
+                  height: 22,
+                }}
+              />
+            )}
+          </Box>
+          <Box sx={{ px: 3, py: 2.5 }}>
+            {loadingAssigned ? (
+              <LoadingState message="Loading assigned lists..." />
+            ) : assignedLists.length === 0 ? (
+              <Typography sx={{ color: '#0A0A0A60' }}>
+                Your agency hasn't assigned any coach lists to you yet. Check back soon!
+              </Typography>
             ) : (
-              <Stack spacing={1}>
+              <Stack spacing={1.5}>
+                {assignedLists.map((l: any) => {
+                  const coaches = (l.items || []) as any[];
+                  const schools = new Set(
+                    coaches
+                      .map((c: any) => c.school || c.university || '')
+                      .filter(Boolean)
+                  );
+                  return (
+                    <Box
+                      key={l.id}
+                      sx={{
+                        border: '1px solid #E0E0E0',
+                        borderRadius: 0,
+                        clipPath:
+                          'polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px))',
+                        p: 2,
+                        transition: 'background 0.15s ease',
+                        '&:hover': { bgcolor: `${colors.lime}06` },
+                      }}
+                    >
+                      <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 0.5 }}>
+                        <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+                          {l.name}
+                        </Typography>
+                        <Chip
+                          label={`${coaches.length} coaches`}
+                          size="small"
+                          sx={{
+                            fontSize: 11,
+                            fontWeight: 600,
+                            height: 20,
+                            bgcolor: '#F0F0F0',
+                          }}
+                        />
+                        <Chip
+                          label={`${schools.size} schools`}
+                          size="small"
+                          sx={{
+                            fontSize: 11,
+                            fontWeight: 600,
+                            height: 20,
+                            bgcolor: `${colors.lime}15`,
+                          }}
+                        />
+                      </Stack>
+                      {/* Coach details */}
+                      {coaches.length > 0 && (
+                        <Stack spacing={0.5} sx={{ mt: 1 }}>
+                          {coaches.slice(0, 8).map((c: any, idx: number) => {
+                            const fullName = [c.firstName, c.lastName]
+                              .filter(Boolean)
+                              .join(' ');
+                            return (
+                              <Box
+                                key={c.id || c.email || idx}
+                                sx={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: 1,
+                                  fontSize: 13,
+                                  color: '#0A0A0A99',
+                                }}
+                              >
+                                <Typography
+                                  variant="body2"
+                                  sx={{ fontWeight: 600, color: colors.black }}
+                                >
+                                  {fullName || c.email || 'Unknown'}
+                                </Typography>
+                                {c.title && (
+                                  <Typography variant="caption" sx={{ color: '#0A0A0A60' }}>
+                                    — {c.title}
+                                  </Typography>
+                                )}
+                                {c.school && (
+                                  <Chip
+                                    label={c.school}
+                                    size="small"
+                                    sx={{
+                                      height: 18,
+                                      fontSize: 10,
+                                      fontWeight: 600,
+                                      bgcolor: '#F0F0F0',
+                                      ml: 'auto',
+                                    }}
+                                  />
+                                )}
+                              </Box>
+                            );
+                          })}
+                          {coaches.length > 8 && (
+                            <Typography variant="caption" sx={{ color: '#0A0A0A50', mt: 0.5 }}>
+                              + {coaches.length - 8} more coaches
+                            </Typography>
+                          )}
+                        </Stack>
+                      )}
+                    </Box>
+                  );
+                })}
+              </Stack>
+            )}
+          </Box>
+        </AngularCard>
+
+        {/* Your Interest Lists */}
+        <AngularCard data-tour="client-lists">
+          <Box
+            sx={{
+              background: gradients.darkCard,
+              px: 3,
+              py: 1.5,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1,
+            }}
+          >
+            <Typography
+              variant="h6"
+              sx={{
+                fontWeight: 700,
+                textTransform: 'uppercase',
+                letterSpacing: '0.06em',
+                fontSize: '0.8rem',
+                color: colors.white,
+              }}
+            >
+              Your Interest Lists
+            </Typography>
+            {!loading && (
+              <Chip
+                label={`${lists.length} lists`}
+                size="small"
+                sx={{
+                  ml: 'auto',
+                  bgcolor: `${colors.lime}20`,
+                  color: colors.lime,
+                  fontWeight: 700,
+                  fontSize: 11,
+                  height: 22,
+                }}
+              />
+            )}
+          </Box>
+          <Box sx={{ px: 3, py: 2.5 }}>
+            {loading ? (
+              <LoadingState message="Loading lists..." />
+            ) : (
+              <Stack spacing={1.5}>
                 {lists.map((l) => (
-                  <Box key={l.id} sx={{ border: '1px solid #eee', borderRadius: 1, p: 1.5 }}>
-                    <Typography variant="subtitle1">{l.name}</Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      {(l.items || []).length} universities
-                    </Typography>
+                  <Box
+                    key={l.id}
+                    sx={{
+                      border: '1px solid #E0E0E0',
+                      borderRadius: 0,
+                      clipPath: 'polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px))',
+                      p: 2,
+                      transition: 'background 0.15s ease',
+                      '&:hover': { bgcolor: `${colors.lime}06` },
+                    }}
+                  >
+                    <Stack direction="row" spacing={1} alignItems="center">
+                      <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+                        {l.name}
+                      </Typography>
+                      <Chip
+                        label={`${(l.items || []).length} schools`}
+                        size="small"
+                        sx={{
+                          fontSize: 11,
+                          fontWeight: 600,
+                          height: 20,
+                          bgcolor: '#F0F0F0',
+                        }}
+                      />
+                    </Stack>
                     {(l.items || []).length > 0 && (
-                      <Typography variant="body2" sx={{ mt: 0.5 }}>
+                      <Typography variant="body2" sx={{ mt: 0.5, color: '#0A0A0A80' }}>
                         {(l.items || [])
                           .map((it: any) => it.school || it.university || it.name || '')
                           .filter(Boolean)
@@ -288,13 +665,14 @@ export default function ClientListsPage() {
                     )}
                   </Box>
                 ))}
-                {!lists.length ? <Typography>No lists yet.</Typography> : null}
+                {!lists.length && (
+                  <Typography sx={{ color: '#0A0A0A60' }}>No lists yet.</Typography>
+                )}
               </Stack>
             )}
-          </CardContent>
-        </Card>
+          </Box>
+        </AngularCard>
       </Stack>
     </Box>
   );
 }
-

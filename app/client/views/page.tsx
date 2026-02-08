@@ -1,10 +1,13 @@
 'use client';
 import React from 'react';
-import { Box, Typography, Card, CardContent, Paper, Chip, Stack, Avatar, List, ListItem, ListItemAvatar, ListItemText, CircularProgress } from '@mui/material';
-import { FaEye, FaUniversity, FaUser } from 'react-icons/fa';
+import { Box, Typography, Chip, Stack, Avatar } from '@mui/material';
+import { IoEyeOutline, IoSchoolOutline, IoPeopleOutline } from 'react-icons/io5';
 import { useQuery } from '@tanstack/react-query';
 import { useSession } from '@/features/auth/session';
 import { getProfileViews, getWeeklyDigest } from '@/services/profileViews';
+import { MetricCard } from '@/app/(app)/dashboard/MetricCard';
+import { colors, gradients } from '@/theme/colors';
+import { LoadingState } from '@/components/LoadingState';
 
 export default function ClientProfileViewsPage() {
   const { session } = useSession();
@@ -28,130 +31,307 @@ export default function ClientProfileViewsPage() {
   const stats = viewsQuery.data?.stats;
 
   if (viewsQuery.isLoading) {
-    return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
-        <CircularProgress />
-      </Box>
-    );
+    return <LoadingState message="Loading profile views..." />;
   }
 
   return (
-    <Box>
-      <Typography variant="h4" sx={{ mb: 3, display: 'flex', alignItems: 'center', gap: 1 }}>
-        <FaEye /> Who's Viewing Your Profile
+    <Box sx={{ position: 'relative', zIndex: 1 }}>
+      <Typography
+        variant="h4"
+        sx={{
+          fontWeight: 800,
+          letterSpacing: '-0.02em',
+          color: colors.black,
+          mb: 3,
+        }}
+      >
+        Who's Viewing Your Profile
       </Typography>
 
-      {/* Stats Summary */}
+      {/* Stats Summary - MetricCards */}
       {stats && (
-        <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 2, mb: 4 }}>
-          <Card variant="outlined" sx={{ bgcolor: 'primary.50' }}>
-            <CardContent sx={{ textAlign: 'center' }}>
-              <Typography variant="h3" color="primary">{stats.totalViews}</Typography>
-              <Typography variant="body1" color="text.secondary">Total Profile Views</Typography>
-            </CardContent>
-          </Card>
-          <Card variant="outlined" sx={{ bgcolor: 'success.50' }}>
-            <CardContent sx={{ textAlign: 'center' }}>
-              <Typography variant="h3" color="success.main">{stats.uniqueViewers}</Typography>
-              <Typography variant="body1" color="text.secondary">Coaches Interested</Typography>
-            </CardContent>
-          </Card>
-          <Card variant="outlined" sx={{ bgcolor: 'info.50' }}>
-            <CardContent sx={{ textAlign: 'center' }}>
-              <Typography variant="h3" color="info.main">{stats.uniqueUniversities}</Typography>
-              <Typography variant="body1" color="text.secondary">Different Schools</Typography>
-            </CardContent>
-          </Card>
+        <Box
+          sx={{
+            display: 'grid',
+            gridTemplateColumns: { xs: '1fr', sm: 'repeat(3, 1fr)' },
+            gap: 2,
+            mb: 4,
+          }}
+        >
+          <MetricCard
+            title="Total Views"
+            value={stats.totalViews}
+            icon={<IoEyeOutline size={20} />}
+          />
+          <MetricCard
+            title="Coaches Interested"
+            value={stats.uniqueViewers}
+            icon={<IoPeopleOutline size={20} />}
+          />
+          <MetricCard
+            title="Different Schools"
+            value={stats.uniqueUniversities}
+            icon={<IoSchoolOutline size={20} />}
+          />
         </Box>
       )}
 
       {/* Top Universities */}
       {stats?.topUniversities && stats.topUniversities.length > 0 && (
-        <Card variant="outlined" sx={{ mb: 4 }}>
-          <CardContent>
-            <Typography variant="h6" sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
-              <FaUniversity /> Top Schools Showing Interest
+        <Box
+          sx={{
+            borderRadius: 0,
+            clipPath:
+              'polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 12px 100%, 0 calc(100% - 12px))',
+            bgcolor: colors.white,
+            overflow: 'hidden',
+            position: 'relative',
+            mb: 4,
+            boxShadow: 'none',
+            transition: 'box-shadow 0.25s ease',
+            '&::before': {
+              content: '""',
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              bottom: 0,
+              width: '3px',
+              background: `linear-gradient(180deg, ${colors.black} 0%, ${colors.black}40 100%)`,
+              zIndex: 1,
+            },
+            '&:hover': {
+              boxShadow: `0 4px 20px rgba(0,0,0,0.08), 0 0 16px ${colors.lime}06`,
+            },
+          }}
+        >
+          <Box sx={{ background: gradients.darkCard, px: 3, py: 1.5 }}>
+            <Typography
+              variant="h6"
+              sx={{
+                fontWeight: 700,
+                textTransform: 'uppercase',
+                letterSpacing: '0.06em',
+                fontSize: '0.8rem',
+                color: colors.white,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 1,
+              }}
+            >
+              <IoSchoolOutline size={16} /> Top Schools Showing Interest
             </Typography>
-            <Stack direction="row" spacing={1} flexWrap="wrap" gap={1}>
+          </Box>
+          <Box sx={{ px: 3, py: 2 }}>
+            <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
               {stats.topUniversities.slice(0, 10).map((uni, i) => (
                 <Chip
                   key={uni.university}
-                  avatar={<Avatar sx={{ bgcolor: i < 3 ? 'warning.main' : 'grey.400' }}>{i + 1}</Avatar>}
+                  avatar={
+                    <Avatar
+                      sx={{
+                        bgcolor: i < 3 ? colors.lime : '#E0E0E0',
+                        color: i < 3 ? colors.black : '#666',
+                        fontWeight: 700,
+                        fontSize: 11,
+                      }}
+                    >
+                      {i + 1}
+                    </Avatar>
+                  }
                   label={`${uni.university} (${uni.count})`}
-                  variant="outlined"
+                  sx={{
+                    borderRadius: 0,
+                    clipPath:
+                      'polygon(0 0, calc(100% - 4px) 0, 100% 4px, 100% 100%, 4px 100%, 0 calc(100% - 4px))',
+                    fontWeight: 600,
+                    fontSize: 12,
+                    bgcolor: i < 3 ? `${colors.lime}10` : '#F5F5F5',
+                  }}
                 />
               ))}
             </Stack>
-          </CardContent>
-        </Card>
+          </Box>
+        </Box>
       )}
 
       {/* Recent Views List */}
-      <Card variant="outlined">
-        <CardContent>
-          <Typography variant="h6" sx={{ mb: 2 }}>
+      <Box
+        sx={{
+          borderRadius: 0,
+          clipPath:
+            'polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 12px 100%, 0 calc(100% - 12px))',
+          bgcolor: colors.white,
+          overflow: 'hidden',
+          position: 'relative',
+          boxShadow: 'none',
+          transition: 'box-shadow 0.25s ease',
+          '&::before': {
+            content: '""',
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            bottom: 0,
+            width: '3px',
+            background: `linear-gradient(180deg, ${colors.black} 0%, ${colors.black}40 100%)`,
+            zIndex: 1,
+          },
+          '&:hover': {
+            boxShadow: `0 4px 20px rgba(0,0,0,0.08), 0 0 16px ${colors.lime}06`,
+          },
+        }}
+      >
+        <Box
+          sx={{
+            background: gradients.darkCard,
+            px: 3,
+            py: 1.5,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1,
+          }}
+        >
+          <IoEyeOutline color={colors.lime} size={18} />
+          <Typography
+            variant="h6"
+            sx={{
+              fontWeight: 700,
+              textTransform: 'uppercase',
+              letterSpacing: '0.06em',
+              fontSize: '0.8rem',
+              color: colors.white,
+            }}
+          >
             Recent Profile Views
           </Typography>
-          
+          <Chip
+            label={`${views.length} views`}
+            size="small"
+            sx={{
+              ml: 'auto',
+              bgcolor: `${colors.lime}20`,
+              color: colors.lime,
+              fontWeight: 700,
+              fontSize: 11,
+              height: 22,
+            }}
+          />
+        </Box>
+
+        <Stack sx={{ maxHeight: 500, overflowY: 'auto' }}>
           {views.length === 0 ? (
-            <Paper sx={{ p: 4, textAlign: 'center', bgcolor: 'grey.50' }}>
-              <Typography color="text.secondary">
+            <Box sx={{ p: 4, textAlign: 'center' }}>
+              <Typography sx={{ color: '#0A0A0A60' }}>
                 No profile views yet. Keep working on your profile and reaching out to coaches!
               </Typography>
-            </Paper>
+            </Box>
           ) : (
-            <List>
-              {views.map((view) => (
-                <ListItem key={view.id} divider data-testid="profile-view-item">
-                  <ListItemAvatar>
-                    <Avatar sx={{ bgcolor: view.university ? 'primary.main' : 'grey.400' }}>
-                      {view.viewerName?.[0]?.toUpperCase() || <FaUser />}
-                    </Avatar>
-                  </ListItemAvatar>
-                  <ListItemText
-                    primary={
-                      <Stack direction="row" spacing={1} alignItems="center">
-                        <Typography variant="subtitle1" sx={{ fontWeight: 500 }}>
-                          {view.viewerName || 'A Coach'}
-                        </Typography>
-                        {view.position && (
-                          <Chip size="small" label={view.position} variant="outlined" />
-                        )}
-                      </Stack>
-                    }
-                    secondary={
-                      <Stack spacing={0.5}>
-                        {view.university && (
-                          <Typography variant="body2" sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                            <FaUniversity size={12} /> {view.university}
-                          </Typography>
-                        )}
-                        <Typography variant="caption" color="text.secondary">
-                          Viewed {new Date(view.viewedAt).toLocaleDateString()} at {new Date(view.viewedAt).toLocaleTimeString()}
-                        </Typography>
-                      </Stack>
-                    }
-                  />
-                </ListItem>
-              ))}
-            </List>
+            views.map((view, i) => (
+              <Box
+                key={view.id}
+                data-testid="profile-view-item"
+                sx={{
+                  display: 'flex',
+                  gap: 1.5,
+                  px: 3,
+                  py: 1.5,
+                  borderBottom: i < views.length - 1 ? '1px solid #F0F0F0' : 'none',
+                  transition: 'background 0.15s ease',
+                  '&:hover': { bgcolor: `${colors.lime}06` },
+                }}
+              >
+                <Avatar
+                  sx={{
+                    width: 36,
+                    height: 36,
+                    bgcolor: view.university ? colors.black : '#E0E0E0',
+                    color: view.university ? colors.lime : '#666',
+                    fontSize: 14,
+                    fontWeight: 700,
+                  }}
+                >
+                  {view.viewerName?.[0]?.toUpperCase() || 'C'}
+                </Avatar>
+                <Box sx={{ flex: 1, minWidth: 0 }}>
+                  <Stack direction="row" spacing={1} alignItems="center">
+                    <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                      {view.viewerName || 'A Coach'}
+                    </Typography>
+                    {view.position && (
+                      <Chip
+                        size="small"
+                        label={view.position}
+                        sx={{
+                          height: 18,
+                          fontSize: 10,
+                          fontWeight: 700,
+                          bgcolor: '#F0F0F0',
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.05em',
+                        }}
+                      />
+                    )}
+                  </Stack>
+                  {view.university && (
+                    <Typography variant="caption" sx={{ color: '#0A0A0A80', display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                      <IoSchoolOutline size={11} /> {view.university}
+                    </Typography>
+                  )}
+                </Box>
+                <Typography
+                  variant="caption"
+                  sx={{ color: '#0A0A0A50', whiteSpace: 'nowrap', pt: 0.25 }}
+                >
+                  {new Date(view.viewedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                </Typography>
+              </Box>
+            ))
           )}
-        </CardContent>
-      </Card>
+        </Stack>
+      </Box>
 
       {/* Weekly Digest */}
       {digestQuery.data && (
-        <Card variant="outlined" sx={{ mt: 3 }}>
-          <CardContent>
-            <Typography variant="h6" sx={{ mb: 2 }}>
-              📊 This Week's Activity
-            </Typography>
-            <Typography variant="body1">
-              You had <strong>{digestQuery.data.summary.totalViews}</strong> profile views this week 
-              from <strong>{digestQuery.data.summary.uniqueUniversities}</strong> different schools!
-            </Typography>
-          </CardContent>
-        </Card>
+        <Box
+          sx={{
+            mt: 3,
+            borderRadius: 0,
+            clipPath:
+              'polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 12px 100%, 0 calc(100% - 12px))',
+            bgcolor: colors.white,
+            overflow: 'hidden',
+            position: 'relative',
+            boxShadow: 'none',
+            '&::before': {
+              content: '""',
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              bottom: 0,
+              width: '3px',
+              background: `linear-gradient(180deg, ${colors.lime} 0%, ${colors.lime}60 100%)`,
+              zIndex: 1,
+            },
+            p: 3,
+          }}
+        >
+          <Typography
+            variant="h6"
+            sx={{
+              fontWeight: 700,
+              textTransform: 'uppercase',
+              letterSpacing: '0.06em',
+              fontSize: '0.8rem',
+              color: colors.black,
+              mb: 1,
+            }}
+          >
+            This Week's Activity
+          </Typography>
+          <Typography variant="body1" sx={{ color: '#0A0A0A99' }}>
+            You had <strong>{digestQuery.data.summary.totalViews}</strong> profile views this week
+            from <strong>{digestQuery.data.summary.uniqueUniversities}</strong> different schools!
+          </Typography>
+        </Box>
       )}
     </Box>
   );
