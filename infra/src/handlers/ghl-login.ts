@@ -123,12 +123,13 @@ const ghlLoginHandler = async (event: APIGatewayProxyEventV2): Promise<APIGatewa
     const rawSubscriptionLevel = (customFields.find((f: any) => f.id === subscriptionLevelFieldId)?.value || '').toString().trim().toLowerCase();
     const subscriptionLevel = rawSubscriptionLevel === 'unlimited' ? 'unlimited' : 'starter';
     
-    const isNew = agencyId === 'READY';
+    // Treat empty agencyId with a name as needing provisioning (same as READY)
+    const isNew = agencyId === 'READY' || (!agencyId && agencyName);
     let resolvedAgencyId = agencyId;
 
-    // --- NEW LOGIC: Create Agency if READY ---
+    // --- Create Agency if READY or if agencyId is empty with agency name present ---
     if (isNew) {
-      console.log('Agency ID is READY. Initializing new agency record...');
+      console.log(`Agency needs provisioning (agencyId=${JSON.stringify(agencyId)}, name=${agencyName}). Initializing new agency record...`);
       
       // A. Generate new ID
       const newAgencyId = `agency-${randomUUID()}`;

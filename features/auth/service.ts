@@ -133,17 +133,12 @@ export async function login(input: { email: string; phone: string; accessCode: s
   if (!result.ok) {
     throw new Error(result.error);
   }
-  console.log('result', JSON.stringify(result, null, 2));
   let agencyId = result.agency?.id;
   let agencyName = result.agency?.name;
   let agencyColor = result.agency?.color;
   let agencyLogo = result.agency?.logoUrl;
-console.log('agencyId', agencyId);
-console.log('agencyName', agencyName);
-console.log('agencyColor', agencyColor);
-console.log('agencyLogo', agencyLogo);
+
   if (agencyId === 'READY') {
-    console.log('Creating new agency from GHL metadata');
     // Create new agency instance using GHL metadata
     const created = await createAgencyFromGHL({
       name: agencyName,
@@ -153,7 +148,7 @@ console.log('agencyLogo', agencyLogo);
     });
     agencyId = created.id;
   }
-  console.log('agencyId', agencyId);
+
   if (!agencyId) {
     const agency = await getAgencyByEmail(result.contact.email?.toLowerCase?.() || result.contact.email);
     agencyId = agency?.id;
@@ -161,8 +156,6 @@ console.log('agencyLogo', agencyLogo);
 
   // Final fallback: use contact email as agencyId to avoid missing field on session
   agencyId = agencyId || result.contact.email?.toLowerCase?.() || result.contact.email;
-console.log('agencyId', agencyId);
-  console.log('result.contact.email', result.contact.email);
 
   // Fetch agency settings for theming (all white-label colors)
   let agencySettings: AgencySettings | undefined = undefined;
