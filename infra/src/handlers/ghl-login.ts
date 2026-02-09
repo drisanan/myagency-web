@@ -147,12 +147,12 @@ const ghlLoginHandler = async (event: APIGatewayProxyEventV2): Promise<APIGatewa
             name: agencyName || 'New Agency',
             email: contact.email,
             contactId: contact.id,
-            color: agencyColor,
-            logoUrl: agencyLogo,
+            ...(agencyColor ? { color: agencyColor } : {}),
+            ...(agencyLogo ? { logoUrl: agencyLogo } : {}),
             subscriptionLevel, // 'starter' or 'unlimited'
             settings: {
-              primaryColor: agencyColor || undefined,
-              logoDataUrl: agencyLogo || undefined,
+              ...(agencyColor ? { primaryColor: agencyColor } : {}),
+              ...(agencyLogo ? { logoDataUrl: agencyLogo } : {}),
             },
             createdAt: Date.now(),
           }
