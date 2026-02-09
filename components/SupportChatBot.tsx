@@ -22,6 +22,7 @@ import {
   IoSendOutline,
   IoNavigateOutline,
   IoArrowForwardOutline,
+  IoRefreshOutline,
 } from 'react-icons/io5';
 import { useRouter } from 'next/navigation';
 import { useSession } from '@/features/auth/session';
@@ -323,6 +324,12 @@ export function SupportChatBot() {
     setIsOpen(false);
   };
 
+  const handleReset = () => {
+    setMessages([]);
+    setInput('');
+    setLoading(false);
+  };
+
   const handleSend = async (text?: string) => {
     const messageText = text || input.trim();
     if (!messageText || loading) return;
@@ -372,9 +379,10 @@ export function SupportChatBot() {
         {
           id: `error-${Date.now()}`,
           role: 'assistant',
-          content: 'I\'m having trouble connecting right now. Please check your internet connection and try again.',
+          content: 'I\'m having trouble connecting right now. Please try again or start a new conversation using the reset button above.',
           timestamp: Date.now(),
-        },
+          isError: true,
+        } as ChatMessage & { isError?: boolean },
       ]);
     } finally {
       setLoading(false);
@@ -496,14 +504,28 @@ export function SupportChatBot() {
                 </Typography>
               </Box>
             </Stack>
-            <IconButton
-              size="small"
-              onClick={() => setIsOpen(false)}
-              aria-label="Close chat"
-              sx={{ color: '#ffffff60', '&:hover': { color: '#fff' } }}
-            >
-              <IoCloseOutline size={20} />
-            </IconButton>
+            <Stack direction="row" spacing={0.5} alignItems="center">
+              {messages.length > 0 && (
+                <Tooltip title="New conversation" placement="bottom" arrow>
+                  <IconButton
+                    size="small"
+                    onClick={handleReset}
+                    aria-label="Reset chat"
+                    sx={{ color: '#ffffff60', '&:hover': { color: colors.lime } }}
+                  >
+                    <IoRefreshOutline size={18} />
+                  </IconButton>
+                </Tooltip>
+              )}
+              <IconButton
+                size="small"
+                onClick={() => setIsOpen(false)}
+                aria-label="Close chat"
+                sx={{ color: '#ffffff60', '&:hover': { color: '#fff' } }}
+              >
+                <IoCloseOutline size={20} />
+              </IconButton>
+            </Stack>
           </Box>
 
           {/* Messages */}
