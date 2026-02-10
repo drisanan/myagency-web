@@ -207,7 +207,7 @@ const promptsHandler = async (event: APIGatewayProxyEventV2) => {
       GSI1SK: `PROMPT#${id}`,
       id,
       agencyEmail,
-      clientId: clientId || null,
+      ...(clientId ? { clientId } : {}),
       name,
       text,
       createdAt: body.createdAt || now, // Preserve creation date on update
