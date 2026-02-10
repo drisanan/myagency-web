@@ -1,7 +1,8 @@
 'use client';
 import React from 'react';
-import { Box, Button, Step, StepLabel, Stepper, TextField, Typography, Card, CardContent, Checkbox, FormControlLabel, MenuItem, Stack, Accordion, AccordionSummary, AccordionDetails, Switch, CircularProgress } from '@mui/material';
+import { Box, Button, Step, StepLabel, Stepper, TextField, Typography, Card, CardContent, Checkbox, FormControlLabel, MenuItem, Stack, Accordion, AccordionSummary, AccordionDetails, Switch, CircularProgress, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import dynamic from 'next/dynamic';
 import { generateIntro } from '@/services/aiRecruiter';
 
@@ -59,6 +60,8 @@ export function RecruiterWizard() {
 
   const [error, setError] = React.useState<string | null>(null);
   const [sendMessage, setSendMessage] = React.useState<string | null>(null);
+  const [confirmModalOpen, setConfirmModalOpen] = React.useState(false);
+  const [confirmModalMessage, setConfirmModalMessage] = React.useState('');
 
   // Step 4 - sections and granular selections for email building
   const [enabledSections, setEnabledSections] = React.useState<Record<string, boolean>>({
@@ -486,7 +489,10 @@ export function RecruiterWizard() {
           personalizedMessage: followupMessage || undefined,
           status: 'scheduled',
         });
-        setSendMessage(`Scheduled for ${new Date(scheduleTs).toLocaleString()}`);
+        const msg = `Scheduled for ${new Date(scheduleTs).toLocaleString()}`;
+        setSendMessage(msg);
+        setConfirmModalMessage(msg);
+        setConfirmModalOpen(true);
         return;
       }
 
@@ -587,7 +593,10 @@ export function RecruiterWizard() {
       }
 
       
-      setSendMessage(`Sent to ${to.length} recipient${to.length === 1 ? '' : 's'}`);
+      const msg = `Sent to ${to.length} recipient${to.length === 1 ? '' : 's'}`;
+      setSendMessage(msg);
+      setConfirmModalMessage(msg);
+      setConfirmModalOpen(true);
     } catch (e: any) {
       console.error(e);
       setError(e?.message || 'Failed to send email');
@@ -1732,6 +1741,50 @@ CRITICAL INSTRUCTIONS:
           {isLast ? (isGenerating ? 'Generating…' : 'Generate') : 'Next'}
         </Button>
       </Box>
+
+      {/* ── Email Sent Confirmation Modal ── */}
+      <Dialog
+        open={confirmModalOpen}
+        onClose={() => setConfirmModalOpen(false)}
+        maxWidth="xs"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: 0,
+            bgcolor: '#0A0A0A',
+            color: '#fff',
+            textAlign: 'center',
+            py: 2,
+          },
+        }}
+      >
+        <DialogTitle sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1, pb: 0 }}>
+          <CheckCircleOutlineIcon sx={{ fontSize: 56, color: '#CCFF00' }} />
+          <Typography variant="h6" sx={{ fontWeight: 700, color: '#fff' }}>
+            Email{confirmModalMessage.includes('Scheduled') ? ' Scheduled' : 's Sent'}!
+          </Typography>
+        </DialogTitle>
+        <DialogContent sx={{ pt: 1 }}>
+          <Typography variant="body1" sx={{ color: 'rgba(255,255,255,0.8)' }}>
+            {confirmModalMessage}
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ justifyContent: 'center', pb: 2 }}>
+          <Button
+            variant="contained"
+            onClick={() => setConfirmModalOpen(false)}
+            sx={{
+              bgcolor: '#CCFF00',
+              color: '#0A0A0A',
+              fontWeight: 700,
+              px: 4,
+              '&:hover': { bgcolor: '#B8E600' },
+            }}
+          >
+            Done
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

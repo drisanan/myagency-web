@@ -1,6 +1,6 @@
 'use client';
 import React from 'react';
-import { Box, CssBaseline, AppBar, Toolbar, Typography, Drawer, List, ListItemButton, ListItemText, Button, Alert, Stack, Avatar, Badge, IconButton, Menu, MenuItem, Divider, useMediaQuery, useTheme } from '@mui/material';
+import { Box, CssBaseline, AppBar, Toolbar, Typography, Drawer, List, ListItemButton, ListItemText, Button, Stack, Avatar, Badge, IconButton, Menu, MenuItem, Divider, useMediaQuery, useTheme } from '@mui/material';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useSession } from '@/features/auth/session';
@@ -239,8 +239,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                         ? `${session.firstName || ''} ${session.lastName || ''}`.trim()
                         : session.email}
                     </Typography>
-                    <Button size="small" variant="outlined" onClick={stopImpersonation} sx={{ fontSize: { xs: 11, sm: 13 }, px: { xs: 1, sm: 2 }, borderColor: colors.lime, color: colors.lime }}>
-                      End
+                    <Button size="small" variant="outlined" onClick={stopImpersonation} sx={{ fontSize: { xs: 10, sm: 11 }, px: { xs: 1, sm: 1.5 }, borderColor: colors.lime, color: colors.lime, fontWeight: 700, letterSpacing: '0.04em' }}>
+                      Stop Impersonating
                     </Button>
                   </Stack>
                 )}
@@ -482,40 +482,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         }}
       >
         <Toolbar />
-        {/* Impersonation Banner */}
-        {isImpersonating && (
-          <Alert 
-            severity="warning" 
-            sx={{ 
-              mb: 2,
-              display: 'flex',
-              alignItems: 'center',
-              '& .MuiAlert-message': { 
-                flexGrow: 1,
-              },
-              '& .MuiAlert-action': {
-                pt: 0,
-                alignItems: 'center',
-              },
-            }}
-            action={
-              <Button 
-                color="inherit" 
-                size="small" 
-                variant="outlined"
-                onClick={stopImpersonation}
-                sx={{ 
-                  whiteSpace: 'nowrap',
-                  minWidth: 'auto',
-                }}
-              >
-                Stop Impersonating
-              </Button>
-            }
-          >
-            You are viewing as: {session?.firstName} {session?.lastName} ({session?.email})
-          </Alert>
-        )}
         {children}
       </Box>
 
