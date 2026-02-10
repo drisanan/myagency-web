@@ -763,7 +763,7 @@ function BasicInfoStep({
         label="Sport"
         value={value.sport ?? ''}
         onChange={handleSportChange}
-        SelectProps={{ MenuProps: { disablePortal: true } }}
+        SelectProps={{ MenuProps: { PaperProps: { sx: { maxHeight: 300 } } } }}
         error={Boolean(errors?.sport)}
         helperText={errors?.sport || ''}
       >
