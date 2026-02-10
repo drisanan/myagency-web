@@ -86,9 +86,11 @@ export function CommunicationsPanel({ athleteId, coachEmail, defaultType, isAthl
     return isAthlete ? 'athlete_to_agent' : 'agent_to_athlete';
   };
   
+  const agencyEmail = session?.agencyEmail || session?.email || '';
+
   const [form, setForm] = React.useState({
     type: getDefaultType(),
-    toEmail: '',
+    toEmail: isAthlete && getDefaultType() === 'athlete_to_agent' ? agencyEmail : '',
     toName: '',
     subject: '',
     body: '',
@@ -96,7 +98,6 @@ export function CommunicationsPanel({ athleteId, coachEmail, defaultType, isAthl
   });
 
   // Fetch athletes for the picker (agents/agency only)
-  const agencyEmail = session?.agencyEmail || session?.email || '';
   const athletesQuery = useQuery({
     queryKey: ['comms-athlete-picker', agencyEmail],
     queryFn: () => listClientsByAgencyEmail(agencyEmail),
@@ -252,7 +253,13 @@ export function CommunicationsPanel({ athleteId, coachEmail, defaultType, isAthl
         </Typography>
         <Button 
           variant="contained" 
-          onClick={() => setComposeOpen(true)} 
+          onClick={() => {
+            const defaultT = getDefaultType();
+            const autoEmail = isAthlete && defaultT === 'athlete_to_agent' ? agencyEmail : '';
+            setForm({ type: defaultT, toEmail: autoEmail, toName: '', subject: '', body: '', threadId: '' });
+            setSelectedAthletes([]);
+            setComposeOpen(true);
+          }} 
           startIcon={<FaPaperPlane />}
           data-testid="compose-btn"
         >
@@ -418,7 +425,9 @@ export function CommunicationsPanel({ athleteId, coachEmail, defaultType, isAthl
             value={form.type}
             onChange={(e) => {
               const newType = e.target.value as CommunicationType;
-              setForm(f => ({ ...f, type: newType, toEmail: '', toName: '' }));
+              // Auto-fill toEmail for athlete→agent messages
+              const autoEmail = isAthlete && newType === 'athlete_to_agent' ? agencyEmail : '';
+              setForm(f => ({ ...f, type: newType, toEmail: autoEmail, toName: '' }));
               setSelectedAthletes([]);
             }}
             SelectProps={{ native: true }}
@@ -524,8 +533,19 @@ export function CommunicationsPanel({ athleteId, coachEmail, defaultType, isAthl
               noOptionsText="No athletes found"
               data-testid="athlete-autocomplete"
             />
+          ) : isAthlete && form.type === 'athlete_to_agent' ? (
+            /* Athlete → Agent: auto-filled, just show who they're messaging */
+            <Box sx={{ px: 1.5, py: 1, bgcolor: 'grey.100', borderRadius: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
+              <FaUserTie size={14} />
+              <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                To: My Agent
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                ({agencyEmail})
+              </Typography>
+            </Box>
           ) : (
-            /* Manual email entry — for coach messages or athlete-initiated */
+            /* Manual email entry — for coach messages */
             <>
               <TextField
                 size="small"
