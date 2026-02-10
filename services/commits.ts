@@ -15,52 +15,8 @@ export type Commit = {
   highSchool?: string;
 };
 
-const footballPositions = ['QB', 'RB', 'WR', 'DL', 'LB', 'CB', 'S', 'TE', 'OL'];
-const basketballPositions = ['PG', 'SG', 'SF', 'PF', 'C'];
-const sources = ['ESPN', 'Rivals', '247Sports'];
-const universities = ['Alabama', 'Georgia', 'Ohio State', 'Texas', 'Duke', 'Kentucky', 'Kansas', 'Gonzaga', 'Michigan'];
-
-function isoDaysAgo(days: number) {
-  const d = new Date();
-  d.setDate(d.getDate() - days);
-  return d.toISOString().slice(0, 10);
-}
-
-function makeRecent(sport: Commit['sport'], prefix: string, positions: string[]): Commit[] {
-  return Array.from({ length: 50 }).map((_, i) => ({
-    id: `${prefix}-${i + 1}`,
-    sport,
-    list: 'recent' as const,
-    name: `${sport} Recent ${i + 1}`,
-    position: positions[i % positions.length],
-    university: universities[i % universities.length],
-    commitDate: isoDaysAgo(i * 5 + 1), // spread across ~250 days
-    source: sources[i % sources.length],
-  }));
-}
-
-function makeTop(sport: Commit['sport'], prefix: string, positions: string[]): Commit[] {
-  return Array.from({ length: 50 }).map((_, i) => ({
-    id: `${prefix}-${i + 1}`,
-    sport,
-    list: 'top' as const,
-    rank: i + 1,
-    name: `${sport} Top ${i + 1}`,
-    position: positions[i % positions.length],
-    university: universities[i % universities.length],
-    stars: 5 - (i % 3) || 5,
-    source: sources[i % sources.length],
-  }));
-}
-
-const SEED: Commit[] = [
-  ...makeRecent('Football', 'fb-rec', footballPositions),
-  ...makeRecent('Basketball', 'bb-rec', basketballPositions),
-  ...makeTop('Football', 'fb-top', footballPositions),
-  ...makeTop('Basketball', 'bb-top', basketballPositions),
-];
-
-let COMMITS: Commit[] = [...SEED];
+// Live data only — no seed/placeholder data
+let COMMITS: Commit[] = [];
 let SCRAPED_FOOTBALL = false;
 let SCRAPED_BASKETBALL = false;
 
@@ -99,14 +55,12 @@ export function basketballScrapeStatus() {
 
 /**
  * Check if scraping has completed for a given sport.
- * Used by cache to avoid caching placeholder data.
  */
 export function isScrapingComplete(sport: Commit['sport']): boolean {
   return sport === 'Football' ? SCRAPED_FOOTBALL : SCRAPED_BASKETBALL;
 }
 
 export function listCommitsServer(sport: Commit['sport'], list: Commit['list']) {
-  // server-side version that does not touch localStorage
   const filtered = COMMITS.filter((c) => c.sport === sport && c.list === list);
   if (list === 'recent') {
     return filtered
@@ -151,7 +105,7 @@ async function loadFootballFromScrape() {
       // Merge: keep basketball from current store (may be scraped), replace football
       const existing = COMMITS.filter((c) => c.sport === 'Basketball');
       COMMITS = [...existing, ...topMapped, ...recent];
-      
+
       // Clear cache so fresh data is served immediately
       try {
         const { clearCommitsCache } = await import('./commitsCache');
@@ -159,13 +113,10 @@ async function loadFootballFromScrape() {
         console.log('[commits] Football scrape complete, cache cleared');
       } catch { /* ignore if cache not available */ }
     } else {
-      // mark placeholders so tests can detect non-live data
-      COMMITS = COMMITS.map((c) =>
-        c.sport === 'Football' ? { ...c, name: `${c.name} (placeholder)` } : c
-      );
+      console.warn('[commits] Football scrape returned empty results — no data to display');
     }
   } catch (e) {
-    // ignore and keep seed
+    console.error('[commits] Football scrape failed:', (e as Error)?.message);
   }
 }
 
@@ -201,7 +152,7 @@ async function loadBasketballFromScrape() {
       // Merge: keep football from current store (may be scraped), replace basketball
       const existing = COMMITS.filter((c) => c.sport === 'Football');
       COMMITS = [...existing, ...topMapped, ...recent];
-      
+
       // Clear cache so fresh data is served immediately
       try {
         const { clearCommitsCache } = await import('./commitsCache');
@@ -209,12 +160,10 @@ async function loadBasketballFromScrape() {
         console.log('[commits] Basketball scrape complete, cache cleared');
       } catch { /* ignore if cache not available */ }
     } else {
-      COMMITS = COMMITS.map((c) =>
-        c.sport === 'Basketball' ? { ...c, name: `${c.name} (placeholder)` } : c
-      );
+      console.warn('[commits] Basketball scrape returned empty results — no data to display');
     }
   } catch (e) {
-    // ignore and keep seed
+    console.error('[commits] Basketball scrape failed:', (e as Error)?.message);
   }
 }
 
@@ -231,5 +180,3 @@ export async function scrapeAndPersistCommits() {
     totalCommits: COMMITS.length,
   };
 }
-
-

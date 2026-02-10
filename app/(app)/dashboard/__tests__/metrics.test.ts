@@ -12,18 +12,20 @@ describe('dashboard metrics helpers', () => {
 
   test('email metrics compute rolling sums and deltas', () => {
     const stats = { days };
-    const { emailsSent, deltaPct } = computeEmailMetrics(stats as any, 0, 3);
+    const { emailsSent, deltaPct } = computeEmailMetrics(stats as any, 3);
     // last 3 days sends: 8 + 12 + 0 = 20
     // prev 3 days sends: 5 + 5 + 10 = 20 => delta 0
     expect(emailsSent).toBe(20);
     expect(deltaPct).toBe(0);
   });
 
-  test('open rate metrics honor override and delta', () => {
+  test('open rate metrics compute from live data only', () => {
     const stats = { days };
-    const { openRate, deltaPct } = computeOpenRateMetrics(stats as any, 0.5, 3);
-    expect(openRate).toBe(0.5); // override wins
-    expect(deltaPct).toBeCloseTo(-9.09, 2); // compares override vs prior window rate
+    const { openRate, deltaPct } = computeOpenRateMetrics(stats as any, 3);
+    // last 3 days: sends=20, opens=17 => rate=0.85
+    // prev 3 days: sends=20, opens=11 => rate=0.55
+    expect(openRate).toBeCloseTo(0.85, 2);
+    expect(deltaPct).toBeCloseTo(54.55, 1);
   });
 
   test('counts athletes added in current month', () => {
@@ -44,4 +46,3 @@ describe('dashboard metrics helpers', () => {
     expect(formatDelta(-2.5)).toBe('-2%');
   });
 });
-

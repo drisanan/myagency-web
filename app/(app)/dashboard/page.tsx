@@ -6,7 +6,6 @@ import { listAgencies } from '@/services/agencies';
 import { listClientsByAgencyEmail } from '@/services/clients';
 import { Typography, Box, Skeleton, Stack, Paper } from '@mui/material';
 import { DataGrid, GridColDef } from '@mui/x-data-grid';
-import { getMailEntries } from '@/services/mailStatus';
 import { getScholarships, setScholarships } from '@/services/scholarships';
 import { IoMailOpenOutline, IoPaperPlaneOutline, IoPersonAddOutline, IoTrendingUpOutline, IoFastFoodOutline } from 'react-icons/io5';
 import { MetricCard } from './MetricCard';
@@ -17,8 +16,6 @@ import { computeEmailMetrics, computeOpenRateMetrics, countAddedThisMonth, forma
 import { useTour } from '@/features/tour/TourProvider';
 import { dashboardSteps } from '@/features/tour/dashboardSteps';
 import { dashboardDataGridSx, dashboardTablePaperSx } from '@/components/tableStyles';
-
-type MailEntry = { clientId?: string };
 
 export default function DashboardPage() {
   const { session } = useSession();
@@ -75,19 +72,11 @@ export default function DashboardPage() {
 
   // Agency dashboard
   const clients = (q.data ?? []) as any[];
-  const clientIds = new Set<string>(clients.map(c => c.id));
   const totalClients = clients.length;
 
-  // Emails sent (count mail logs whose clientId belongs to this agency)
-  const mail = (getMailEntries() as MailEntry[]).filter((m) => m.clientId && clientIds.has(m.clientId));
-  const emailsFallback = mail.length;
-
-  const placeholderRate = Number(process.env.NEXT_PUBLIC_OPEN_RATE_PLACEHOLDER ?? '');
-  const { emailsSent, deltaPct: emailsDelta } = computeEmailMetrics(metrics, emailsFallback);
-  const { openRate, deltaPct: openRateDelta } = computeOpenRateMetrics(
-    metrics,
-    Number.isFinite(placeholderRate) ? placeholderRate : undefined,
-  );
+  // Metrics from live server data only — no placeholders or fallbacks
+  const { emailsSent, deltaPct: emailsDelta } = computeEmailMetrics(metrics);
+  const { openRate, deltaPct: openRateDelta } = computeOpenRateMetrics(metrics);
   const addedThisMonth = countAddedThisMonth(clients);
 
   // Grad year breakdown: fixed window 2026-2029 (left-to-right)

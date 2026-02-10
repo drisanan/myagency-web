@@ -19,21 +19,19 @@ function percentDelta(current: number, previous: number) {
 
 export function computeEmailMetrics(
   stats: MetricsResponse | null,
-  fallbackCount: number,
   windowDays = 30,
 ) {
   const days = stats?.days ?? [];
   const { current, previous } = sliceWindow(days, windowDays);
   const currentSends = sumDays(current, 'sends');
   const previousSends = sumDays(previous, 'sends');
-  const emailsSent = currentSends || stats?.totals?.sends || fallbackCount || 0;
+  const emailsSent = currentSends || stats?.totals?.sends || 0;
   const deltaPct = percentDelta(currentSends, previousSends);
   return { emailsSent, deltaPct };
 }
 
 export function computeOpenRateMetrics(
   stats: MetricsResponse | null,
-  overrideRate: number | undefined,
   windowDays = 30,
 ) {
   const days = stats?.days ?? [];
@@ -43,12 +41,7 @@ export function computeOpenRateMetrics(
   const previousSends = sumDays(previous, 'sends');
   const previousOpens = sumDays(previous, 'opens');
 
-  const resolvedOverride =
-    Number.isFinite(overrideRate) && (overrideRate as number) >= 0 ? (overrideRate as number) : undefined;
-  const computedRate =
-    currentSends > 0 ? currentOpens / currentSends : stats?.openRate ?? 0;
-  const openRate = resolvedOverride ?? computedRate;
-
+  const openRate = currentSends > 0 ? currentOpens / currentSends : stats?.openRate ?? 0;
   const previousRate = previousSends > 0 ? previousOpens / previousSends : openRate;
   const deltaPct = percentDelta(openRate, previousRate);
 
@@ -71,4 +64,3 @@ export function formatDelta(deltaPct: number) {
   const rounded = Math.round(deltaPct || 0);
   return `${rounded >= 0 ? '+' : ''}${rounded}%`;
 }
-

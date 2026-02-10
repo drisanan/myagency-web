@@ -1,6 +1,6 @@
 'use client';
 import React from 'react';
-import { Stack, Typography, Box } from '@mui/material';
+import { Stack, Typography, Box, Paper, Alert } from '@mui/material';
 import { LoadingState } from '@/components/LoadingState';
 import { CommitsTable } from './CommitsTable';
 import { Commit } from '@/services/commits';
@@ -14,13 +14,12 @@ async function fetchCommits(sport: 'Football' | 'Basketball', list: 'recent' | '
 }
 
 export function CommitsSection({ sport }: { sport: 'Football' | 'Basketball' }) {
-  // Removed initialData/placeholderData - always fetch fresh from API
-  // This ensures we never show client-side placeholder data
   const baseQueryOpts = {
-    staleTime: 5 * 60 * 1000, // 5 minutes (reduced from 24h)
-    gcTime: 10 * 60 * 1000,   // 10 minutes
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
     refetchOnWindowFocus: false,
     refetchOnMount: true,
+    retry: 2,
   };
 
   const recentQ = useQuery<Commit[]>({
@@ -35,6 +34,9 @@ export function CommitsSection({ sport }: { sport: 'Football' | 'Basketball' }) 
   });
 
   const isLoading = recentQ.isLoading || topQ.isLoading;
+  const recentData = recentQ.data || [];
+  const topData = topQ.data || [];
+  const hasNoData = !isLoading && recentData.length === 0 && topData.length === 0;
 
   if (isLoading) {
     return (
@@ -45,23 +47,38 @@ export function CommitsSection({ sport }: { sport: 'Football' | 'Basketball' }) 
     );
   }
 
+  if (hasNoData) {
+    return (
+      <Stack spacing={2}>
+        <Typography variant="h5">{sport} Commits</Typography>
+        <Paper variant="outlined" sx={{ p: 3, textAlign: 'center' }}>
+          <Alert severity="info" sx={{ justifyContent: 'center' }}>
+            Live recruiting data is currently unavailable for {sport}. Data refreshes automatically — check back shortly.
+          </Alert>
+        </Paper>
+      </Stack>
+    );
+  }
+
   return (
     <Stack spacing={2}>
       <Typography variant="h5">{sport} Commits</Typography>
-      <CommitsTable
-        title="Recent Commits"
-        rows={recentQ.data || []}
-        showRank={false}
-        dataTestId={`commits-${sport.toLowerCase()}-recent-table`}
-      />
-      <CommitsTable
-        title="Top 50 Recruits"
-        rows={topQ.data || []}
-        showRank
-        dataTestId={`commits-${sport.toLowerCase()}-top-table`}
-      />
+      {recentData.length > 0 && (
+        <CommitsTable
+          title="Recent Commits"
+          rows={recentData}
+          showRank={false}
+          dataTestId={`commits-${sport.toLowerCase()}-recent-table`}
+        />
+      )}
+      {topData.length > 0 && (
+        <CommitsTable
+          title="Top 50 Recruits"
+          rows={topData}
+          showRank
+          dataTestId={`commits-${sport.toLowerCase()}-top-table`}
+        />
+      )}
     </Stack>
   );
 }
-
-
