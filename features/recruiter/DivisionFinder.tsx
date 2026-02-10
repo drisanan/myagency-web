@@ -21,7 +21,6 @@ export function DivisionFinder() {
         label="Division"
         value={division}
         onChange={e => setDivision(e.target.value)}
-        SelectProps={{ MenuProps: { disablePortal: true } }}
       >
         {divisions.map((d)=><MenuItem key={d} value={d}>{d}</MenuItem>)}
       </TextField>
@@ -31,7 +30,6 @@ export function DivisionFinder() {
           label="State"
           value={state}
           onChange={e=>setState(e.target.value)}
-          SelectProps={{ MenuProps: { disablePortal: true } }}
         >
           {states.map(s=><MenuItem key={s.code} value={s.code}>{s.name}</MenuItem>)}
         </TextField>

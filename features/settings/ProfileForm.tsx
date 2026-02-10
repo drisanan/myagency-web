@@ -149,7 +149,6 @@ export function ProfileForm() {
             onChange={(e) => setPreferredSport(e.target.value)}
             helperText="This sport will be selected by default on the dashboard calendar"
             fullWidth
-            SelectProps={{ MenuProps: { disablePortal: true } }}
           >
             {sports.map((s) => (
               <MenuItem key={s} value={s}>

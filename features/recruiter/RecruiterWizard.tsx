@@ -983,7 +983,6 @@ CRITICAL INSTRUCTIONS:
                   label="Client"
                   value={clientId}
                   onChange={(e) => setClientId(e.target.value)}
-                  SelectProps={{ MenuProps: { disablePortal: true } }}
                   data-tour="client-selector"
                   inputProps={{ 'data-testid': 'recruiter-client-select' }}
                 >
@@ -1005,7 +1004,6 @@ CRITICAL INSTRUCTIONS:
                   label="Agent"
                   value={selectedAgentId}
                   onChange={(e) => setSelectedAgentId(e.target.value)}
-                  SelectProps={{ MenuProps: { disablePortal: true } }}
                   inputProps={{ 'data-testid': 'recruiter-agent-select' }}
                   helperText={
                     visibleAgents.length === 0 
@@ -1037,7 +1035,6 @@ CRITICAL INSTRUCTIONS:
               value={division}
               onChange={(e) => { setDivision(e.target.value); setSelectedListId(''); setListMode(false); setSelectedCoachIds({}); }}
               disabled={Boolean(selectedListId)}
-              SelectProps={{ MenuProps: { disablePortal: true } }}
               inputProps={{ 'data-testid': 'recruiter-division' }}
             >
               {divisions.map((d) => (
@@ -1053,7 +1050,6 @@ CRITICAL INSTRUCTIONS:
               value={state}
               onChange={(e) => setState(e.target.value)}
               disabled={!division || Boolean(selectedListId)}
-              SelectProps={{ MenuProps: { disablePortal: true } }}
               inputProps={{ 'data-testid': 'recruiter-state' }}
             >
               {states.map((s) => (
@@ -1094,7 +1090,6 @@ CRITICAL INSTRUCTIONS:
                   setSelectedCoachIds({});
                 }
               }}
-              SelectProps={{ MenuProps: { disablePortal: true } }}
             >
               <MenuItem value="">(Select a list)</MenuItem>
               {lists.map((l) => (
@@ -1433,7 +1428,6 @@ CRITICAL INSTRUCTIONS:
                         setAiHtml(merged);
                       }
                     }}
-                    SelectProps={{ MenuProps: { disablePortal: true } }}
                   >
                     <MenuItem value="">(Select a prompt)</MenuItem>
                     {prompts.map((p) => (

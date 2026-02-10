@@ -500,7 +500,6 @@ CRITICAL INSTRUCTIONS:
                   setSelectedCoachId('');
                 }}
                 fullWidth
-                SelectProps={{ MenuProps: { disablePortal: true } }}
               >
                 <MenuItem value="">(Select a list)</MenuItem>
                 {lists.map((l) => (

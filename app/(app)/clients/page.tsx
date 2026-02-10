@@ -81,12 +81,13 @@ export default function ClientsPage() {
 
         console.log('[ClientsPage] Found new submissions:', items.length);
 
-        // D. Upsert clients locally
+        // D. Create clients from submissions
         const idsToConsume: string[] = [];
         for (const s of items) {
           const v = s?.data || {};
           const clientPayload = {
-            id: s.id, // Use form ID as client ID or generate new one if preferred
+            // Do NOT pass s.id — form submission IDs (form_xxx) are not client IDs.
+            // Omitting id lets the backend POST handler generate a proper client ID.
             email: v.email || '',
             phone: v.phone || '',
             firstName: v.firstName || '',
@@ -96,13 +97,16 @@ export default function ClientsPage() {
             agencyEmail: userEmail,
             photoUrl: v.profileImageUrl || '',
             radar: v.radar || {},
-            // Default password if needed, or handle via invite logic
             password: v.password || undefined, 
           };
 
-          // Upsert to your Client Service
-          await upsertClient(clientPayload);
-          idsToConsume.push(s.id);
+          try {
+            await upsertClient(clientPayload);
+            idsToConsume.push(s.id);
+          } catch (err) {
+            console.error('[ClientsPage] Failed to create client from submission', s.id, err);
+            // Continue processing remaining submissions even if one fails
+          }
         }
 
         // E. Mark submissions as consumed so they don't sync again
@@ -114,8 +118,9 @@ export default function ClientsPage() {
             body: JSON.stringify({ agencyEmail: userEmail, ids: idsToConsume }),
           });
           
-          // Refresh the react-query list to show new clients immediately
+          // Refresh the react-query list and metrics to show new clients immediately
           queryClient.invalidateQueries({ queryKey: ['clients'] });
+          queryClient.invalidateQueries({ queryKey: ['clients-metrics'] });
         }
       } catch (err) {
         console.error('[ClientsPage] Sync failed', err);

@@ -313,11 +313,11 @@ function GalleryStep({
         </Typography>
       </Box>
       
-      <Alert severity="info" sx={{ mt: 1 }}>
-        <Typography variant="caption">
+      <Alert severity="info" sx={{ mt: 1, '& .MuiAlert-message': { color: '#0A0A0A' } }}>
+        <Typography variant="caption" sx={{ color: '#0A0A0A' }}>
           <strong>Tip:</strong> For best results, compress images before uploading. Use tools like 
-          <a href="https://tinypng.com" target="_blank" rel="noopener noreferrer" style={{ marginLeft: 4 }}>TinyPNG</a> or 
-          <a href="https://squoosh.app" target="_blank" rel="noopener noreferrer" style={{ marginLeft: 4 }}>Squoosh</a>.
+          <a href="https://tinypng.com" target="_blank" rel="noopener noreferrer" style={{ marginLeft: 4, color: '#0A0A0A' }}>TinyPNG</a> or 
+          <a href="https://squoosh.app" target="_blank" rel="noopener noreferrer" style={{ marginLeft: 4, color: '#0A0A0A' }}>Squoosh</a>.
           Max {MAX_SINGLE_IMAGE_KB}KB per image.
         </Typography>
       </Alert>
@@ -442,8 +442,8 @@ function GalleryStep({
           {videos.length}/{MAX_HIGHLIGHT_VIDEOS} videos added
         </Typography>
         
-        <Alert severity="info" sx={{ mt: 2 }}>
-          <Typography variant="caption">
+        <Alert severity="info" sx={{ mt: 2, '& .MuiAlert-message': { color: '#0A0A0A' } }}>
+          <Typography variant="caption" sx={{ color: '#0A0A0A' }}>
             <strong>Supported formats:</strong> MP4, MOV, WebM (max 100MB). You can also paste links from YouTube, Vimeo, or Hudl.
           </Typography>
         </Alert>
@@ -1118,7 +1118,29 @@ export function ClientWizard({
   const handleBack = () => setActiveStep((s)=> Math.max(0, s - 1));
 
   return (
-    <Box>
+    <Box sx={{ position: 'relative' }}>
+      {/* Full overlay loading indicator while submitting */}
+      {submitting && (
+        <Box
+          sx={{
+            position: 'absolute',
+            inset: 0,
+            zIndex: 10,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            bgcolor: 'rgba(255,255,255,0.85)',
+            backdropFilter: 'blur(2px)',
+            gap: 2,
+          }}
+        >
+          <CircularProgress size={48} sx={{ color: '#0A0A0A' }} />
+          <Typography variant="body1" sx={{ fontWeight: 600, color: '#0A0A0A' }}>
+            Saving profile…
+          </Typography>
+        </Box>
+      )}
       <Stepper activeStep={activeStep} alternativeLabel sx={{ mb: 3 }}>
         {steps.map((label, idx) => (
           <Step key={label}>

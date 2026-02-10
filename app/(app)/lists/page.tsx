@@ -399,13 +399,13 @@ export default function ListsPage() {
               </Typography>
             </Box>
             <Box data-tour="list-filters" sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(3, 1fr)' }, gap: 2 }}>
-            <TextField size="small" select label="Sport" value={sport} onChange={(e) => setSport(e.target.value)} SelectProps={{ MenuProps: { disablePortal: true } }}>
+            <TextField size="small" select label="Sport" value={sport} onChange={(e) => setSport(e.target.value)}>
               {sports.map(s => <MenuItem key={s} value={s}>{formatSportLabel(s)}</MenuItem>)}
             </TextField>
-            <TextField size="small" select label="Division" value={division} onChange={(e) => setDivision(e.target.value)} SelectProps={{ MenuProps: { disablePortal: true } }}>
+            <TextField size="small" select label="Division" value={division} onChange={(e) => setDivision(e.target.value)}>
               {divisions.map((d) => <MenuItem key={d} value={d}>{d}</MenuItem>)}
             </TextField>
-            <TextField size="small" select label="State" value={stateCode} onChange={(e) => setStateCode(e.target.value)} SelectProps={{ MenuProps: { disablePortal: true } }}>
+            <TextField size="small" select label="State" value={stateCode} onChange={(e) => setStateCode(e.target.value)}>
               {states.map(s => <MenuItem key={s.code} value={s.code}>{s.name}</MenuItem>)}
             </TextField>
           </Box>

@@ -339,7 +339,6 @@ CRITICAL INSTRUCTIONS:
               label="Athlete"
               value={clientId}
               onChange={(e) => setClientId(e.target.value)}
-              SelectProps={{ MenuProps: { disablePortal: true } }}
               error={Boolean(fieldErrors.clientId)}
               helperText={fieldErrors.clientId}
             >
@@ -407,7 +406,6 @@ CRITICAL INSTRUCTIONS:
               label="Select One"
               value={selectedTemplateId}
               onChange={(e) => handleApplyTemplate(String(e.target.value))}
-              SelectProps={{ MenuProps: { disablePortal: true } }}
               data-tour="prompts-list"
               fullWidth
             >

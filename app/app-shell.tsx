@@ -125,9 +125,34 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const openTasks = allTasks.filter((t) => t.status !== 'done');
   const dueSoon = tasksDueSoon(allTasks);
 
-  // Combined notification count
-  const notificationCount = (openTasks.length || 0) + (recentActivities.length || 0);
-  const hasUrgent = dueSoon.length > 0 || recentActivities.some((a) => a.activityType === 'profile_viewed_by_coach' || a.activityType === 'email_opened' || a.activityType === 'form_submitted');
+  // Notification "cleared at" timestamp — persisted in localStorage
+  const [clearedAt, setClearedAt] = React.useState<number>(0);
+  React.useEffect(() => {
+    const stored = localStorage.getItem('notifications_cleared_at');
+    if (stored) setClearedAt(Number(stored));
+  }, []);
+
+  const handleClearNotifications = () => {
+    const now = Date.now();
+    setClearedAt(now);
+    localStorage.setItem('notifications_cleared_at', String(now));
+  };
+
+  // Only count items created AFTER the last clear for the badge
+  const unseenActivities = clearedAt
+    ? recentActivities.filter((a) => a.createdAt > clearedAt)
+    : recentActivities;
+  const unseenTasks = clearedAt
+    ? openTasks.filter((t) => {
+        const ts = t.createdAt ? new Date(t.createdAt).getTime() : 0;
+        return ts > clearedAt;
+      })
+    : openTasks;
+
+  // Badge count reflects only unseen items
+  const notificationCount = unseenTasks.length + unseenActivities.length;
+  const hasUrgent = (clearedAt ? dueSoon.some((t) => { const ts = t.createdAt ? new Date(t.createdAt).getTime() : 0; return ts > clearedAt; }) : dueSoon.length > 0) ||
+    unseenActivities.some((a) => a.activityType === 'profile_viewed_by_coach' || a.activityType === 'email_opened' || a.activityType === 'form_submitted');
 
   const [bellTab, setBellTab] = React.useState<'tasks' | 'activity'>('tasks');
   const [bellAnchor, setBellAnchor] = React.useState<null | HTMLElement>(null);
@@ -237,13 +262,29 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </Toolbar>
       </AppBar>
       <Menu anchorEl={bellAnchor} open={openBell} onClose={handleBellClose} PaperProps={{ sx: { minWidth: 320, maxHeight: 420 } }}>
-        <Box sx={{ px: 2, py: 1, display: 'flex', gap: 1 }}>
+        <Box sx={{ px: 2, py: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
           <Button size="small" variant={bellTab === 'tasks' ? 'contained' : 'text'} onClick={() => setBellTab('tasks')} sx={{ fontSize: '0.75rem', textTransform: 'none', ...(bellTab === 'tasks' ? { bgcolor: colors.lime, color: colors.black } : {}) }}>
             Tasks ({openTasks.length})
           </Button>
           <Button size="small" variant={bellTab === 'activity' ? 'contained' : 'text'} onClick={() => setBellTab('activity')} sx={{ fontSize: '0.75rem', textTransform: 'none', ...(bellTab === 'activity' ? { bgcolor: colors.lime, color: colors.black } : {}) }}>
             Activity ({recentActivities.length})
           </Button>
+          {notificationCount > 0 && (
+            <Button
+              size="small"
+              onClick={handleClearNotifications}
+              sx={{
+                ml: 'auto',
+                fontSize: '0.7rem',
+                textTransform: 'none',
+                color: 'text.secondary',
+                minWidth: 'auto',
+                '&:hover': { color: colors.black },
+              }}
+            >
+              Clear All
+            </Button>
+          )}
         </Box>
         <Divider />
         {bellTab === 'tasks' ? (

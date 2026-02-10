@@ -187,9 +187,7 @@ body.marketing-page footer a {
 body.marketing-page footer a:hover {
   color: var(--an-lime);
   text-decoration: none;
-}
-
-/* ── Image angular treatment ── */
+}/* ── Image angular treatment ── */
 body.marketing-page .img-angular {
   clip-path: polygon(0 0, calc(100% - 20px) 0, 100% 20px, 100% 100%, 20px 100%, 0 calc(100% - 20px));
 }/* ── Scrollbar ── */

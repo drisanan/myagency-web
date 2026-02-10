@@ -247,27 +247,42 @@ function buildTheme(settings: AgencySettings) {
       },
       MuiPaper: {
         styleOverrides: {
-          root: {
-            backgroundColor: s.cardBg,
-            borderRadius: 0,
-            clipPath: 'polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 12px 100%, 0 calc(100% - 12px))',
-            position: 'relative',
-            overflow: 'hidden',
-            transition: 'box-shadow 0.25s ease, transform 0.2s ease',
-            // Dark accent bar on left (inverted MetricCard style)
-            '&::before': {
-              content: '""',
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              bottom: 0,
-              width: '3px',
-              background: `linear-gradient(180deg, ${s.primaryColor} 0%, ${s.primaryColor}40 100%)`,
-              zIndex: 1,
-            },
-            '&:hover': {
-              boxShadow: `0 4px 20px rgba(0,0,0,0.08), 0 0 16px ${s.secondaryColor}06`,
-            },
+          root: ({ ownerState }: { ownerState: any }) => {
+            // Popup Papers (Menu, Popover, Select dropdown) use elevation >= 8.
+            // Layout Papers use elevation 0-1 or variant="outlined".
+            // Only apply angular clipPath + accent bar to layout Papers.
+            const isPopup = ownerState.variant !== 'outlined' && (ownerState.elevation ?? 0) >= 8;
+
+            return {
+              backgroundColor: s.cardBg,
+              borderRadius: 0,
+              position: 'relative' as const,
+              transition: 'box-shadow 0.25s ease, transform 0.2s ease',
+              '&:hover': {
+                boxShadow: `0 4px 20px rgba(0,0,0,0.08), 0 0 16px ${s.secondaryColor}06`,
+              },
+              ...(isPopup
+                ? {
+                    // Popup Paper: no clipPath, scrollable, no accent bar
+                    clipPath: 'none',
+                    overflow: 'auto',
+                  }
+                : {
+                    // Layout Paper: angular clip-path + accent bar
+                    clipPath:
+                      'polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 12px 100%, 0 calc(100% - 12px))',
+                    '&::before': {
+                      content: '""',
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      bottom: 0,
+                      width: '3px',
+                      background: `linear-gradient(180deg, ${s.primaryColor} 0%, ${s.primaryColor}40 100%)`,
+                      zIndex: 1,
+                    },
+                  }),
+            };
           },
         },
       },
@@ -279,7 +294,6 @@ function buildTheme(settings: AgencySettings) {
             borderRadius: 0,
             clipPath: 'polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 12px 100%, 0 calc(100% - 12px))',
             position: 'relative',
-            overflow: 'hidden',
             transition: 'box-shadow 0.25s ease, transform 0.2s ease',
             // Dark accent bar on left
             '&::before': {
@@ -481,7 +495,8 @@ function buildTheme(settings: AgencySettings) {
         styleOverrides: {
           paper: {
             borderRadius: 0,
-            clipPath: 'polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px))',
+            clipPath: 'none',
+            overflow: 'auto',
           },
         },
       },
@@ -489,7 +504,8 @@ function buildTheme(settings: AgencySettings) {
         styleOverrides: {
           paper: {
             borderRadius: 0,
-            clipPath: 'polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px))',
+            clipPath: 'none',
+            overflow: 'auto',
           },
         },
       },

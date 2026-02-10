@@ -148,6 +148,9 @@ export default function ReportsPage() {
     enabled: session?.role === 'agency',
   });
 
+  /* ---- state (must be before any conditional returns per Rules of Hooks) ---- */
+  const [emailDialogOpen, setEmailDialogOpen] = React.useState(false);
+
   /* ---- guard rendering ---- */
   if (sessionLoading || session?.role !== 'agency') {
     return <LoadingState message="Loading reports..." />;
@@ -311,7 +314,6 @@ export default function ReportsPage() {
     .slice(0, 25);
 
   // Build data for email report dialog
-  const [emailDialogOpen, setEmailDialogOpen] = React.useState(false);
   const reportEmailData: ReportEmailData = {
     agencyName: session?.agencyEmail || 'Agency',
     generatedAt: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
