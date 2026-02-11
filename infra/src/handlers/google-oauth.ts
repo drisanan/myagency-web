@@ -1,7 +1,7 @@
 import { APIGatewayProxyEventV2 } from 'aws-lambda';
 import { requireSession } from './common';
 import { response } from './cors';
-import { putItem, getItem } from '../lib/dynamo';
+import { putItem, getItem, deleteItem } from '../lib/dynamo';
 import { google } from 'googleapis';
 import { withSentry } from '../lib/sentry';
 
@@ -253,6 +253,41 @@ const googleOauthHandler = async (event: APIGatewayProxyEventV2) => {
     } catch (e: any) {
       console.error('Token refresh failed', e);
       return response(400, { ok: false, error: 'Refresh failed - reconnection required' }, origin);
+    }
+  }
+
+  // =========================================================================
+  // ROUTE: Disconnect Google Account (Revoke tokens + delete from DB)
+  // DELETE /google/disconnect?clientId=...
+  // =========================================================================
+  if (method === 'DELETE' && path.endsWith('/google/disconnect')) {
+    const clientId = event.queryStringParameters?.clientId;
+    if (!clientId) return response(400, { ok: false, error: 'Missing clientId' }, origin);
+
+    const tokenKey = { PK: `AGENCY#${session.agencyId}`, SK: `GMAIL_TOKEN#${clientId}` };
+
+    try {
+      // Attempt to revoke the token on Google's side (best-effort)
+      const item = await getItem(tokenKey);
+      if (item?.tokens?.access_token) {
+        try {
+          oauth2Client.setCredentials(item.tokens);
+          await oauth2Client.revokeToken(item.tokens.access_token);
+          console.log('Google token revoked for client:', clientId);
+        } catch (revokeErr: any) {
+          // Token may already be invalid/revoked — that's fine
+          console.warn('Token revocation failed (may already be revoked):', revokeErr?.message);
+        }
+      }
+
+      // Delete the token record from DynamoDB
+      await deleteItem(tokenKey);
+      console.log('Google tokens deleted for client:', clientId);
+
+      return response(200, { ok: true, message: 'Google account disconnected' }, origin);
+    } catch (e: any) {
+      console.error('Disconnect error', e);
+      return response(500, { ok: false, error: e?.message || 'Failed to disconnect' }, origin);
     }
   }
 

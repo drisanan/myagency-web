@@ -10,12 +10,16 @@ import {
   Chip,
   Stack,
   Tooltip,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
 } from '@mui/material';
-import { FaGoogle, FaCalendarAlt, FaExternalLinkAlt, FaVideo, FaLink } from 'react-icons/fa';
+import { FaGoogle, FaCalendarAlt, FaExternalLinkAlt, FaVideo, FaLink, FaUnlink } from 'react-icons/fa';
 import { LoadingState } from '@/components/LoadingState';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSession } from '@/features/auth/session';
-import { listCalendarEvents, CalendarEvent } from '@/services/googleCalendar';
+import { listCalendarEvents, disconnectGoogleCalendar, CalendarEvent } from '@/services/googleCalendar';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
@@ -37,6 +41,23 @@ export function GoogleCalendarWidget({ compact = false, clientId }: Props) {
   const targetClientId = clientId || session?.clientId || session?.email || '';
   const popupRef = React.useRef<Window | null>(null);
   const [connecting, setConnecting] = React.useState(false);
+  const [disconnecting, setDisconnecting] = React.useState(false);
+  const [confirmDisconnect, setConfirmDisconnect] = React.useState(false);
+
+  async function handleDisconnectGoogle() {
+    if (!targetClientId) return;
+    try {
+      setDisconnecting(true);
+      await disconnectGoogleCalendar(targetClientId);
+      // Clear all cached calendar data
+      queryClient.invalidateQueries({ queryKey: ['googleCalendar'] });
+      setConfirmDisconnect(false);
+    } catch (e: any) {
+      console.error('Disconnect failed:', e);
+    } finally {
+      setDisconnecting(false);
+    }
+  }
 
   const { data: events, isLoading, error, refetch } = useQuery({
     queryKey: ['googleCalendar', targetClientId, 'dashboard'],
@@ -180,6 +201,35 @@ export function GoogleCalendarWidget({ compact = false, clientId }: Props) {
     );
   }
 
+  // Disconnect confirmation dialog (shared by compact & full views)
+  const disconnectDialog = (
+    <Dialog
+      open={confirmDisconnect}
+      onClose={() => setConfirmDisconnect(false)}
+      maxWidth="xs"
+      fullWidth
+    >
+      <DialogTitle>Disconnect Google Calendar?</DialogTitle>
+      <DialogContent>
+        <Typography variant="body2" color="text.secondary">
+          This will revoke calendar access and remove saved credentials. You can reconnect at any time.
+        </Typography>
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={() => setConfirmDisconnect(false)}>Cancel</Button>
+        <Button
+          variant="contained"
+          color="error"
+          onClick={handleDisconnectGoogle}
+          disabled={disconnecting}
+          startIcon={disconnecting ? <CircularProgress size={16} color="inherit" /> : <FaUnlink />}
+        >
+          {disconnecting ? 'Disconnecting…' : 'Disconnect'}
+        </Button>
+      </DialogActions>
+    </Dialog>
+  );
+
   if (compact) {
     // Compact list view for dashboard sidebar
     return (
@@ -188,7 +238,19 @@ export function GoogleCalendarWidget({ compact = false, clientId }: Props) {
           <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             <FaGoogle color="#CCFF00" /> My Schedule
           </Typography>
-          <Chip size="small" label="Google Calendar" variant="outlined" />
+          <Stack direction="row" spacing={1} alignItems="center">
+            <Chip size="small" label="Google Calendar" variant="outlined" />
+            <Tooltip title="Disconnect Google Calendar">
+              <Button
+                size="small"
+                variant="text"
+                onClick={() => setConfirmDisconnect(true)}
+                sx={{ minWidth: 'auto', p: 0.5, color: 'text.secondary', '&:hover': { color: 'error.main' } }}
+              >
+                <FaUnlink size={14} />
+              </Button>
+            </Tooltip>
+          </Stack>
         </Stack>
 
         {upcomingEvents.length === 0 ? (
@@ -202,6 +264,7 @@ export function GoogleCalendarWidget({ compact = false, clientId }: Props) {
             ))}
           </Stack>
         )}
+        {disconnectDialog}
       </Paper>
     );
   }
@@ -213,7 +276,7 @@ export function GoogleCalendarWidget({ compact = false, clientId }: Props) {
         <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           <FaGoogle color="#CCFF00" /> My Schedule
         </Typography>
-        <Stack direction="row" spacing={1}>
+        <Stack direction="row" spacing={1} alignItems="center">
           <Chip size="small" label={`${events?.length || 0} events`} variant="outlined" />
           <Tooltip title="Open Google Calendar">
             <Button
@@ -224,6 +287,16 @@ export function GoogleCalendarWidget({ compact = false, clientId }: Props) {
               target="_blank"
             >
               Open Calendar
+            </Button>
+          </Tooltip>
+          <Tooltip title="Disconnect Google Calendar">
+            <Button
+              size="small"
+              variant="text"
+              onClick={() => setConfirmDisconnect(true)}
+              sx={{ minWidth: 'auto', p: 0.5, color: 'text.secondary', '&:hover': { color: 'error.main' } }}
+            >
+              <FaUnlink size={14} />
             </Button>
           </Tooltip>
         </Stack>
@@ -242,6 +315,7 @@ export function GoogleCalendarWidget({ compact = false, clientId }: Props) {
         eventDisplay="block"
         dayMaxEvents={3}
       />
+      {disconnectDialog}
     </Paper>
   );
 }

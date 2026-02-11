@@ -1,7 +1,7 @@
 import { APIGatewayProxyEventV2 } from 'aws-lambda';
 import { requireSession } from './common';
 import { response } from './cors';
-import { getItem, putItem } from '../lib/dynamo';
+import { getItem, putItem, deleteItem } from '../lib/dynamo';
 import { google, calendar_v3 } from 'googleapis';
 import { withSentry } from '../lib/sentry';
 
@@ -102,6 +102,41 @@ async function getAuthenticatedClient(
   return { client: oauth2Client };
 }
 
+/**
+ * Check if a Google API error indicates revoked/invalid credentials.
+ * When a user revokes access from Google Account settings, API calls fail
+ * with 401 (invalid_token) or 403 (insufficientPermissions).
+ */
+function isRevokedTokenError(err: any): boolean {
+  const status = err?.response?.status || err?.code;
+  if (status === 401 || status === 403) return true;
+  const msg = (err?.message || '').toLowerCase();
+  return (
+    msg.includes('invalid_grant') ||
+    msg.includes('token has been expired or revoked') ||
+    msg.includes('invalid credentials') ||
+    msg.includes('token has been revoked') ||
+    msg.includes('insufficientpermissions')
+  );
+}
+
+/**
+ * When we detect revoked credentials, delete the stale token so
+ * subsequent requests immediately prompt a reconnect instead of
+ * repeatedly hitting Google with bad tokens.
+ */
+async function cleanupRevokedToken(agencyId: string, clientId: string) {
+  try {
+    await deleteItem({
+      PK: `AGENCY#${agencyId}`,
+      SK: `GMAIL_TOKEN#${clientId}`,
+    });
+    console.log('Cleaned up revoked token for', clientId);
+  } catch (e) {
+    console.warn('Failed to clean up revoked token', e);
+  }
+}
+
 const googleCalendarHandler = async (event: APIGatewayProxyEventV2) => {
   const origin = event.headers?.origin || event.headers?.Origin || '';
   const method = (event.requestContext.http?.method || '').toUpperCase();
@@ -180,6 +215,14 @@ const googleCalendarHandler = async (event: APIGatewayProxyEventV2) => {
       return response(200, { ok: true, events }, origin);
     } catch (e: any) {
       console.error('Calendar list error', e);
+      if (isRevokedTokenError(e)) {
+        await cleanupRevokedToken(session.agencyId, clientId);
+        return response(401, {
+          ok: false,
+          error: 'Google access has been revoked. Please reconnect your Google account.',
+          needsReconnect: true,
+        }, origin);
+      }
       return response(500, { ok: false, error: e.message || 'Failed to fetch calendar events' }, origin);
     }
   }
@@ -252,6 +295,14 @@ const googleCalendarHandler = async (event: APIGatewayProxyEventV2) => {
       return response(200, { ok: true, event: createdEvent }, origin);
     } catch (e: any) {
       console.error('Calendar create error', e);
+      if (isRevokedTokenError(e)) {
+        await cleanupRevokedToken(session.agencyId, targetClientId);
+        return response(401, {
+          ok: false,
+          error: 'Google access has been revoked. Please reconnect your Google account.',
+          needsReconnect: true,
+        }, origin);
+      }
       return response(500, { ok: false, error: e.message || 'Failed to create calendar event' }, origin);
     }
   }
@@ -296,6 +347,14 @@ const googleCalendarHandler = async (event: APIGatewayProxyEventV2) => {
       return response(200, { ok: true, event: { id: updated.data.id } }, origin);
     } catch (e: any) {
       console.error('Calendar update error', e);
+      if (isRevokedTokenError(e)) {
+        await cleanupRevokedToken(session.agencyId, targetClientId);
+        return response(401, {
+          ok: false,
+          error: 'Google access has been revoked. Please reconnect your Google account.',
+          needsReconnect: true,
+        }, origin);
+      }
       return response(500, { ok: false, error: e.message || 'Failed to update calendar event' }, origin);
     }
   }
@@ -331,6 +390,14 @@ const googleCalendarHandler = async (event: APIGatewayProxyEventV2) => {
       return response(200, { ok: true }, origin);
     } catch (e: any) {
       console.error('Calendar delete error', e);
+      if (isRevokedTokenError(e)) {
+        await cleanupRevokedToken(session.agencyId, targetClientId);
+        return response(401, {
+          ok: false,
+          error: 'Google access has been revoked. Please reconnect your Google account.',
+          needsReconnect: true,
+        }, origin);
+      }
       return response(500, { ok: false, error: e.message || 'Failed to delete calendar event' }, origin);
     }
   }

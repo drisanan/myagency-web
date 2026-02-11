@@ -140,6 +140,17 @@ export async function deleteCalendarEvent(
 }
 
 /**
+ * Disconnect Google Calendar (revoke tokens and remove from system)
+ */
+export async function disconnectGoogleCalendar(
+  clientId: string
+): Promise<void> {
+  await apiFetch('/google/disconnect?clientId=' + encodeURIComponent(clientId), {
+    method: 'DELETE',
+  });
+}
+
+/**
  * Convert platform meetings to calendar event format
  */
 export function meetingToCalendarEvent(meeting: {

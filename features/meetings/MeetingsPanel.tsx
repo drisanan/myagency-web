@@ -26,6 +26,7 @@ import { FaCalendarAlt, FaPlus, FaCheck, FaTimes, FaVideo, FaList, FaGoogle, FaL
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || '';
+import { useSession } from '@/features/auth/session';
 import { 
   listMeetings, 
   createMeetingRequest, 
@@ -63,7 +64,16 @@ const statusColors: Record<MeetingStatus, 'default' | 'primary' | 'success' | 'e
 };
 
 export function MeetingsPanel({ clientId, isAthlete = false }: Props) {
+  const { session } = useSession();
   const queryClient = useQueryClient();
+
+  // Google Calendar tokens are stored per identity:
+  // - Agency users: stored under their email (session.email / session.agencyEmail)
+  // - Client/athlete users: stored under their clientId
+  // When an agency user views a client, calendar ops must use the AGENCY's tokens.
+  const calendarOwnerId = isAthlete
+    ? clientId
+    : (session?.email || session?.agencyEmail || '');
   const [viewMode, setViewMode] = React.useState<'list' | 'calendar'>('list');
   const [dialogOpen, setDialogOpen] = React.useState(false);
   const [confirmDialogOpen, setConfirmDialogOpen] = React.useState(false);
@@ -100,13 +110,13 @@ export function MeetingsPanel({ clientId, isAthlete = false }: Props) {
     staleTime: 30000,
   });
 
-  // Google Calendar events query
+  // Google Calendar events query — uses the logged-in user's calendar (not the athlete's)
   const calendarQuery = useQuery({
-    queryKey: ['googleCalendar', clientId],
-    queryFn: () => listCalendarEvents(clientId, 30),
+    queryKey: ['googleCalendar', calendarOwnerId],
+    queryFn: () => listCalendarEvents(calendarOwnerId, 30),
     staleTime: 60000,
     retry: false,
-    enabled: viewMode === 'calendar',
+    enabled: viewMode === 'calendar' && Boolean(calendarOwnerId),
   });
 
   // Listen for OAuth popup messages for calendar reconnection
@@ -133,13 +143,13 @@ export function MeetingsPanel({ clientId, isAthlete = false }: Props) {
    * Trigger Google OAuth reconnection flow for calendar permissions
    */
   async function handleConnectCalendar() {
-    if (!clientId) return;
+    if (!calendarOwnerId) return;
     
     try {
       setCalendarConnecting(true);
       const oauthUrl = API_BASE_URL
-        ? `${API_BASE_URL}/google/oauth/url?clientId=${encodeURIComponent(clientId)}`
-        : `/api/google/oauth/url?clientId=${encodeURIComponent(clientId)}`;
+        ? `${API_BASE_URL}/google/oauth/url?clientId=${encodeURIComponent(calendarOwnerId)}`
+        : `/api/google/oauth/url?clientId=${encodeURIComponent(calendarOwnerId)}`;
       
       const res = await fetch(oauthUrl, { credentials: 'include' });
       const data = await res.json();
@@ -168,11 +178,11 @@ export function MeetingsPanel({ clientId, isAthlete = false }: Props) {
     onSuccess: async (meeting) => {
       queryClient.invalidateQueries({ queryKey: ['meetings'] });
       
-      // Optionally sync to Google Calendar
+      // Optionally sync to Google Calendar (uses agency's calendar, not athlete's)
       if (form.syncToGoogle && meeting.scheduledAt) {
         try {
           await createCalendarEvent({
-            clientId,
+            clientId: calendarOwnerId,
             title: meeting.title,
             start: meeting.scheduledAt,
             end: meeting.scheduledAt + (meeting.duration || 30) * 60000,
