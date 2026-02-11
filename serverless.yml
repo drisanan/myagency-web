@@ -193,6 +193,9 @@ functions:
       - httpApi:
           path: /google/refresh
           method: post
+      - httpApi:
+          path: /google/disconnect
+          method: delete
   ghlLogin:
     handler: infra/src/handlers/ghl-login.handler
     events:
