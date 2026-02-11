@@ -82,6 +82,7 @@ export function RecruiterWizard() {
   const [selectedTemplateId, setSelectedTemplateId] = React.useState<string>('');
   const [gmailConnecting, setGmailConnecting] = React.useState(false);
   const [gmailConnected, setGmailConnected] = React.useState(false);
+  const [gmailExpired, setGmailExpired] = React.useState(false);
   const popupRef = React.useRef<Window | null>(null);
   const lastConnectedClientIdRef = React.useRef<string>('');
   const [prompts, setPrompts] = React.useState<PromptRecord[]>([]);
@@ -342,6 +343,8 @@ export function RecruiterWizard() {
         console.info('[gmail-ui:oauth-success]', { clientId: id });
         setGmailConnecting(false);
         setGmailConnected(Boolean(id));
+        setGmailExpired(false);
+        setError(null);
         try { popupRef.current?.close(); } catch {}
         if (id) lastConnectedClientIdRef.current = id;
         // fetch tokens from server memory and persist onto the client record
@@ -375,15 +378,20 @@ export function RecruiterWizard() {
   }, []);
 
   React.useEffect(() => {
-    if (!currentClient?.id) { setGmailConnected(false); return; }
+    if (!currentClient?.id) { setGmailConnected(false); setGmailExpired(false); return; }
     if (typeof window === 'undefined' || typeof fetch === 'undefined') { setGmailConnected(false); return; }
     const statusUrl = API_BASE_URL
       ? `${API_BASE_URL}/google/status?clientId=${encodeURIComponent(currentClient.id)}`
       : `/api/google/status?clientId=${encodeURIComponent(currentClient.id)}`;
     fetch(statusUrl, { credentials: 'include' })
       .then(r => r.json())
-      .then(d => setGmailConnected(Boolean(d?.connected)))
-      .catch(() => setGmailConnected(false));
+      .then(d => {
+        const connected = Boolean(d?.connected);
+        const expired = Boolean(d?.expired) || (connected && !d?.canRefresh);
+        setGmailConnected(connected && !expired);
+        setGmailExpired(expired);
+      })
+      .catch(() => { setGmailConnected(false); setGmailExpired(false); });
   }, [currentClient?.id]);
 
   async function handleConnectGmail() {
@@ -416,9 +424,6 @@ export function RecruiterWizard() {
 
   async function handleSendEmails() {
     try {
-      if (!window.confirm('Send this email now?')) {
-        return;
-      }
       setSendMessage(null);
       setIsSendingEmails(true);
       const id = currentClient?.id || lastConnectedClientIdRef.current || clientId || '';
@@ -599,7 +604,16 @@ export function RecruiterWizard() {
       setConfirmModalOpen(true);
     } catch (e: any) {
       console.error(e);
-      setError(e?.message || 'Failed to send email');
+      const msg = (e?.message || 'Failed to send email').toLowerCase();
+      const isTokenError = msg.includes('revoked') || msg.includes('expired') || msg.includes('reconnect')
+        || msg.includes('invalid_grant') || msg.includes('invalid credentials') || msg.includes('not connected');
+      if (isTokenError) {
+        setGmailConnected(false);
+        setGmailExpired(true);
+        setError('Gmail credentials expired or were revoked. Please reconnect Gmail and try again.');
+      } else {
+        setError(e?.message || 'Failed to send email');
+      }
     } finally {
       setIsSendingEmails(false);
     }
@@ -1629,20 +1643,25 @@ CRITICAL INSTRUCTIONS:
               </Box>
 
               <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} alignItems="flex-start">
-                {!gmailConnected && (
+                {(!gmailConnected || gmailExpired) && (
                   <Button
                     variant="contained"
                     onClick={handleConnectGmail}
-                    sx={{ bgcolor: '#CCFF00', color: '#0A0A0A', '&:hover': { bgcolor: '#B8E600' } }}
+                    sx={{ bgcolor: gmailExpired ? '#FFB800' : '#CCFF00', color: '#0A0A0A', '&:hover': { bgcolor: gmailExpired ? '#E6A600' : '#B8E600' } }}
                     disabled={gmailConnecting}
                     startIcon={gmailConnectingBusy ? <CircularProgress size={16} color="inherit" /> : null}
                   >
-                    {gmailConnectingBusy ? 'Connecting…' : 'Connect Gmail'}
+                    {gmailConnectingBusy ? 'Connecting…' : gmailExpired ? 'Reconnect Gmail' : 'Connect Gmail'}
                   </Button>
                 )}
                 {gmailConnected && (
                   <Typography variant="body2" sx={{ bgcolor: '#CCFF0020', px: 1.5, py: 0.75, borderRadius: 0, clipPath: 'polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 6px 100%, 0 calc(100% - 6px))' }}>
-                    Mailing from: {userEmail || 'Connected Gmail'}
+                    Mailing from: {currentClient?.email || 'Connected Gmail'}
+                  </Typography>
+                )}
+                {gmailExpired && (
+                  <Typography variant="body2" color="warning.main" sx={{ fontStyle: 'italic' }}>
+                    Gmail credentials expired — please reconnect.
                   </Typography>
                 )}
 
