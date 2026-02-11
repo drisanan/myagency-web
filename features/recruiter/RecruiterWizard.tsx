@@ -83,8 +83,8 @@ export function RecruiterWizard() {
   const [gmailConnecting, setGmailConnecting] = React.useState(false);
   const [gmailConnected, setGmailConnected] = React.useState(false);
   const [gmailExpired, setGmailExpired] = React.useState(false);
+  const [gmailAccountEmail, setGmailAccountEmail] = React.useState<string>('');
   const popupRef = React.useRef<Window | null>(null);
-  const lastConnectedClientIdRef = React.useRef<string>('');
   const [prompts, setPrompts] = React.useState<PromptRecord[]>([]);
   const [selectedPromptId, setSelectedPromptId] = React.useState<string>('');
 
@@ -346,11 +346,18 @@ export function RecruiterWizard() {
         setGmailExpired(false);
         setError(null);
         try { popupRef.current?.close(); } catch {}
-        if (id) lastConnectedClientIdRef.current = id;
-        // fetch tokens from server memory and persist onto the client record
+        // Fetch the actual Google account email and persist tokens
         (async () => {
           try {
             if (!id) return;
+            // Get the Google account email from status to show the real sender
+            const statusUrl = API_BASE_URL
+              ? `${API_BASE_URL}/google/status?clientId=${encodeURIComponent(id)}`
+              : `/api/google/status?clientId=${encodeURIComponent(id)}`;
+            const statusRes = await fetch(statusUrl, { credentials: 'include' });
+            const statusData = await statusRes.json();
+            if (statusData?.email) setGmailAccountEmail(statusData.email);
+
             const r = await fetch(`/api/google/tokens?clientId=${encodeURIComponent(id)}`);
             const j = await r.json();
             console.info('[gmail-ui:tokens:fetched]', {
@@ -378,7 +385,7 @@ export function RecruiterWizard() {
   }, []);
 
   React.useEffect(() => {
-    if (!currentClient?.id) { setGmailConnected(false); setGmailExpired(false); return; }
+    if (!currentClient?.id) { setGmailConnected(false); setGmailExpired(false); setGmailAccountEmail(''); return; }
     if (typeof window === 'undefined' || typeof fetch === 'undefined') { setGmailConnected(false); return; }
     const statusUrl = API_BASE_URL
       ? `${API_BASE_URL}/google/status?clientId=${encodeURIComponent(currentClient.id)}`
@@ -390,8 +397,9 @@ export function RecruiterWizard() {
         const expired = Boolean(d?.expired) || (connected && !d?.canRefresh);
         setGmailConnected(connected && !expired);
         setGmailExpired(expired);
+        setGmailAccountEmail(d?.email || '');
       })
-      .catch(() => { setGmailConnected(false); setGmailExpired(false); });
+      .catch(() => { setGmailConnected(false); setGmailExpired(false); setGmailAccountEmail(''); });
   }, [currentClient?.id]);
 
   async function handleConnectGmail() {
@@ -426,7 +434,7 @@ export function RecruiterWizard() {
     try {
       setSendMessage(null);
       setIsSendingEmails(true);
-      const id = currentClient?.id || lastConnectedClientIdRef.current || clientId || '';
+      const id = currentClient?.id || '';
       if (!id) {
         setError('Select a client first');
         return;
@@ -1656,7 +1664,12 @@ CRITICAL INSTRUCTIONS:
                 )}
                 {gmailConnected && (
                   <Typography variant="body2" sx={{ bgcolor: '#CCFF0020', px: 1.5, py: 0.75, borderRadius: 0, clipPath: 'polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 6px 100%, 0 calc(100% - 6px))' }}>
-                    Mailing from: {currentClient?.email || 'Connected Gmail'}
+                    Mailing from: {gmailAccountEmail || currentClient?.email || 'Connected Gmail'}
+                  </Typography>
+                )}
+                {gmailConnected && gmailAccountEmail && currentClient?.email && gmailAccountEmail.toLowerCase() !== currentClient.email.toLowerCase() && (
+                  <Typography variant="body2" color="warning.main" sx={{ fontWeight: 600 }}>
+                    ⚠ Connected Google account ({gmailAccountEmail}) does not match {currentClient.email}. Emails will send from {gmailAccountEmail}.
                   </Typography>
                 )}
                 {gmailExpired && (
