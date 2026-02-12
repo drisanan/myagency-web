@@ -184,7 +184,11 @@ export function ClientRecruiterWizard() {
   React.useEffect(() => {
     function onMessage(e: MessageEvent) {
       if (typeof window === 'undefined') return;
-      if (e.origin !== window.location.origin) return;
+      // Allow messages from both the frontend origin and the API origin
+      // (OAuth callback page is served from the API domain in production)
+      const apiOrigin = API_BASE_URL ? new URL(API_BASE_URL).origin : '';
+      const allowedOrigins = [window.location.origin, apiOrigin].filter(Boolean);
+      if (!allowedOrigins.includes(e.origin)) return;
       if (e.data?.type === 'google-oauth-success') {
         setGmailConnecting(false);
         setGmailConnected(true);
