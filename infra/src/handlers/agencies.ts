@@ -169,9 +169,8 @@ const agenciesHandler = async (event: APIGatewayProxyEventV2) => {
         return response(404, { ok: false, error: 'Agency not found' }, origin);
       }
       
-      // Merge settings - preserve existing settings when updating
-      const mergedSettings = { ...(agency.settings || {}), ...(parsed.settings || {}) };
-      const updated = { ...agency, settings: mergedSettings };
+      // Replace settings entirely — frontend always sends complete color values
+      const updated = { ...agency, settings: parsed.settings || {} };
       await putItem(updated);
       
       console.log('agencies update settings', { email, settings: updated.settings });

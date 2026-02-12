@@ -3,7 +3,7 @@
 import React from 'react';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import { useSession } from '@/features/auth/session';
-import { colors, gradients } from '@/theme/colors';
+import { colors } from '@/theme/colors';
 import { typography } from '@/theme/typography';
 
 // Default color palette — 3-color sporty system (black / lime / white)
@@ -40,23 +40,23 @@ function buildTheme(settings: AgencySettings) {
       },
       secondary: { 
         main: s.primaryColor,
-        contrastText: colors.white,
+        contrastText: contrastText(s.primaryColor),
       },
       success: {
         main: s.successColor,
-        contrastText: colors.black,
+        contrastText: contrastText(s.successColor),
       },
       warning: {
         main: s.warningColor,
-        contrastText: colors.white,
+        contrastText: contrastText(s.warningColor),
       },
       error: {
         main: s.errorColor,
-        contrastText: colors.white,
+        contrastText: contrastText(s.errorColor),
       },
       info: {
         main: s.infoColor,
-        contrastText: colors.black,
+        contrastText: contrastText(s.infoColor),
       },
       text: {
         primary: s.textPrimary,
@@ -90,78 +90,78 @@ function buildTheme(settings: AgencySettings) {
             fontSize: '1rem',
             padding: '12px 28px',
           },
-          // ── Lime bg / black text (default)
+          // ── Brand bg / contrast text (default)
           containedPrimary: {
-            background: gradients.limeButton,
-            color: colors.black,
+            background: `linear-gradient(135deg, ${s.secondaryColor} 0%, ${adjustBrightness(s.secondaryColor, -10)} 60%, ${adjustBrightness(s.secondaryColor, -20)} 100%)`,
+            color: s.buttonText,
             boxShadow: 'none',
             '&:hover': {
-              background: 'linear-gradient(135deg, #D4FF1A 0%, #B8E600 100%)',
-              boxShadow: `0 4px 20px ${colors.lime}40`,
+              background: `linear-gradient(135deg, ${adjustBrightness(s.secondaryColor, 8)} 0%, ${adjustBrightness(s.secondaryColor, -5)} 100%)`,
+              boxShadow: `0 4px 20px ${s.secondaryColor}40`,
               transform: 'translateY(-1px)',
             },
             '&:active': { transform: 'translateY(0)' },
           },
-          // ── Black bg / lime text (invert)
+          // ── Background bg / brand text (invert)
           containedSecondary: {
-            background: colors.black,
-            color: colors.lime,
+            background: s.primaryColor,
+            color: s.secondaryColor,
             boxShadow: 'none',
             '&:hover': {
-              background: '#1A1A1A',
+              background: adjustBrightness(s.primaryColor, 10),
               boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
               transform: 'translateY(-1px)',
             },
           },
-          // All semantic variants → black bg / lime text
+          // All semantic variants → background bg / brand text
           containedSuccess: {
-            background: colors.black,
-            color: colors.lime,
-            '&:hover': { background: '#1A1A1A', transform: 'translateY(-1px)' },
+            background: s.primaryColor,
+            color: s.secondaryColor,
+            '&:hover': { background: adjustBrightness(s.primaryColor, 10), transform: 'translateY(-1px)' },
           },
           containedWarning: {
-            background: colors.black,
-            color: colors.lime,
-            '&:hover': { background: '#1A1A1A', transform: 'translateY(-1px)' },
+            background: s.primaryColor,
+            color: s.secondaryColor,
+            '&:hover': { background: adjustBrightness(s.primaryColor, 10), transform: 'translateY(-1px)' },
           },
           containedError: {
-            background: colors.black,
-            color: colors.lime,
-            '&:hover': { background: '#1A1A1A', transform: 'translateY(-1px)' },
+            background: s.primaryColor,
+            color: s.secondaryColor,
+            '&:hover': { background: adjustBrightness(s.primaryColor, 10), transform: 'translateY(-1px)' },
           },
           containedInfo: {
-            background: colors.black,
-            color: colors.lime,
-            '&:hover': { background: '#1A1A1A', transform: 'translateY(-1px)' },
+            background: s.primaryColor,
+            color: s.secondaryColor,
+            '&:hover': { background: adjustBrightness(s.primaryColor, 10), transform: 'translateY(-1px)' },
           },
-          // ── Outlined → black border / black text
+          // ── Outlined → primary border / primary text
           outlinedPrimary: {
-            borderColor: colors.black,
-            color: colors.black,
+            borderColor: s.textPrimary,
+            color: s.textPrimary,
             borderWidth: 2,
             '&:hover': {
-              borderColor: colors.black,
-              backgroundColor: `${colors.black}0A`,
+              borderColor: s.textPrimary,
+              backgroundColor: `${s.textPrimary}0A`,
               borderWidth: 2,
             },
           },
           outlinedSecondary: {
-            borderColor: colors.lime,
-            color: colors.lime,
+            borderColor: s.secondaryColor,
+            color: s.secondaryColor,
             borderWidth: 2,
             '&:hover': {
-              borderColor: colors.lime,
-              backgroundColor: `${colors.lime}14`,
+              borderColor: s.secondaryColor,
+              backgroundColor: `${s.secondaryColor}14`,
               borderWidth: 2,
             },
           },
-          // ── Text → black
+          // ── Text
           textPrimary: {
-            color: colors.black,
+            color: s.textPrimary,
             clipPath: 'none',
           },
           textSecondary: {
-            color: colors.black,
+            color: s.textPrimary,
             clipPath: 'none',
           },
         },
@@ -200,7 +200,7 @@ function buildTheme(settings: AgencySettings) {
             letterSpacing: '0.03em',
           },
           colorPrimary: {
-            background: gradients.limeButton,
+            background: `linear-gradient(135deg, ${s.secondaryColor} 0%, ${adjustBrightness(s.secondaryColor, -15)} 100%)`,
             color: s.buttonText,
           },
           colorSuccess: {
@@ -232,7 +232,7 @@ function buildTheme(settings: AgencySettings) {
           colorPrimary: {
             backgroundColor: `${s.secondaryColor}33`,
             '& .MuiLinearProgress-bar': {
-              background: gradients.limeButton,
+              background: `linear-gradient(135deg, ${s.secondaryColor} 0%, ${adjustBrightness(s.secondaryColor, -10)} 60%, ${adjustBrightness(s.secondaryColor, -20)} 100%)`,
               borderRadius: 0,
             },
           },
@@ -417,8 +417,8 @@ function buildTheme(settings: AgencySettings) {
         styleOverrides: {
           root: {
             '& .MuiTableCell-head': {
-              background: gradients.darkCard,
-              color: colors.white,
+              background: `linear-gradient(135deg, ${s.primaryColor} 0%, ${adjustBrightness(s.primaryColor, 5)} 50%, ${s.primaryColor} 100%)`,
+              color: contrastText(s.primaryColor),
               fontWeight: 700,
               textTransform: 'uppercase',
               letterSpacing: '0.06em',
@@ -442,7 +442,7 @@ function buildTheme(settings: AgencySettings) {
       MuiFab: {
         styleOverrides: {
           primary: {
-            background: gradients.limeButton,
+            background: `linear-gradient(135deg, ${s.secondaryColor} 0%, ${adjustBrightness(s.secondaryColor, -10)} 60%, ${adjustBrightness(s.secondaryColor, -20)} 100%)`,
             color: s.buttonText,
             boxShadow: `0 4px 16px ${s.secondaryColor}30`,
             '&:hover': {
@@ -520,6 +520,21 @@ function buildTheme(settings: AgencySettings) {
       },
     },
   });
+}
+
+// Determine if a hex color is dark (needs light text on top)
+function isDark(hexColor: string): boolean {
+  const hex = hexColor.replace('#', '');
+  if (hex.length < 6) return false;
+  const r = parseInt(hex.substring(0, 2), 16);
+  const g = parseInt(hex.substring(2, 4), 16);
+  const b = parseInt(hex.substring(4, 6), 16);
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  return luminance < 0.5;
+}
+
+function contrastText(hex: string): string {
+  return isDark(hex) ? '#FFFFFF' : '#0A0A0A';
 }
 
 // Adjust hex color brightness by percentage

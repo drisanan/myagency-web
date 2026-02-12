@@ -277,8 +277,13 @@ export function SettingsForm() {
         });
       }
       
+      // Always send complete color values so the backend replaces (not merges with stale values)
+      const completeColors: Record<string, string> = {};
+      for (const key of Object.keys(defaults) as ColorKey[]) {
+        completeColors[key] = colors[key] || defaults[key];
+      }
       await updateAgencySettings(agencyEmail, {
-        ...colors,
+        ...completeColors,
         logoDataUrl: logoDataUrl || undefined,
         programLevels: programLevels,
       });
@@ -293,7 +298,8 @@ export function SettingsForm() {
   };
 
   const resetAllColors = () => {
-    setColors({});
+    // Set explicit default values so save will overwrite DB values (not merge with stale ones)
+    setColors({ ...defaults });
     setBrandColor(defaults.secondaryColor);
     setBgColor(defaults.primaryColor);
     setBaseColor(defaults.cardBg);
