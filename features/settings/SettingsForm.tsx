@@ -248,8 +248,8 @@ export function SettingsForm() {
     const file = e.target.files?.[0];
     if (!file) return;
     
-    if (file.size > 500 * 1024) {
-      setError('Logo must be under 500KB');
+    if (file.size > 16 * 1024 * 1024) {
+      setError('Logo must be under 16MB');
       return;
     }
     

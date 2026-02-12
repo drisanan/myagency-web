@@ -190,11 +190,11 @@ describe('uploads handler', () => {
       expect(JSON.parse(result.body).error).toContain('File too large');
     });
 
-    it('should return 400 if image exceeds 5MB', async () => {
+    it('should return 400 if image exceeds 16MB', async () => {
       const event = createMockEvent({
         body: JSON.stringify({
           contentType: 'image/jpeg',
-          fileSize: 10 * 1024 * 1024, // 10MB
+          fileSize: 20 * 1024 * 1024, // 20MB
           clientId: 'client-123',
           mediaType: 'image',
         }),

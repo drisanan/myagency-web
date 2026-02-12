@@ -102,7 +102,7 @@ export function validateVideoFile(file: File): { valid: boolean; error?: string 
  * Validate image file before upload
  */
 export function validateImageFile(file: File): { valid: boolean; error?: string } {
-  const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB
+  const MAX_IMAGE_SIZE = 16 * 1024 * 1024; // 16MB
   const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
 
   if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
@@ -115,7 +115,7 @@ export function validateImageFile(file: File): { valid: boolean; error?: string 
   if (file.size > MAX_IMAGE_SIZE) {
     return { 
       valid: false, 
-      error: `Image too large: ${Math.round(file.size / 1024 / 1024)}MB. Max 5MB allowed` 
+      error: `Image too large: ${Math.round(file.size / 1024 / 1024)}MB. Max 16MB allowed` 
     };
   }
 

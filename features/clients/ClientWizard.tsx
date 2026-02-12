@@ -79,10 +79,24 @@ function ContentLinksStep({ value, onChange }: { value: RadarDraft; onChange: (k
   );
 }
 
+/**
+ * Format a phone string as-you-type: 1-(234)-567-8901
+ * Strips non-digits, then applies the mask progressively.
+ */
+function formatPhone(raw: string): string {
+  const digits = raw.replace(/\D/g, '').slice(0, 11);
+  if (!digits) return '';
+  let out = digits[0]; // country code
+  if (digits.length >= 2) out += '-(' + digits.slice(1, 4);
+  if (digits.length >= 5) out += ')-' + digits.slice(4, 7);
+  if (digits.length >= 8) out += '-' + digits.slice(7, 11);
+  return out;
+}
+
 // Image size constants - DynamoDB has 400KB item limit, base64 adds ~33% overhead
-const MAX_SINGLE_IMAGE_KB = 150; // 150KB per image max
+const MAX_SINGLE_IMAGE_KB = 500; // 500KB per image max
 const MAX_SINGLE_IMAGE_BYTES = MAX_SINGLE_IMAGE_KB * 1024;
-const MAX_TOTAL_GALLERY_KB = 800; // 800KB total for all gallery images
+const MAX_TOTAL_GALLERY_KB = 2400; // 2.4MB total for all gallery images
 const MAX_TOTAL_GALLERY_BYTES = MAX_TOTAL_GALLERY_KB * 1024;
 const MAX_IMAGES = 6; // Reduced from 10 to be safer
 
@@ -645,7 +659,7 @@ function BasicInfoStep({
   const handlePhotoFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const MAX_PROFILE_IMAGE_KB = 200; // 200KB max for profile image
+    const MAX_PROFILE_IMAGE_KB = 500; // 500KB max for profile image
     const MAX_PROFILE_IMAGE_BYTES = MAX_PROFILE_IMAGE_KB * 1024;
     if (file.size > MAX_PROFILE_IMAGE_BYTES) {
       setPhotoError(`Profile image must be ${MAX_PROFILE_IMAGE_KB}KB or smaller. Your image is ${Math.round(file.size / 1024)}KB. Please compress it using TinyPNG or Squoosh.`);
@@ -687,13 +701,19 @@ function BasicInfoStep({
         label="Access Code"
         type="password"
         inputProps={{ inputMode: 'numeric', pattern: '[0-9]*', maxLength: 6, 'data-testid': 'athlete-access-code' }}
-        value={value.accessCode ?? ''}
+        value={value.hasExistingAccessCode && !value.accessCode ? '******' : (value.accessCode ?? '')}
+        onFocus={(e) => {
+          // Clear the masked placeholder so the user can type a fresh code
+          if (value.hasExistingAccessCode && !value.accessCode) {
+            (e.target as HTMLInputElement).value = '';
+          }
+        }}
         onChange={(e)=>onChange({ ...value, accessCode: e.target.value.slice(0, 6).replace(/\D/g, '') })}
         error={Boolean(errors?.accessCode)}
         helperText={
           errors?.accessCode || 
           (value.hasExistingAccessCode && !value.accessCode 
-            ? '••••••  (existing code set - enter new 6-digit code to change)' 
+            ? 'Enter a new 6-digit code to change' 
             : '6-digit numeric code')
         }
       />
@@ -702,8 +722,9 @@ function BasicInfoStep({
       <TextField
         size="small"
         label="Phone"
-        value={value.phone ?? ''}
-        onChange={(e)=>onChange({ ...value, phone: e.target.value })}
+        value={formatPhone(value.phone ?? '')}
+        onChange={(e)=>onChange({ ...value, phone: formatPhone(e.target.value) })}
+        placeholder="1-(234)-567-8901"
         inputProps={{ inputMode: 'tel', 'data-testid': 'athlete-phone' }}
         error={Boolean(errors?.phone)}
         helperText={errors?.phone || ''}
