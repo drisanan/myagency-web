@@ -203,9 +203,10 @@ export function RecruiterWizard() {
 
   function personalizedHtmlForCoach(html: string, coach: any) {
     const coachLast = coach?.lastName || coach?.LastName || 'Coach';
-    const re = /Hello Coach [^,<]*,/i;
+    // Match various greeting styles: Hello/Hey/Hi/Dear Coach <name>,
+    const re = /(Hello|Hey|Hi|Dear)\s+Coach\s+[^,<]*,/i;
     if (re.test(html)) {
-      return html.replace(re, `Hello Coach ${coachLast},`);
+      return html.replace(re, (match, greeting) => `${greeting} Coach ${coachLast},`);
     }
     return `<p>Hello Coach ${coachLast},</p>${html}`;
   }
@@ -220,6 +221,19 @@ export function RecruiterWizard() {
       .replaceAll('{{coach_first_name}}', coachFirst)
       .replaceAll('{{coach_last_name}}', coachLast)
       .replaceAll('{{university_name}}', universityNameSafe);
+  }
+
+  function convertToLiquidTags(html: string): string {
+    let out = html;
+    const coachLast = selectedCoaches[0]?.lastName || selectedCoaches[0]?.LastName || '';
+    if (coachLast) {
+      out = out.replaceAll(`Coach ${coachLast}`, 'Coach {{coach_last_name}}');
+    }
+    const uniName = resolvedCollegeName || '';
+    if (uniName) {
+      out = out.replaceAll(uniName, '{{university_name}}');
+    }
+    return out;
   }
 
   function buildSubjectLine(
@@ -248,11 +262,10 @@ export function RecruiterWizard() {
     setSelectedFields((p) => ({ ...p, [section]: { ...(p[section] ?? {}), [fieldKey]: checked } }));
   }
   function buildEmailPreview(): string {
-    const coachName = selectedCoaches[0]?.lastName || selectedCoaches[0]?.LastName || 'Coach';
     const enabledIds = Object.keys(enabledSections).filter((k) => enabledSections[k]);
     let emailContent = '';
     const generatedIntro = `${contact.firstName || ''} ${contact.lastName || ''} - ${contact.school || ''}`.trim();
-    emailContent += `<p>Hello Coach ${coachName || ''},</p><p>${generatedIntro}</p>`;
+    emailContent += `<p>Hello Coach {{coach_last_name}},</p><p>${generatedIntro}</p>`;
     if (enabledIds.includes('accomplishments')) {
       const valid = (contact.accomplishments || []).filter((item: string) => item && item.trim() !== '' && item !== 'undefined' && item !== 'null');
       if (valid.length) {
@@ -677,7 +690,6 @@ export function RecruiterWizard() {
         setAiLoading(false);
         return;
       }
-      const coachLast = selectedCoaches[0]?.lastName || selectedCoaches[0]?.LastName || 'Coach';
       const fullName = `${contact.firstName || ''} ${contact.lastName || ''}`.trim();
       const parts: string[] = [];
       if (enabledSections.accomplishments && (contact as any).accomplishments?.length) parts.push('notable accomplishments');
@@ -719,8 +731,10 @@ CRITICAL INSTRUCTIONS:
         .replace(/^<p>(Hello|Hey|Hi|Dear)\s+Coach[^<]*<\/p>\s*/i, '') // Remove greeting paragraph
         .replace(/^<p>[^<]{0,100}<\/p>\s*/i, ''); // Remove short generic intro paragraph (< 100 chars)
       
-      // Use stripped content - don't fall back to base which would duplicate greeting
-      const improved = `<p>Hello Coach ${coachLast},</p><p>${introFixed}</p>${stripped}`;
+      // Build with liquid tag for coach name, then convert any remaining hardcoded values
+      const improved = convertToLiquidTags(
+        `<p>Hello Coach {{coach_last_name}},</p><p>${introFixed}</p>${stripped}`
+      );
       setAiHtml(improved);
       // Pre-populate subject line if not already set by user
       if (!subjectLine) {
@@ -737,7 +751,6 @@ CRITICAL INSTRUCTIONS:
   }
 
   async function generateFullEmailHtml(): Promise<string> {
-    const coachLast = selectedCoaches[0]?.lastName || selectedCoaches[0]?.LastName || 'Coach';
     const fullName = `${contact.firstName || ''} ${contact.lastName || ''}`.trim();
     const sport = (currentClient as any)?.sport || '';
     const collegeName = resolvedCollegeName;
@@ -791,8 +804,9 @@ CRITICAL INSTRUCTIONS:
       .replace(/^<p>(Hello|Hey|Hi|Dear)\s+Coach[^<]*<\/p>\s*/i, '') // Remove greeting paragraph
       .replace(/^<p>[^<]{0,100}<\/p>\s*/i, ''); // Remove short generic intro paragraph (< 100 chars)
     
-    // Use stripped content - don't fall back to base which would duplicate greeting
-    return `<p>${randomGreeting} Coach ${coachLast},</p><p>${introFixed}</p>${stripped}`;
+    // Build with liquid tag for coach name, then convert any remaining hardcoded values
+    const raw = `<p>${randomGreeting} Coach {{coach_last_name}},</p><p>${introFixed}</p>${stripped}`;
+    return convertToLiquidTags(raw);
   }
 
   // FIX: Load Initial Data using safe userEmail
