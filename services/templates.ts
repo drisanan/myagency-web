@@ -59,8 +59,6 @@ export function toTemplateHtml(
     studentLastName: string;
     studentFullName: string;
     universityName: string;
-    primaryCoachLastName?: string;
-    coachList?: string;
   }
 ) {
   let out = String(html);
@@ -71,12 +69,6 @@ export function toTemplateHtml(
     [ctx.studentLastName]: '{{StudentLastName}}',
     [ctx.universityName]: '{{UniversityName}}',
   };
-  if (ctx.primaryCoachLastName) {
-    replacements[ctx.primaryCoachLastName] = '{{PrimaryCoachLastName}}';
-  }
-  if (ctx.coachList) {
-    replacements[ctx.coachList] = '{{CoachList}}';
-  }
   for (const [from, to] of Object.entries(replacements)) {
     if (from && from.trim().length) {
       const re = new RegExp(escapeRegExp(from), 'g');
@@ -94,8 +86,6 @@ export function applyTemplate(
     studentLastName: string;
     studentFullName: string;
     universityName: string;
-    primaryCoachLastName?: string;
-    coachList?: string;
   }
 ) {
   let out = String(html);
@@ -104,8 +94,6 @@ export function applyTemplate(
     '{{StudentLastName}}': ctx.studentLastName || '',
     '{{StudentFullName}}': ctx.studentFullName || '',
     '{{UniversityName}}': ctx.universityName || '',
-    '{{PrimaryCoachLastName}}': ctx.primaryCoachLastName || '',
-    '{{CoachList}}': ctx.coachList || '',
   };
   for (const [k, v] of Object.entries(map)) {
     const re = new RegExp(escapeRegExp(k), 'g');

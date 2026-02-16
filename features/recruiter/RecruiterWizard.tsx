@@ -957,12 +957,7 @@ CRITICAL INSTRUCTIONS:
     const studentLastName = contact.lastName || '';
     const studentFullName = `${studentFirstName} ${studentLastName}`.trim();
     const uName = universityName || (schoolDetails?.schoolInfo?.School || schoolDetails?.name || '');
-    const primaryCoachLastName = selectedCoaches[0]?.lastName || selectedCoaches[0]?.LastName || '';
-    const coachList = (selectedCoaches || [])
-      .map((c: any) => `${c.firstName || c.FirstName || ''} ${c.lastName || c.LastName || ''}`.trim())
-      .filter(Boolean)
-      .join(', ');
-    return { studentFirstName, studentLastName, studentFullName, universityName: uName, primaryCoachLastName, coachList };
+    return { studentFirstName, studentLastName, studentFullName, universityName: uName };
   }
 
   function handleSaveTemplate() {
