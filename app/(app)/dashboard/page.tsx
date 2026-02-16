@@ -12,7 +12,8 @@ import { MetricCard } from './MetricCard';
 import { RecruitingCalendarCard } from '@/features/recruiter/RecruitingCalendarCard';
 import { CommitsSection } from '@/features/commits/CommitsSection';
 import { GoogleCalendarWidget } from '@/features/calendar';
-import { computeEmailMetrics, computeOpenRateMetrics, countAddedThisMonth, formatDelta, type MetricsResponse } from './metrics';
+import { computeMetricsFromApi, countAddedThisMonth, formatDelta } from './metrics';
+import { fetchEmailMetrics } from '@/services/emailTracking';
 import { useTour } from '@/features/tour/TourProvider';
 import { dashboardSteps } from '@/features/tour/dashboardSteps';
 import { dashboardDataGridSx, dashboardTablePaperSx } from '@/components/tableStyles';
@@ -27,21 +28,24 @@ export default function DashboardPage() {
     enabled: !!session && (isParent || !!session?.email),
   });
   const [schInput, setSchInput] = React.useState<string>('');
-  const [metrics, setMetrics] = React.useState<MetricsResponse | null>(null);
   const isLoading = q.isInitialLoading;
+  const metricsEnabled = !!session?.email && !isParent;
+
+  const metrics30 = useQuery({
+    queryKey: ['dashboard-metrics', session?.email, 30],
+    queryFn: () => fetchEmailMetrics({ days: 30 }),
+    enabled: metricsEnabled,
+    refetchInterval: 60_000,
+  });
+  const metrics60 = useQuery({
+    queryKey: ['dashboard-metrics', session?.email, 60],
+    queryFn: () => fetchEmailMetrics({ days: 60 }),
+    enabled: metricsEnabled,
+    refetchInterval: 60_000,
+  });
 
   React.useEffect(() => {
     if (!session?.email || isParent) return;
-    if (typeof window === 'undefined' || typeof fetch === 'undefined') return;
-    // load computed stats from server
-    fetch(`/api/metrics/stats?agencyEmail=${encodeURIComponent(session.email)}&days=60`)
-      .then(r => r.json())
-      .then(d => {
-        if (d?.ok) {
-          setMetrics(d);
-        }
-      })
-      .catch(() => {});
     setSchInput(String(getScholarships(session.email)));
   }, [session?.email, isParent]);
   React.useEffect(() => {
@@ -74,9 +78,11 @@ export default function DashboardPage() {
   const clients = (q.data ?? []) as any[];
   const totalClients = clients.length;
 
-  // Metrics from live server data only — no placeholders or fallbacks
-  const { emailsSent, deltaPct: emailsDelta } = computeEmailMetrics(metrics);
-  const { openRate, deltaPct: openRateDelta } = computeOpenRateMetrics(metrics);
+  // Metrics from durable Lambda API (DynamoDB-backed, refreshes every 60s)
+  const { emailsSent, emailsDelta } = computeMetricsFromApi(
+    metrics30.data ?? null,
+    metrics60.data ?? null,
+  );
   const addedThisMonth = countAddedThisMonth(clients);
 
   // Grad year breakdown: fixed window 2026-2029 (left-to-right)
@@ -137,14 +143,14 @@ export default function DashboardPage() {
           }
         />
         <MetricCard
-          title="Open Rate"
-          value={`${Math.round((openRate || 0) * 100)}%`}
+          title="Unique Recipients"
+          value={metrics30.data?.totals?.uniqueRecipients ?? 0}
           icon={<IoMailOpenOutline size={20} />}
           footer={
             <>
               <IoTrendingUpOutline color="#CCFF00" size={18} />
               <Typography variant="body2" sx={{ color: '#FFFFFF60' }}>
-                <Box component="span" sx={{ color: '#CCFF00' }}>{formatDelta(openRateDelta)}</Box> vs last 30d
+                Last 30 days
               </Typography>
             </>
           }

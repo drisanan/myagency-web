@@ -64,3 +64,22 @@ export function formatDelta(deltaPct: number) {
   const rounded = Math.round(deltaPct || 0);
   return `${rounded >= 0 ? '+' : ''}${rounded}%`;
 }
+
+/**
+ * Compute dashboard metrics from the durable Lambda API responses.
+ * Takes a 30-day response (current window) and a 60-day response
+ * (current + previous window) to calculate deltas.
+ */
+export function computeMetricsFromApi(
+  current30: { totals?: { sentCount: number; clickCount: number } } | null,
+  total60: { totals?: { sentCount: number; clickCount: number } } | null,
+) {
+  const curSends = current30?.totals?.sentCount ?? 0;
+  const allSends = total60?.totals?.sentCount ?? 0;
+  const prevSends = Math.max(0, allSends - curSends);
+
+  const emailsSent = curSends;
+  const emailsDelta = percentDelta(curSends, prevSends);
+
+  return { emailsSent, emailsDelta };
+}
