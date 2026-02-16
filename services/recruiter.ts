@@ -1,6 +1,6 @@
 'use client';
 // Real Lambda-backed recruiter service for universities list and details
-const BASE_URL = 'https://c3gognktxzx6xqlrdfb6bxvxsu0ojalg.lambda-url.us-west-2.on.aws';
+const BASE_URL = 'https://1nkgfsilye.execute-api.us-west-1.amazonaws.com/universities';
 
 // In-memory cache for university listings (5 minute TTL)
 const CACHE_TTL = 5 * 60 * 1000;
@@ -30,6 +30,7 @@ function toName(item: any): string {
 
 function toLogo(item: any): string | undefined {
   const candidates = [
+    item?.LogoURL,
     item?.logo,
     item?.Logo,
     item?.logoUrl,

@@ -10,28 +10,8 @@ import { MetricCard } from '@/app/(app)/dashboard/MetricCard';
 import { FeatureErrorBoundary } from '@/components/FeatureErrorBoundary';
 import { IoListOutline, IoSchoolOutline, IoPieChartOutline } from 'react-icons/io5';
 
-/** University logo with lazy loading, error fallback, and placeholder */
-function UniversityLogo({ src, alt }: { src?: string; alt: string }) {
-  const [failed, setFailed] = React.useState(false);
-
-  if (!src || failed) {
-    return (
-      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 40, width: '100%', bgcolor: '#E0E0E0', borderRadius: 1 }}>
-        <IoSchoolOutline size={24} color="#0A0A0A60" />
-      </Box>
-    );
-  }
-
-  return (
-    <img
-      src={src}
-      alt={alt}
-      loading="lazy"
-      onError={() => setFailed(true)}
-      style={{ maxHeight: 40, maxWidth: '100%', objectFit: 'contain' }}
-    />
-  );
-}
+// Shared university logo component
+import { UniversityLogo } from '@/components/UniversityLogo';
 import { useSession } from '@/features/auth/session';
 import { getStates } from '@/services/recruiterMeta';
 import { getDivisions } from '@/services/recruiterMeta';
@@ -452,9 +432,16 @@ export default function ListsPage() {
           )}
           {schoolDetails && !loadingSchoolDetails && (
             <Box>
-              <Typography variant="subtitle1" sx={{ mb: 1 }}>
-                {schoolDetails?.schoolInfo?.School || schoolDetails?.name || selectedSchool}
-              </Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1 }}>
+                {schoolDetails?.schoolInfo?.LogoURL && (
+                  <Box sx={{ width: 40, flexShrink: 0 }}>
+                    <UniversityLogo src={schoolDetails.schoolInfo.LogoURL} alt={`${schoolDetails?.schoolInfo?.School || ''} logo`} size={36} />
+                  </Box>
+                )}
+                <Typography variant="subtitle1">
+                  {schoolDetails?.schoolInfo?.School || schoolDetails?.name || selectedSchool}
+                </Typography>
+              </Box>
               <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
                 {schoolDetails?.schoolInfo?.City || '—'}, {schoolDetails?.schoolInfo?.State || '—'} — {division}
               </Typography>

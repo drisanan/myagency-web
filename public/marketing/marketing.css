@@ -174,9 +174,7 @@ body.marketing-page .check-mark {
   color: var(--an-lime);
   font-weight: 700;
   font-size: 1.2em;
-}
-
-/* ── Footer ── */
+}/* ── Footer ── */
 body.marketing-page footer {
   border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
 }

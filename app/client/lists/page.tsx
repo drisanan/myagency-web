@@ -3,6 +3,7 @@ import React from 'react';
 import { listLists, saveList, deleteList } from '@/services/lists';
 import { listAssignments } from '@/services/listAssignments';
 import { listUniversities, DIVISION_API_MAPPING } from '@/services/recruiter';
+import { UniversityLogo } from '@/components/UniversityLogo';
 import { useSession } from '@/features/auth/session';
 import { useTour } from '@/features/tour/TourProvider';
 import { clientListsSteps } from '@/features/tour/clientSteps';
@@ -27,7 +28,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { colors, gradients } from '@/theme/colors';
 import { LoadingState } from '@/components/LoadingState';
 
-type Uni = { name: string };
+type Uni = { name: string; logo?: string };
 
 /** Reusable angular card wrapper matching the agency design system */
 function AngularCard({
@@ -395,7 +396,20 @@ export default function ClientListsPage() {
                             }}
                           />
                         }
-                        label={u.name}
+                        label={
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            {u.logo && (
+                              <img
+                                src={u.logo}
+                                alt=""
+                                loading="lazy"
+                                style={{ height: 20, width: 20, objectFit: 'contain', flexShrink: 0 }}
+                                onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                              />
+                            )}
+                            <span>{u.name}</span>
+                          </Box>
+                        }
                         sx={{
                           m: 0,
                           px: 1,

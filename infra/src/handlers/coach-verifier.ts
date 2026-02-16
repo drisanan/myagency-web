@@ -2,7 +2,7 @@ import { withSentry } from '../lib/sentry';
 import { extractCoachRows, normalizeName, selectLandingPage } from '../lib/coachVerifier';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 
-const BASE_URL = 'https://c3gognktxzx6xqlrdfb6bxvxsu0ojalg.lambda-url.us-west-2.on.aws';
+const BASE_URL = 'https://1nkgfsilye.execute-api.us-west-1.amazonaws.com/universities';
 
 const DIVISION_API_MAPPING: Record<string, string> = {
   D1: 'division-1',

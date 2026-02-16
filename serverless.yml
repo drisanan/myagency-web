@@ -73,6 +73,11 @@ provider:
             - ses:SendEmail
             - ses:SendRawEmail
           Resource: '*'
+        - Effect: Allow
+          Action:
+            - s3:GetObject
+          Resource:
+            - arn:aws:s3:::university-scraper-data-440047266716/*
 
 plugins:
   # serverless-esbuild removed because Serverless v4 bundles esbuild/TS by default
@@ -403,6 +408,21 @@ functions:
       - httpApi:
           path: /support-chat
           method: any
+  universities:
+    handler: handler.lambda_handler
+    runtime: python3.12
+    timeout: 30
+    memorySize: 512
+    ephemeralStorageSize: 1024
+    environment:
+      DB_BUCKET: university-scraper-data-440047266716
+      DB_KEY: university_scraper.db
+    package:
+      artifact: infra/src/handlers/universities/function.zip
+    events:
+      - httpApi:
+          path: /universities
+          method: get
 
 # NOTE: MediaBucket resources commented out - bucket already exists outside CloudFormation
 # To re-enable, import the existing bucket into the stack first

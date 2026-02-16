@@ -14,6 +14,7 @@ import { listClientsByAgencyEmail, setClientGmailTokens, getClientGmailTokens } 
 import { listAgents, Agent } from '@/services/agents';
 import { getDivisions, getStates } from '@/services/recruiterMeta';
 import { listUniversities, getUniversityDetails, DIVISION_API_MAPPING } from '@/services/recruiter';
+import { UniversityLogo } from '@/components/UniversityLogo';
 import { EmailTemplate, listTemplates, saveTemplate, toTemplateHtml, applyTemplate } from '@/services/templates';
 import { listLists, CoachList } from '@/services/lists';
 import { hasMailed, markMailed } from '@/services/mailStatus';
@@ -46,7 +47,7 @@ export function RecruiterWizard() {
   const [division, setDivision] = React.useState<string>('');
   const [states, setStates] = React.useState<Array<{ code: string; name: string }>>([]);
   const [state, setState] = React.useState<string>('');
-  const [schools, setSchools] = React.useState<Array<{ name: string }>>([]);
+  const [schools, setSchools] = React.useState<Array<{ name: string; logo?: string }>>([]);
   const [schoolSearch, setSchoolSearch] = React.useState('');
   const [lists, setLists] = React.useState<CoachList[]>([]);
   const [selectedListId, setSelectedListId] = React.useState<string>('');
@@ -1192,7 +1193,10 @@ CRITICAL INSTRUCTIONS:
                       outline: selectedSchoolName === u.name ? '2px solid #CCFF00' : 'none',
                     }}
                   >
-                    <CardContent>
+                    <CardContent sx={{ display: 'grid', gap: 1, alignItems: 'center' }}>
+                      <Box sx={{ height: 48, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <UniversityLogo src={u.logo} alt={`${u.name} logo`} />
+                      </Box>
                       <Typography>{u.name}</Typography>
                     </CardContent>
                   </Card>
@@ -1247,9 +1251,16 @@ CRITICAL INSTRUCTIONS:
         )}
         {activeStep === 2 && !listMode && schoolDetails && (
           <Box sx={{ maxWidth: 1000 }}>
-            <Typography variant="h6" gutterBottom>
-              {schoolDetails?.schoolInfo?.School || schoolDetails?.name || '—'}
-            </Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1 }}>
+              {schoolDetails?.schoolInfo?.LogoURL && (
+                <Box sx={{ width: 44, flexShrink: 0 }}>
+                  <UniversityLogo src={schoolDetails.schoolInfo.LogoURL} alt={`${schoolDetails?.schoolInfo?.School || ''} logo`} size={40} />
+                </Box>
+              )}
+              <Typography variant="h6">
+                {schoolDetails?.schoolInfo?.School || schoolDetails?.name || '—'}
+              </Typography>
+            </Box>
             <Accordion defaultExpanded sx={{ mb: 2 }}>
               <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                 <Typography>School Overview</Typography>
