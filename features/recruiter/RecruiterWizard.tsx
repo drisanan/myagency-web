@@ -1,6 +1,6 @@
 'use client';
 import React from 'react';
-import { Box, Button, Step, StepLabel, Stepper, TextField, Typography, Card, CardContent, Checkbox, FormControlLabel, MenuItem, Stack, Accordion, AccordionSummary, AccordionDetails, Switch, CircularProgress, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material';
+import { Alert, Box, Button, Step, StepLabel, Stepper, TextField, Typography, Card, CardContent, Checkbox, FormControlLabel, MenuItem, Stack, Accordion, AccordionSummary, AccordionDetails, Switch, CircularProgress, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import dynamic from 'next/dynamic';
@@ -490,6 +490,8 @@ export function RecruiterWizard() {
         university: universityName || selectedList?.name || '',
       })).filter((r) => r.email);
 
+      const effectiveSubject = subjectLine || subjectBase;
+
       if (scheduleEnabled) {
         const scheduleTs = new Date(scheduledAt).getTime();
         if (!scheduleTs || Number.isNaN(scheduleTs) || scheduleTs <= Date.now()) {
@@ -497,7 +499,7 @@ export function RecruiterWizard() {
         }
         await createCampaign({
           clientId: id,
-          subject: subjectBase,
+          subject: effectiveSubject,
           html,
           recipients: recipientMeta,
           senderClientId: id,
@@ -515,7 +517,7 @@ export function RecruiterWizard() {
 
       const campaign = await createCampaign({
         clientId: id,
-        subject: subjectBase,
+        subject: effectiveSubject,
         html,
         recipients: recipientMeta,
         senderClientId: id,
@@ -535,7 +537,7 @@ export function RecruiterWizard() {
         const coachUniversity = coach.school || coach.School || universityName || selectedList?.name || resolvedCollegeName || '';
         let personalizedHtml = applyIntroTokens(html, coach, coachUniversity);
         personalizedHtml = personalizedHtmlForCoach(personalizedHtml, coach);
-        const subject = buildSubjectLine(athleteName, gradYear, positionOrSport, sentRecipients.length);
+        const subject = subjectLine || buildSubjectLine(athleteName, gradYear, positionOrSport, sentRecipients.length);
         
         // Wrap links with tracking URLs for analytics
         if (session?.agencyId) {
@@ -604,7 +606,7 @@ export function RecruiterWizard() {
           clientId: id,
           clientEmail: contact.email || '',
           recipients: sentRecipients,
-          subject: subjectBase,
+          subject: effectiveSubject,
           campaignId,
         }).catch(err => console.error('[RecruiterWizard] Failed to record sends', err));
       }
@@ -637,6 +639,7 @@ export function RecruiterWizard() {
   const [isGenerating, setIsGenerating] = React.useState(false);
   const [isSendingEmails, setIsSendingEmails] = React.useState(false);
   const [isEditingPreview, setIsEditingPreview] = React.useState(false);
+  const [subjectLine, setSubjectLine] = React.useState('');
   const [scheduleEnabled, setScheduleEnabled] = React.useState(false);
   const [scheduledAt, setScheduledAt] = React.useState('');
   const [followupMessage, setFollowupMessage] = React.useState('');
@@ -719,6 +722,13 @@ CRITICAL INSTRUCTIONS:
       // Use stripped content - don't fall back to base which would duplicate greeting
       const improved = `<p>Hello Coach ${coachLast},</p><p>${introFixed}</p>${stripped}`;
       setAiHtml(improved);
+      // Pre-populate subject line if not already set by user
+      if (!subjectLine) {
+        const athleteName = fullName;
+        const gradYear = String((currentClient as any)?.radar?.graduationYear || (currentClient as any)?.graduationYear || '').trim();
+        const positionOrSport = String((currentClient as any)?.radar?.position || (currentClient as any)?.position || '').trim();
+        setSubjectLine(buildSubjectLine(athleteName, gradYear, positionOrSport, 0));
+      }
     } catch (e: any) {
       setError(e?.message || 'AI generation failed');
     } finally {
@@ -892,11 +902,27 @@ CRITICAL INSTRUCTIONS:
 
   const handleNext = async () => {
     if (isLast) {
+      // Validate prerequisites before generating
+      if (!resolvedCollegeName && !listMode) {
+        setError('Select a university or coach list before generating the email.');
+        return;
+      }
+      if (!selectedCoaches.length) {
+        setError('Select at least one coach recipient before generating.');
+        return;
+      }
       try {
         setIsGenerating(true);
         setError(null);
         const html = await generateFullEmailHtml();
         setAiHtml(html);
+        // Pre-populate subject line if not already set by user
+        if (!subjectLine) {
+          const athleteName = `${contact.firstName || ''} ${contact.lastName || ''}`.trim();
+          const gradYear = String((currentClient as any)?.radar?.graduationYear || (currentClient as any)?.graduationYear || '').trim();
+          const positionOrSport = String((currentClient as any)?.radar?.position || (currentClient as any)?.position || '').trim();
+          setSubjectLine(buildSubjectLine(athleteName, gradYear, positionOrSport, 0));
+        }
       } catch (e: any) {
         setError(e?.message || 'Failed to generate email');
       } finally {
@@ -1552,6 +1578,16 @@ CRITICAL INSTRUCTIONS:
                 </Box>
               )}
 
+              <TextField
+                size="small"
+                label="Subject Line"
+                fullWidth
+                value={subjectLine}
+                onChange={(e) => setSubjectLine(e.target.value)}
+                placeholder="e.g., John Smith 2027 WR Introduction"
+                helperText={subjectLine ? '' : 'Auto-generated when you click Generate, or type your own'}
+              />
+
               <Box sx={{ border: '1px solid #E0E0E0', borderRadius: 0, clipPath: 'polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px))', p: 2, bgcolor: '#F5F5F5' }}>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
                   <Typography variant="h6">Preview</Typography>
@@ -1769,6 +1805,9 @@ CRITICAL INSTRUCTIONS:
           </Box>
         )}
       </Box>
+      {error && activeStep === 3 && (
+        <Alert severity="error" sx={{ mb: 1 }}>{error}</Alert>
+      )}
       <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
         <Button disabled={activeStep === 0} onClick={handleBack}>
           Back
