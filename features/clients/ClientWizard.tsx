@@ -948,7 +948,7 @@ export function ClientWizard({
         // Fetch tokens from server and store them
         (async () => {
           try {
-            const r = await fetch(`${API_BASE_URL}/google/tokens?clientId=${encodeURIComponent(id)}`, { credentials: 'include' });
+            const r = await fetch(`${API_BASE_URL}/google/tokens?clientId=${encodeURIComponent(id)}${formToken ? `&formToken=${encodeURIComponent(formToken)}` : ''}`, { credentials: 'include' });
             const j = await r.json();
             if (j?.ok && j?.tokens) {
               setGmailTokens(j.tokens);
