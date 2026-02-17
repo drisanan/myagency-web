@@ -171,9 +171,7 @@ export function ClientRecruiterWizard() {
   // Check Gmail connection status
   React.useEffect(() => {
     if (!clientId) return;
-    const statusUrl = API_BASE_URL
-      ? `${API_BASE_URL}/google/status?clientId=${encodeURIComponent(clientId)}`
-      : `/api/google/status?clientId=${encodeURIComponent(clientId)}`;
+    const statusUrl = `${API_BASE_URL}/google/status?clientId=${encodeURIComponent(clientId)}`;
     fetch(statusUrl, { credentials: 'include' })
       .then((r) => r.json())
       .then((d) => setGmailConnected(Boolean(d?.connected)))
@@ -343,9 +341,7 @@ CRITICAL INSTRUCTIONS:
   async function handleConnectGmail() {
     try {
       setGmailConnecting(true);
-      const oauthUrl = API_BASE_URL
-        ? `${API_BASE_URL}/google/oauth/url?clientId=${encodeURIComponent(clientId)}`
-        : `/api/google/oauth/url?clientId=${encodeURIComponent(clientId)}`;
+      const oauthUrl = `${API_BASE_URL}/google/oauth/url?clientId=${encodeURIComponent(clientId)}`;
       const res = await fetch(oauthUrl, { credentials: 'include' });
       const data = await res.json();
       if (!data?.url) throw new Error('Failed to start Gmail connection');

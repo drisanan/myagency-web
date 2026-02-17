@@ -878,6 +878,7 @@ type ClientWizardProps = {
   mode?: 'create' | 'edit';
   onSaved?: () => void;
   redirectOnSave?: boolean;
+  formToken?: string;
 };
 
 export function ClientWizard({
@@ -885,6 +886,7 @@ export function ClientWizard({
   mode = 'create',
   onSaved,
   redirectOnSave = true,
+  formToken,
   publicMode = false,
   publicSubmit,
   overrideAgencyEmail,
@@ -987,7 +989,7 @@ export function ClientWizard({
       // Use existing client ID if editing, otherwise use temp ID
       const clientId = initialClient?.id || tempClientIdRef.current;
       
-      const oauthUrl = `${API_BASE_URL}/google/oauth/url?clientId=${encodeURIComponent(clientId)}`;
+      const oauthUrl = `${API_BASE_URL}/google/oauth/url?clientId=${encodeURIComponent(clientId)}${formToken ? `&formToken=${encodeURIComponent(formToken)}` : ''}`;
       const res = await fetch(oauthUrl, { credentials: 'include' });
       const data = await res.json();
       

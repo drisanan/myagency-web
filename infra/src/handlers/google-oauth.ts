@@ -1,9 +1,10 @@
 import { APIGatewayProxyEventV2 } from 'aws-lambda';
 import { requireSession } from './common';
 import { response } from './cors';
-import { putItem, getItem, deleteItem } from '../lib/dynamo';
+import { putItem, getItem, deleteItem, queryGSI1 } from '../lib/dynamo';
 import { google } from 'googleapis';
 import { withSentry } from '../lib/sentry';
+import { verify as verifyFormToken } from '../lib/formsToken';
 
 // Fallback logic ensures we always have a valid string, even if env var fails
 const API_DOMAIN = 'api.myrecruiteragency.com';
@@ -25,8 +26,35 @@ const googleOauthHandler = async (event: APIGatewayProxyEventV2) => {
 
   if (method === 'OPTIONS') return response(200, { ok: true }, origin);
 
-  // 1. Identify User (Session)
-  const session = requireSession(event);
+  // 1. Identify User (Session or Form Token)
+  let session = requireSession(event);
+
+  if (!session) {
+    // Try formToken from query params (URL generation flow)
+    let formToken = event.queryStringParameters?.formToken;
+
+    // For the callback route, formToken is embedded in the state parameter
+    if (!formToken && path.endsWith('/google/oauth/callback')) {
+      try {
+        const stateRaw = event.queryStringParameters?.state;
+        if (stateRaw) {
+          const decoded = JSON.parse(Buffer.from(stateRaw, 'base64').toString('utf-8'));
+          if (decoded?.formToken) formToken = decoded.formToken;
+        }
+      } catch { /* state parsing failed, fall through */ }
+    }
+
+    if (formToken) {
+      const payload = verifyFormToken<{ agencyEmail: string }>(formToken);
+      if (payload?.agencyEmail) {
+        const agencies = await queryGSI1(`EMAIL#${payload.agencyEmail}`, 'AGENCY#');
+        const agency = agencies?.[0];
+        if (agency?.id) {
+          session = { agencyId: agency.id, agencyEmail: payload.agencyEmail, role: 'client' as const };
+        }
+      }
+    }
+  }
   if (!session) return response(401, { ok: false, error: 'Missing session' }, origin);
 
   // 2. Validate Config (Critical check)
@@ -50,7 +78,12 @@ const googleOauthHandler = async (event: APIGatewayProxyEventV2) => {
     if (!clientId) return response(400, { ok: false, error: 'Missing clientId parameter' }, origin);
 
     try {
-      const statePayload = JSON.stringify({ clientId, agencyId: session.agencyId });
+      const formToken = event.queryStringParameters?.formToken;
+      const statePayload = JSON.stringify({
+        clientId,
+        agencyId: session.agencyId,
+        ...(formToken ? { formToken } : {}),
+      });
       const state = Buffer.from(statePayload).toString('base64');
 
       const url = oauth2Client.generateAuthUrl({
@@ -90,18 +123,23 @@ const googleOauthHandler = async (event: APIGatewayProxyEventV2) => {
 
     try {
       const decodedState = JSON.parse(Buffer.from(state, 'base64').toString('utf-8'));
-      const { clientId } = decodedState;
+      const { clientId, agencyId: stateAgencyId } = decodedState;
 
       if (!clientId) return response(400, { ok: false, error: 'Invalid state' }, origin);
+
+      // Use session agencyId when available, fall back to the agencyId
+      // embedded in the state (public form flow where no cookie exists)
+      const resolvedAgencyId = session.agencyId || stateAgencyId;
+      if (!resolvedAgencyId) return response(400, { ok: false, error: 'Missing agency context' }, origin);
 
       const { tokens } = await oauth2Client.getToken(code);
 
       // Persist Tokens
       const tokenRecord = {
-        PK: `AGENCY#${session.agencyId}`,
+        PK: `AGENCY#${resolvedAgencyId}`,
         SK: `GMAIL_TOKEN#${clientId}`,
         clientId,
-        agencyId: session.agencyId,
+        agencyId: resolvedAgencyId,
         tokens, 
         createdAt: Date.now(),
       };

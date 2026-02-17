@@ -94,9 +94,7 @@ export function GoogleCalendarWidget({ compact = false, clientId }: Props) {
     
     try {
       setConnecting(true);
-      const oauthUrl = API_BASE_URL
-        ? `${API_BASE_URL}/google/oauth/url?clientId=${encodeURIComponent(targetClientId)}`
-        : `/api/google/oauth/url?clientId=${encodeURIComponent(targetClientId)}`;
+      const oauthUrl = `${API_BASE_URL}/google/oauth/url?clientId=${encodeURIComponent(targetClientId)}`;
       
       const res = await fetch(oauthUrl, { credentials: 'include' });
       const data = await res.json();

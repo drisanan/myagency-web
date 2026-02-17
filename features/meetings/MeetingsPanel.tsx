@@ -147,9 +147,7 @@ export function MeetingsPanel({ clientId, isAthlete = false }: Props) {
     
     try {
       setCalendarConnecting(true);
-      const oauthUrl = API_BASE_URL
-        ? `${API_BASE_URL}/google/oauth/url?clientId=${encodeURIComponent(calendarOwnerId)}`
-        : `/api/google/oauth/url?clientId=${encodeURIComponent(calendarOwnerId)}`;
+      const oauthUrl = `${API_BASE_URL}/google/oauth/url?clientId=${encodeURIComponent(calendarOwnerId)}`;
       
       const res = await fetch(oauthUrl, { credentials: 'include' });
       const data = await res.json();

@@ -369,14 +369,12 @@ export function RecruiterWizard() {
           try {
             if (!id) return;
             // Get the Google account email from status to show the real sender
-            const statusUrl = API_BASE_URL
-              ? `${API_BASE_URL}/google/status?clientId=${encodeURIComponent(id)}`
-              : `/api/google/status?clientId=${encodeURIComponent(id)}`;
+            const statusUrl = `${API_BASE_URL}/google/status?clientId=${encodeURIComponent(id)}`;
             const statusRes = await fetch(statusUrl, { credentials: 'include' });
             const statusData = await statusRes.json();
             if (statusData?.email) setGmailAccountEmail(statusData.email);
 
-            const r = await fetch(`/api/google/tokens?clientId=${encodeURIComponent(id)}`);
+            const r = await fetch(`${API_BASE_URL}/google/tokens?clientId=${encodeURIComponent(id)}`, { credentials: 'include' });
             const j = await r.json();
             console.info('[gmail-ui:tokens:fetched]', {
               clientId: id,
@@ -405,9 +403,7 @@ export function RecruiterWizard() {
   React.useEffect(() => {
     if (!currentClient?.id) { setGmailConnected(false); setGmailExpired(false); setGmailAccountEmail(''); return; }
     if (typeof window === 'undefined' || typeof fetch === 'undefined') { setGmailConnected(false); return; }
-    const statusUrl = API_BASE_URL
-      ? `${API_BASE_URL}/google/status?clientId=${encodeURIComponent(currentClient.id)}`
-      : `/api/google/status?clientId=${encodeURIComponent(currentClient.id)}`;
+    const statusUrl = `${API_BASE_URL}/google/status?clientId=${encodeURIComponent(currentClient.id)}`;
     fetch(statusUrl, { credentials: 'include' })
       .then(r => r.json())
       .then(d => {
@@ -427,9 +423,7 @@ export function RecruiterWizard() {
         return;
       }
       setGmailConnecting(true);
-      const oauthUrl = API_BASE_URL
-        ? `${API_BASE_URL}/google/oauth/url?clientId=${encodeURIComponent(currentClient.id)}`
-        : `/api/google/oauth/url?clientId=${encodeURIComponent(currentClient.id)}`;
+      const oauthUrl = `${API_BASE_URL}/google/oauth/url?clientId=${encodeURIComponent(currentClient.id)}`;
       const res = await fetch(oauthUrl, { credentials: 'include' });
       const data = await res.json();
       if (!data?.url) throw new Error('Failed to start Gmail connection flow');
@@ -460,9 +454,7 @@ export function RecruiterWizard() {
       console.info('[gmail-ui:send:start]', { clientId: id });
       // Ensure server has tokens for this client; rehydrate from client record if not
       try {
-        const statusUrl = API_BASE_URL
-          ? `${API_BASE_URL}/google/status?clientId=${encodeURIComponent(id)}`
-          : `/api/google/status?clientId=${encodeURIComponent(id)}`;
+        const statusUrl = `${API_BASE_URL}/google/status?clientId=${encodeURIComponent(id)}`;
         const statusRes = await fetch(statusUrl);
         const status = await statusRes.json();
         console.info('[gmail-ui:status]', { clientId: id, connected: Boolean(status?.connected) });
@@ -475,7 +467,7 @@ export function RecruiterWizard() {
              hasRefresh: Boolean(saved?.refresh_token),
            });
           if (saved) {
-            const tokensUrl = API_BASE_URL ? `${API_BASE_URL}/google/tokens` : '/api/google/tokens';
+            const tokensUrl = `${API_BASE_URL}/google/tokens`;
             await fetch(tokensUrl, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },

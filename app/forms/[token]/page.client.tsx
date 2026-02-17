@@ -113,6 +113,7 @@ export default function IntakeFormPageClient({ token }: { token: string }) {
             publicMode
             publicSubmit={submitPublic}
             overrideAgencyEmail={agency?.email}
+            formToken={decodedToken}
             onSubmitSuccess={() => setSubmitSuccess('Submitted! You may close this page.')}
           />
         </Paper>
