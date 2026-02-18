@@ -21,6 +21,7 @@ import {
   Typography,
 } from '@mui/material';
 import { IoChevronDownOutline, IoPaperPlaneOutline, IoHandLeftOutline, IoTrendingUpOutline, IoPeopleOutline } from 'react-icons/io5';
+import { FaGoogle } from 'react-icons/fa';
 import { useParams, useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { getClient } from '@/services/clients';
@@ -145,6 +146,8 @@ export default function ClientProfilePage() {
   const [client, setClient] = React.useState<any | null>(null);
   const [error, setError] = React.useState<string | null>(null);
   const [interestLists, setInterestLists] = React.useState<any[]>([]);
+  const [gmailStatus, setGmailStatus] = React.useState<{ connected: boolean; expired: boolean; email?: string }>({ connected: false, expired: false });
+  const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.API_BASE_URL || '';
 
   // FIX: Safely grab the email regardless of property name
   const userEmail = session?.agencyEmail || session?.email;
@@ -195,6 +198,18 @@ export default function ClientProfilePage() {
     if (t === 'notes') setTab(1);
   }, [searchParams]);
 
+  React.useEffect(() => {
+    if (!client?.id || !API_BASE_URL) return;
+    fetch(`${API_BASE_URL}/google/status?clientId=${encodeURIComponent(client.id)}`, { credentials: 'include' })
+      .then(r => r.json())
+      .then(d => {
+        const connected = Boolean(d?.connected);
+        const expired = Boolean(d?.expired) || (connected && !d?.canRefresh);
+        setGmailStatus({ connected: connected && !expired, expired, email: d?.email || undefined });
+      })
+      .catch(() => setGmailStatus({ connected: false, expired: false }));
+  }, [client?.id]);
+
   if (loading) {
     return (
       <Box sx={{ p: 3 }}>
@@ -237,7 +252,27 @@ export default function ClientProfilePage() {
         <Avatar src={photo} alt={name} sx={{ width: 56, height: 56 }} />
         <Box sx={{ flex: 1, minWidth: 0 }}>
           <Typography variant="h6" noWrap>{name}</Typography>
-          <Typography variant="body2" color="text.secondary" noWrap>{sport}</Typography>
+          <Stack direction="row" spacing={1} alignItems="center">
+            <Typography variant="body2" color="text.secondary" noWrap>{sport}</Typography>
+            {gmailStatus.connected && (
+              <Chip
+                icon={<FaGoogle size={10} />}
+                label={gmailStatus.email || 'Gmail Connected'}
+                size="small"
+                color="success"
+                sx={{ fontSize: 11 }}
+              />
+            )}
+            {gmailStatus.expired && (
+              <Chip
+                icon={<FaGoogle size={10} />}
+                label="Gmail Expired"
+                size="small"
+                color="warning"
+                sx={{ fontSize: 11 }}
+              />
+            )}
+          </Stack>
         </Box>
         <Button
           variant="outlined"

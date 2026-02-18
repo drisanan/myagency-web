@@ -2,7 +2,7 @@
 import React from 'react';
 import { Box, Button, Step, StepLabel, Stepper, Typography, CircularProgress, Stack, StepButton, Alert, Chip, InputAdornment, IconButton } from '@mui/material';
 import { useSession } from '@/features/auth/session';
-import { upsertClient, setClientGmailTokens } from '@/services/clients';
+import { upsertClient, setClientGmailTokens, deleteGmailTokens } from '@/services/clients';
 import { MenuItem, TextField } from '@mui/material';
 import { getSports, formatSportLabel } from '@/features/recruiter/divisionMapping';
 import { useRouter } from 'next/navigation';
@@ -608,6 +608,8 @@ function BasicInfoStep({
   errors,
   gmailConnected,
   gmailConnecting,
+  gmailExpired,
+  gmailAccountEmail,
   onConnectGmail,
   gmailError,
   publicMode = false,
@@ -617,6 +619,8 @@ function BasicInfoStep({
   errors?: { email?: string; firstName?: string; lastName?: string; sport?: string; gmail?: string; username?: string; phone?: string; accessCode?: string };
   gmailConnected: boolean;
   gmailConnecting: boolean;
+  gmailExpired?: boolean;
+  gmailAccountEmail?: string;
   onConnectGmail: () => void;
   gmailError?: string | null;
   publicMode?: boolean;
@@ -834,12 +838,19 @@ function BasicInfoStep({
         </Typography>
         
         {gmailConnected ? (
-          <Chip
-            icon={<FaGoogle size={14} />}
-            label="Gmail Connected"
-            color="success"
-            sx={{ fontWeight: 500 }}
-          />
+          <Stack spacing={1}>
+            <Chip
+              icon={<FaGoogle size={14} />}
+              label={gmailAccountEmail ? `Connected: ${gmailAccountEmail}` : 'Gmail Connected'}
+              color="success"
+              sx={{ fontWeight: 500 }}
+            />
+            {gmailAccountEmail && value.email && gmailAccountEmail.toLowerCase() !== String(value.email).toLowerCase() && (
+              <Typography variant="caption" color="warning.main" sx={{ fontWeight: 600 }}>
+                Connected Google account ({gmailAccountEmail}) does not match {value.email}. Emails will send from {gmailAccountEmail}.
+              </Typography>
+            )}
+          </Stack>
         ) : (
           <Stack spacing={1}>
             <Button
@@ -848,14 +859,19 @@ function BasicInfoStep({
               disabled={gmailConnecting}
               startIcon={gmailConnecting ? <CircularProgress size={16} color="inherit" /> : <FaGoogle />}
               sx={{ 
-                bgcolor: '#CCFF00', 
+                bgcolor: gmailExpired ? '#FFB800' : '#CCFF00', 
                 color: '#0A0A0A', 
-                '&:hover': { bgcolor: '#B8E600' },
+                '&:hover': { bgcolor: gmailExpired ? '#E6A600' : '#B8E600' },
                 alignSelf: 'flex-start',
               }}
             >
-              {gmailConnecting ? 'Connecting…' : 'Connect Gmail Account'}
+              {gmailConnecting ? 'Connecting…' : gmailExpired ? 'Reconnect Gmail Account' : 'Connect Gmail Account'}
             </Button>
+            {gmailExpired && (
+              <Typography variant="caption" color="warning.main" sx={{ fontStyle: 'italic' }}>
+                Gmail credentials expired — please reconnect.
+              </Typography>
+            )}
             {errors?.gmail && (
               <Typography variant="caption" color="error">
                 {errors.gmail}
@@ -921,6 +937,8 @@ export function ClientWizard({
   // Gmail connection state
   const [gmailConnecting, setGmailConnecting] = React.useState(false);
   const [gmailConnected, setGmailConnected] = React.useState(false);
+  const [gmailExpired, setGmailExpired] = React.useState(false);
+  const [gmailAccountEmail, setGmailAccountEmail] = React.useState<string>('');
   const [gmailError, setGmailError] = React.useState<string | null>(null);
   const [gmailTokens, setGmailTokens] = React.useState<any>(null);
   const popupRef = React.useRef<Window | null>(null);
@@ -941,11 +959,11 @@ export function ClientWizard({
         console.info('[gmail-wizard:oauth-success]', { clientId: id });
         setGmailConnecting(false);
         setGmailConnected(true);
+        setGmailExpired(false);
         setGmailError(null);
         setErrors(prev => ({ ...prev, gmail: undefined }));
         try { popupRef.current?.close(); } catch {}
         
-        // Fetch tokens from server and store them
         (async () => {
           try {
             const r = await fetch(`${API_BASE_URL}/google/tokens?clientId=${encodeURIComponent(id)}${formToken ? `&formToken=${encodeURIComponent(formToken)}` : ''}`, { credentials: 'include' });
@@ -954,6 +972,11 @@ export function ClientWizard({
               setGmailTokens(j.tokens);
               console.info('[gmail-wizard:tokens:stored]', { clientId: id });
             }
+          } catch { /* ignore */ }
+          try {
+            const statusRes = await fetch(`${API_BASE_URL}/google/status?clientId=${encodeURIComponent(id)}${formToken ? `&formToken=${encodeURIComponent(formToken)}` : ''}`, { credentials: 'include' });
+            const statusData = await statusRes.json();
+            if (statusData?.email) setGmailAccountEmail(statusData.email);
           } catch { /* ignore */ }
         })();
       }
@@ -977,8 +1000,14 @@ export function ClientWizard({
     const statusUrl = `${API_BASE_URL}/google/status?clientId=${encodeURIComponent(initialClient.id)}`;
     fetch(statusUrl, { credentials: 'include' })
       .then(r => r.json())
-      .then(d => setGmailConnected(Boolean(d?.connected)))
-      .catch(() => setGmailConnected(false));
+      .then(d => {
+        const connected = Boolean(d?.connected);
+        const expired = Boolean(d?.expired) || (connected && !d?.canRefresh);
+        setGmailConnected(connected && !expired);
+        setGmailExpired(expired);
+        setGmailAccountEmail(d?.email || '');
+      })
+      .catch(() => { setGmailConnected(false); setGmailExpired(false); setGmailAccountEmail(''); });
   }, [initialClient?.id]);
 
   async function handleConnectGmail() {
@@ -1114,6 +1143,11 @@ export function ClientWizard({
           if (gmailTokens && result?.id) {
             try {
               await setClientGmailTokens(result.id, gmailTokens);
+              // Clean up the orphaned temp token record
+              const tempId = tempClientIdRef.current;
+              if (tempId && tempId !== result.id) {
+                deleteGmailTokens(tempId).catch(() => {});
+              }
             } catch (e) {
               console.error('Failed to save Gmail tokens to client', e);
             }
@@ -1206,6 +1240,8 @@ export function ClientWizard({
             errors={errors}
             gmailConnected={gmailConnected}
             gmailConnecting={gmailConnecting}
+            gmailExpired={gmailExpired}
+            gmailAccountEmail={gmailAccountEmail}
             onConnectGmail={handleConnectGmail}
             gmailError={gmailError}
             publicMode={publicMode}
@@ -1268,8 +1304,17 @@ export function ClientWizard({
                 {gmailConnected && (
                   <Chip
                     icon={<FaGoogle size={12} />}
-                    label="Gmail Connected"
+                    label={gmailAccountEmail ? `Gmail: ${gmailAccountEmail}` : 'Gmail Connected'}
                     color="success"
+                    size="small"
+                    sx={{ mt: 1 }}
+                  />
+                )}
+                {gmailExpired && (
+                  <Chip
+                    icon={<FaGoogle size={12} />}
+                    label="Gmail Expired — Reconnect Required"
+                    color="warning"
                     size="small"
                     sx={{ mt: 1 }}
                   />

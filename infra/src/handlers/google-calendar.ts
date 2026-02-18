@@ -83,12 +83,13 @@ async function getAuthenticatedClient(
     
     try {
       const { credentials } = await oauth2Client.refreshAccessToken();
+      const mergedTokens = { ...item.tokens, ...credentials };
       await putItem({
         ...item,
-        tokens: credentials,
+        tokens: mergedTokens,
         updatedAt: Date.now(),
       });
-      oauth2Client.setCredentials(credentials);
+      oauth2Client.setCredentials(mergedTokens);
     } catch (e) {
       console.error('Token refresh failed', e);
       return { 

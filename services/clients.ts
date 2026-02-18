@@ -143,3 +143,9 @@ export async function refreshGmailToken(clientId: string): Promise<{ ok: boolean
   });
   return data;
 }
+
+export async function deleteGmailTokens(clientId: string): Promise<void> {
+  await apiFetch(`/google/disconnect?clientId=${encodeURIComponent(clientId)}`, {
+    method: 'DELETE',
+  });
+}

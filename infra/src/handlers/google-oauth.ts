@@ -279,10 +279,11 @@ const googleOauthHandler = async (event: APIGatewayProxyEventV2) => {
       oauth2Client.setCredentials(item.tokens);
       const { credentials } = await oauth2Client.refreshAccessToken();
       
-      // Save updated tokens
+      // Merge so the stored refresh_token is preserved when Google omits it
+      const mergedTokens = { ...item.tokens, ...credentials };
       await putItem({
         ...item,
-        tokens: credentials,
+        tokens: mergedTokens,
         updatedAt: Date.now(),
       });
 

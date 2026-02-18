@@ -43,11 +43,12 @@ export async function sendGmailMessage(input: SendGmailInput) {
   const isExpired = tokens.expiry_date && Date.now() > tokens.expiry_date;
   if (isExpired && tokens.refresh_token) {
     const { credentials } = await oauth2Client.refreshAccessToken();
-    tokens = credentials;
-    oauth2Client.setCredentials(credentials);
+    const mergedTokens = { ...tokens, ...credentials };
+    tokens = mergedTokens;
+    oauth2Client.setCredentials(mergedTokens);
     await putItem({
       ...tokenRec,
-      tokens: credentials,
+      tokens: mergedTokens,
       updatedAt: Date.now(),
     });
   }

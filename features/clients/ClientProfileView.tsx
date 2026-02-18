@@ -158,6 +158,21 @@ export function ClientProfileView({ client, onEdit }: ClientProfileViewProps) {
   const fullName = [client?.firstName, client?.lastName].filter(Boolean).join(' ') || 'Athlete';
   const sport = client?.sport ? formatSportLabel(client.sport) : null;
 
+  const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.API_BASE_URL || '';
+  const [gmailStatus, setGmailStatus] = React.useState<{ connected: boolean; expired: boolean; email?: string }>({ connected: false, expired: false });
+
+  React.useEffect(() => {
+    if (!client?.id || !API_BASE_URL) return;
+    fetch(`${API_BASE_URL}/google/status?clientId=${encodeURIComponent(client.id)}`, { credentials: 'include' })
+      .then(r => r.json())
+      .then(d => {
+        const connected = Boolean(d?.connected);
+        const expired = Boolean(d?.expired) || (connected && !d?.canRefresh);
+        setGmailStatus({ connected: connected && !expired, expired, email: d?.email || undefined });
+      })
+      .catch(() => setGmailStatus({ connected: false, expired: false }));
+  }, [client?.id]);
+
   return (
     <Box>
       {/* ── Hero header ── */}
@@ -264,16 +279,29 @@ export function ClientProfileView({ client, onEdit }: ClientProfileViewProps) {
             )}
 
             <Stack direction="row" spacing={1} sx={{ mt: 1, flexWrap: 'wrap', justifyContent: { xs: 'center', sm: 'flex-start' } }}>
-              {client?.gmailConnected && (
+              {gmailStatus.connected && (
                 <Chip
                   icon={<FaGoogle size={10} />}
-                  label="Gmail"
+                  label={gmailStatus.email ? `Gmail: ${gmailStatus.email}` : 'Gmail Connected'}
                   size="small"
                   sx={{
                     bgcolor: '#ffffff14',
                     color: '#ffffffcc',
                     fontSize: 11,
                     '& .MuiChip-icon': { color: '#ffffffcc' },
+                  }}
+                />
+              )}
+              {gmailStatus.expired && (
+                <Chip
+                  icon={<FaGoogle size={10} />}
+                  label="Gmail Expired"
+                  size="small"
+                  sx={{
+                    bgcolor: '#FFB80030',
+                    color: '#FFB800',
+                    fontSize: 11,
+                    '& .MuiChip-icon': { color: '#FFB800' },
                   }}
                 />
               )}

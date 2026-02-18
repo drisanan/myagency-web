@@ -103,14 +103,15 @@ const gmailHandler: Handler = async (event: APIGatewayProxyEventV2) => {
         console.log('[gmail:send] Token expired, refreshing...', { clientId, expiry: tokens.expiry_date });
         try {
           const { credentials } = await oauth2Client.refreshAccessToken();
-          tokens = credentials;
-          oauth2Client.setCredentials(credentials);
+          const mergedTokens = { ...tokens, ...credentials };
+          tokens = mergedTokens;
+          oauth2Client.setCredentials(mergedTokens);
           await putItem({
             ...tokenRec,
-            tokens: credentials,
+            tokens: mergedTokens,
             updatedAt: Date.now(),
           });
-          console.log('[gmail:send] Token refreshed successfully', { clientId, newExpiry: credentials.expiry_date });
+          console.log('[gmail:send] Token refreshed successfully', { clientId, newExpiry: mergedTokens.expiry_date });
         } catch (refreshErr: any) {
           console.error('[gmail:send] Token refresh failed', refreshErr);
           return response(401, {
@@ -183,16 +184,16 @@ const gmailHandler: Handler = async (event: APIGatewayProxyEventV2) => {
         console.log('[gmail:create-draft] Token expired, refreshing...', { clientId, expiry: tokens.expiry_date });
         try {
           const { credentials } = await oauth2Client.refreshAccessToken();
-          tokens = credentials;
-          oauth2Client.setCredentials(credentials);
+          const mergedTokens = { ...tokens, ...credentials };
+          tokens = mergedTokens;
+          oauth2Client.setCredentials(mergedTokens);
           
-          // Save refreshed tokens
           await putItem({
             ...tokenRec,
-            tokens: credentials,
+            tokens: mergedTokens,
             updatedAt: Date.now(),
           });
-          console.log('[gmail:create-draft] Token refreshed successfully', { clientId, newExpiry: credentials.expiry_date });
+          console.log('[gmail:create-draft] Token refreshed successfully', { clientId, newExpiry: mergedTokens.expiry_date });
         } catch (refreshErr: any) {
           console.error('[gmail:create-draft] Token refresh failed', refreshErr);
           return response(401, { 
