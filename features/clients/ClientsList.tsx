@@ -1,7 +1,7 @@
 'use client';
 import React from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { listClientsByAgencyEmail, deleteClient, getGmailStatus, refreshGmailToken } from '@/services/clients';
+import { listClientsByAgencyEmail, deleteClient, upsertClient, getGmailStatus, refreshGmailToken } from '@/services/clients';
 import { Button, Stack, Box, Typography, Avatar, Paper, Chip, CircularProgress, Table, TableHead, TableRow, TableCell, TableBody, TablePagination, useMediaQuery, useTheme, IconButton, Menu, MenuItem, TextField, InputAdornment } from '@mui/material';
 import { useSession } from '@/features/auth/session';
 import { useImpersonation } from '@/hooks/useImpersonation';
@@ -57,11 +57,12 @@ function GmailStatusCell({ clientId }: { clientId: string }) {
 }
 
 // Mobile action menu component
-function MobileActionsMenu({ row, canImpersonate, impersonateClient, onDelete, refetch }: {
+function MobileActionsMenu({ row, canImpersonate, impersonateClient, onDelete, onApprove, refetch }: {
   row: any;
   canImpersonate: boolean;
   impersonateClient: (client: any) => void;
   onDelete: (id: string) => Promise<void>;
+  onApprove?: (id: string) => Promise<void>;
   refetch: () => void;
 }) {
   const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
@@ -73,6 +74,11 @@ function MobileActionsMenu({ row, canImpersonate, impersonateClient, onDelete, r
         <IoEllipsisVertical />
       </IconButton>
       <Menu anchorEl={anchorEl} open={open} onClose={() => setAnchorEl(null)}>
+        {row.accountStatus === 'pending' && onApprove && (
+          <MenuItem sx={{ color: 'success.main', fontWeight: 700 }} onClick={async () => { await onApprove(row.id); refetch(); setAnchorEl(null); }}>
+            Approve
+          </MenuItem>
+        )}
         <MenuItem component="a" href={`/clients/${row.id}`} onClick={() => setAnchorEl(null)}>View</MenuItem>
         <MenuItem component="a" href={`/clients/${row.id}/edit`} onClick={() => setAnchorEl(null)}>Edit</MenuItem>
         {canImpersonate && (
@@ -104,20 +110,32 @@ export function ClientsList() {
   const { data = [], refetch } = useQuery({
     queryKey: ['clients', agencyEmail],
     queryFn: () => agencyEmail ? listClientsByAgencyEmail(agencyEmail) : [],
-    enabled: Boolean(agencyEmail), // Now true, so the fetch happens!
+    enabled: Boolean(agencyEmail),
   });
+
+  const handleApprove = async (clientId: string) => {
+    await upsertClient({ id: clientId, accountStatus: 'active' });
+    refetch();
+  };
 
   const allRows = data as any[];
 
-  // Client-side search filtering — case-insensitive across name, email, sport
+  // Client-side search filtering + sort pending to top
   const rows = React.useMemo(() => {
+    let filtered = allRows;
     const q = search.trim().toLowerCase();
-    if (!q) return allRows;
-    return allRows.filter((row) => {
-      const name = `${row.firstName ?? ''} ${row.lastName ?? ''}`.trim().toLowerCase();
-      const email = (row.email || '').toLowerCase();
-      const sport = (row.sport || '').toLowerCase();
-      return name.includes(q) || email.includes(q) || sport.includes(q);
+    if (q) {
+      filtered = allRows.filter((row) => {
+        const name = `${row.firstName ?? ''} ${row.lastName ?? ''}`.trim().toLowerCase();
+        const email = (row.email || '').toLowerCase();
+        const sport = (row.sport || '').toLowerCase();
+        return name.includes(q) || email.includes(q) || sport.includes(q);
+      });
+    }
+    return [...filtered].sort((a, b) => {
+      const ap = a.accountStatus === 'pending' ? 0 : 1;
+      const bp = b.accountStatus === 'pending' ? 0 : 1;
+      return ap - bp;
     });
   }, [allRows, search]);
 
@@ -176,7 +194,12 @@ export function ClientsList() {
                   <Stack direction="row" spacing={1.5} alignItems="center" sx={{ minWidth: 0, flex: 1 }}>
                     <Avatar src={photo} alt={name} sx={{ width: 44, height: 44 }} />
                     <Box sx={{ minWidth: 0 }}>
-                      <Typography variant="subtitle2" sx={{ fontWeight: 700 }} noWrap>{name}</Typography>
+                      <Stack direction="row" spacing={0.75} alignItems="center">
+                        <Typography variant="subtitle2" sx={{ fontWeight: 700 }} noWrap>{name}</Typography>
+                        {row.accountStatus === 'pending' && (
+                          <Chip label="Pending Approval" size="small" sx={{ bgcolor: '#FF9800', color: '#fff', fontWeight: 700, fontSize: 10, height: 20 }} />
+                        )}
+                      </Stack>
                       <Typography variant="caption" color="text.secondary" noWrap>{row.email || '-'}</Typography>
                       <Stack direction="row" spacing={1} mt={0.5}>
                         <Chip label={row.sport || 'No sport'} size="small" variant="outlined" />
@@ -189,6 +212,7 @@ export function ClientsList() {
                     canImpersonate={canImpersonate}
                     impersonateClient={impersonateClient}
                     onDelete={async (id: string) => { await deleteClient(id); }}
+                    onApprove={handleApprove}
                     refetch={refetch}
                   />
                 </Stack>
@@ -257,9 +281,14 @@ export function ClientsList() {
                         sx={{ width: 40, height: 40, borderRadius: '50%' }}
                       />
                       <Box sx={{ minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                        <Typography variant="subtitle2" sx={{ fontWeight: 700, lineHeight: 1.1 }} noWrap>
-                          {name}
-                        </Typography>
+                        <Stack direction="row" spacing={0.75} alignItems="center">
+                          <Typography variant="subtitle2" sx={{ fontWeight: 700, lineHeight: 1.1 }} noWrap>
+                            {name}
+                          </Typography>
+                          {row.accountStatus === 'pending' && (
+                            <Chip label="Pending Approval" size="small" sx={{ bgcolor: '#FF9800', color: '#fff', fontWeight: 700, fontSize: 11, height: 22 }} />
+                          )}
+                        </Stack>
                         <Typography variant="body2" color="text.secondary" noWrap sx={{ maxWidth: { sm: 150, md: 200 } }}>
                           {description}
                         </Typography>
@@ -273,6 +302,11 @@ export function ClientsList() {
                   </TableCell>
                   <TableCell>
                     <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap sx={{ '& .MuiButton-root': { minWidth: 'auto', px: 1, fontSize: 12 } }}>
+                      {row.accountStatus === 'pending' && (
+                        <Button size="small" variant="contained" color="success" onClick={() => handleApprove(row.id)} sx={{ fontWeight: 700 }}>
+                          Approve
+                        </Button>
+                      )}
                       <Button size="small" href={`/clients/${row.id}`}>View</Button>
                       <Button size="small" href={`/clients/${row.id}/edit`}>Edit</Button>
                       <Button size="small" color="error" onClick={async () => { await deleteClient(row.id); refetch(); }}>Delete</Button>
