@@ -2,7 +2,7 @@
 import React from 'react';
 import { Box, Button, Step, StepLabel, Stepper, Typography, CircularProgress, Stack, StepButton, Alert, Chip, InputAdornment, IconButton } from '@mui/material';
 import { useSession } from '@/features/auth/session';
-import { upsertClient, setClientGmailTokens, deleteGmailTokens } from '@/services/clients';
+import { upsertClient, setClientGmailTokens } from '@/services/clients';
 import { MenuItem, TextField } from '@mui/material';
 import { getSports, formatSportLabel } from '@/features/recruiter/divisionMapping';
 import { useRouter } from 'next/navigation';
@@ -1136,20 +1136,17 @@ export function ClientWizard({
       setSubmitError('');
       try {
         if (publicMode && publicSubmit) {
+          // Backend creates a pending client and remaps Gmail tokens server-side
           await publicSubmit(payload);
         } else {
+          // Backend remaps Gmail tokens via tempGmailClientId in the payload.
+          // Frontend fallback: also push tokens if available in state.
           const result = await upsertClient(payload);
-          // If we have Gmail tokens and a new client ID, associate them
           if (gmailTokens && result?.id) {
             try {
               await setClientGmailTokens(result.id, gmailTokens);
-              // Clean up the orphaned temp token record
-              const tempId = tempClientIdRef.current;
-              if (tempId && tempId !== result.id) {
-                deleteGmailTokens(tempId).catch(() => {});
-              }
             } catch (e) {
-              console.error('Failed to save Gmail tokens to client', e);
+              console.error('Failed to save Gmail tokens to client (fallback)', e);
             }
           }
         }

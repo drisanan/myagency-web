@@ -1,10 +1,11 @@
 import { APIGatewayProxyEventV2 } from 'aws-lambda';
 import { response } from './cors';
 import { newId } from '../lib/ids';
-import { putItem, getItem, queryGSI1, queryByPK } from '../lib/dynamo';
+import { putItem, getItem, deleteItem, queryGSI1, queryByPK } from '../lib/dynamo';
 import { verify, sign } from '../lib/formsToken';
 import { requireSession } from './common';
 import { withSentry } from '../lib/sentry';
+import { hashAccessCode } from '../lib/auth';
 
 const formsPublicHandler = async (event: APIGatewayProxyEventV2) => {
   const origin = event.headers?.origin || event.headers?.Origin || event.headers?.['origin'] || '';
@@ -59,21 +60,82 @@ const formsPublicHandler = async (event: APIGatewayProxyEventV2) => {
     const agency = agencies?.[0];
     if (!agency) return response(404, { ok: false, error: 'Agency not found' }, origin);
 
-    const id = newId('form');
+    const formId = newId('form');
     const now = Date.now();
-    
+    const nowIso = new Date().toISOString();
+
+    // Create a pending CLIENT record so Gmail tokens have a real client ID
+    let clientId: string | undefined;
+    if (form.email && form.firstName && form.lastName && form.sport) {
+      clientId = newId('client');
+
+      let accessCodeHash: string | undefined;
+      if (form.accessCode) {
+        accessCodeHash = await hashAccessCode(form.accessCode);
+      }
+
+      const username = form.username?.toLowerCase().replace(/[^a-z0-9-]/g, '') || undefined;
+
+      const clientRec: Record<string, any> = {
+        PK: `AGENCY#${agency.id}`,
+        SK: `CLIENT#${clientId}`,
+        GSI1PK: `EMAIL#${form.email}`,
+        GSI1SK: `CLIENT#${clientId}`,
+        ...(username ? { GSI3PK: `USERNAME#${username}`, GSI3SK: `CLIENT#${clientId}` } : {}),
+        id: clientId,
+        email: form.email,
+        firstName: form.firstName,
+        lastName: form.lastName,
+        sport: form.sport,
+        agencyId: agency.id,
+        agencyEmail: agency.email,
+        phone: form.phone || undefined,
+        username,
+        galleryImages: form.galleryImages || [],
+        radar: form.radar || {},
+        accessCodeHash,
+        authEnabled: Boolean(accessCodeHash),
+        accountStatus: 'pending',
+        createdAt: nowIso,
+        updatedAt: nowIso,
+      };
+      await putItem(clientRec);
+
+      // Remap Gmail tokens from temp ID to real client ID
+      const tempGmailId = form.tempGmailClientId;
+      if (tempGmailId) {
+        try {
+          const tempKey = { PK: `AGENCY#${agency.id}`, SK: `GMAIL_TOKEN#${tempGmailId}` };
+          const tempRec = await getItem(tempKey);
+          if (tempRec?.tokens) {
+            await putItem({
+              ...tempRec,
+              PK: `AGENCY#${agency.id}`,
+              SK: `GMAIL_TOKEN#${clientId}`,
+              clientId,
+            });
+            await deleteItem(tempKey);
+            console.log('[forms:submit] Remapped Gmail tokens', { from: tempGmailId, to: clientId });
+          }
+        } catch (e) {
+          console.error('[forms:submit] Gmail token remap failed', e);
+        }
+      }
+    }
+
     const submission = {
         PK: `AGENCY#${agency.id}`, 
-        SK: `FORM#${id}`,
-        id,
+        SK: `FORM#${formId}`,
+        id: formId,
         createdAt: now,
         consumed: false, 
         agencyEmail: agency.email,
+        clientId,
         data: form,
     };
     
     await putItem(submission);
-    return response(200, { ok: true, id }, origin);
+    return response(200, { ok: true, id: formId, clientId }, origin);
   }
 
   // =========================================================================

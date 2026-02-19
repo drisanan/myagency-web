@@ -3,7 +3,7 @@ import { Handler, requireSession } from './common';
 import { newId } from '../lib/ids';
 import { ClientRecord, AgencyRecord, STARTER_USER_LIMIT, EmailDripRecord, DripEnrollmentRecord } from '../lib/models';
 import { hashAccessCode } from '../lib/auth';
-import { getItem, putItem, queryByPK, queryByPKPaginated, queryGSI3 } from '../lib/dynamo';
+import { getItem, putItem, deleteItem, queryByPK, queryByPKPaginated, queryGSI3 } from '../lib/dynamo';
 import { response } from './cors';
 import { withSentry, captureMessage } from '../lib/sentry';
 import { logAuditEvent, extractAuditContext } from '../lib/audit';
@@ -206,6 +206,26 @@ const clientsHandler: Handler = async (event: APIGatewayProxyEventV2) => {
       }
     } catch (e) {
       console.error('[clients] auto-enroll signup drips failed', e);
+    }
+
+    // Remap Gmail tokens from temp client ID to real client ID
+    if (payload.tempGmailClientId) {
+      try {
+        const tempKey = { PK: `AGENCY#${cleanAgencyId}`, SK: `GMAIL_TOKEN#${payload.tempGmailClientId}` };
+        const tempRec = await getItem(tempKey);
+        if (tempRec?.tokens) {
+          await putItem({
+            ...tempRec,
+            PK: `AGENCY#${cleanAgencyId}`,
+            SK: `GMAIL_TOKEN#${id}`,
+            clientId: id,
+          });
+          await deleteItem(tempKey);
+          console.log('[clients] Remapped Gmail tokens', { from: payload.tempGmailClientId, to: id });
+        }
+      } catch (e) {
+        console.error('[clients] Gmail token remap failed', e);
+      }
     }
     
     return response(200, { ok: true, client: rec }, origin);

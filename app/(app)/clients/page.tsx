@@ -81,13 +81,18 @@ export default function ClientsPage() {
 
         console.log('[ClientsPage] Found new submissions:', items.length);
 
-        // D. Create clients from submissions
+        // D. Create clients from submissions (skip if client already created by backend)
         const idsToConsume: string[] = [];
         for (const s of items) {
+          if (s.clientId) {
+            // Client was already created server-side during form submit
+            idsToConsume.push(s.id);
+            continue;
+          }
+
+          // Legacy path: submissions created before backend auto-created clients
           const v = s?.data || {};
           const clientPayload = {
-            // Do NOT pass s.id — form submission IDs (form_xxx) are not client IDs.
-            // Omitting id lets the backend POST handler generate a proper client ID.
             email: v.email || '',
             phone: v.phone || '',
             firstName: v.firstName || '',
@@ -105,7 +110,6 @@ export default function ClientsPage() {
             idsToConsume.push(s.id);
           } catch (err) {
             console.error('[ClientsPage] Failed to create client from submission', s.id, err);
-            // Continue processing remaining submissions even if one fails
           }
         }
 

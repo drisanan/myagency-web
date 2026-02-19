@@ -258,7 +258,7 @@ export type EmailStatsRecord = {
 // ============================================
 
 export type ProgramLevel = 'bronze' | 'silver' | 'gold' | 'platinum';
-export type AccountStatus = 'active' | 'paused' | 'suspended';
+export type AccountStatus = 'active' | 'paused' | 'suspended' | 'pending';
 
 // ============================================
 // Coach Notes - Associated with Coach/School
