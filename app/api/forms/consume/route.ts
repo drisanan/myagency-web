@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getItem, putItem } from '@/infra-adapter/dynamo';
+import { getItem, putItem, queryGSI1 } from '@/infra-adapter/dynamo';
 
 export async function POST(req: NextRequest) {
   try {
@@ -7,8 +7,13 @@ export async function POST(req: NextRequest) {
     if (!agencyEmail || !Array.isArray(ids)) {
       return NextResponse.json({ ok: false, error: 'Missing parameters' }, { status: 400 });
     }
+
+    const agencies = await queryGSI1(`EMAIL#${agencyEmail}`, 'AGENCY#');
+    const agency = (agencies || [])[0] as { id: string } | undefined;
+    if (!agency) return NextResponse.json({ ok: true });
+
     for (const id of ids) {
-      const item = await getItem({ PK: `AGENCY#${agencyEmail}`, SK: `FORM#${id}` });
+      const item = await getItem({ PK: `AGENCY#${agency.id}`, SK: `FORM#${id}` });
       if (item) {
         await putItem({ ...item, consumed: true });
       }
@@ -18,5 +23,3 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, error: e?.message || 'Consume failed' }, { status: 500 });
   }
 }
-
-

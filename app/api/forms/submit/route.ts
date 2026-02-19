@@ -1,15 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verify } from '../../forms/token';
-import { putItem } from '@/infra-adapter/dynamo';
-
-type Submission = {
-  id: string;
-  createdAt: number;
-  data: any;
-  consumed?: boolean;
-  agencyEmail: string;
-  agencyId?: string;
-};
+import { putItem, getItem, deleteItem, queryGSI1 } from '@/infra-adapter/dynamo';
+import { hashAccessCode } from '@/infra/src/lib/auth';
 
 function newId(prefix: string) {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
@@ -26,37 +18,83 @@ export async function POST(req: NextRequest) {
     if (!payload?.agencyEmail) {
       return NextResponse.json({ ok: false, error: 'Invalid token' }, { status: 400 });
     }
-    const safeForm = form || {};
-    const id = newId('form');
-    const rec: Submission = {
-      id,
-      createdAt: Date.now(),
-      consumed: false,
-      agencyEmail: payload.agencyEmail,
-      data: {
-        email: safeForm.email || '',
-        phone: safeForm.phone || '',
-        password: safeForm.password || '',
-        firstName: safeForm.firstName || '',
-        lastName: safeForm.lastName || '',
-        sport: safeForm.sport || '',
-        division: safeForm.division || '',
-        graduationYear: safeForm.graduationYear || '',
-        profileImageUrl: safeForm.profileImageUrl || '',
-        radar: safeForm.radar || {},
-      },
-    };
+
+    const agencies = await queryGSI1(`EMAIL#${payload.agencyEmail}`, 'AGENCY#');
+    const agency = (agencies || [])[0] as { id: string; email: string } | undefined;
+    if (!agency) {
+      return NextResponse.json({ ok: false, error: 'Agency not found' }, { status: 404 });
+    }
+
+    const formId = newId('form');
+    const now = Date.now();
+    const nowIso = new Date().toISOString();
+
+    let clientId: string | undefined;
+    if (form.email && form.firstName && form.lastName && form.sport) {
+      clientId = newId('client');
+
+      let accessCodeHash: string | undefined;
+      if (form.accessCode) {
+        accessCodeHash = await hashAccessCode(form.accessCode);
+      }
+
+      const username = form.username?.toLowerCase().replace(/[^a-z0-9-]/g, '') || undefined;
+
+      const clientRec: Record<string, any> = {
+        PK: `AGENCY#${agency.id}`,
+        SK: `CLIENT#${clientId}`,
+        GSI1PK: `EMAIL#${form.email}`,
+        GSI1SK: `CLIENT#${clientId}`,
+        ...(username ? { GSI3PK: `USERNAME#${username}`, GSI3SK: `CLIENT#${clientId}` } : {}),
+        id: clientId,
+        email: form.email,
+        firstName: form.firstName,
+        lastName: form.lastName,
+        sport: form.sport,
+        agencyId: agency.id,
+        agencyEmail: agency.email,
+        phone: form.phone || undefined,
+        username,
+        galleryImages: form.galleryImages || [],
+        radar: form.radar || {},
+        accessCodeHash,
+        authEnabled: Boolean(accessCodeHash),
+        accountStatus: 'pending',
+        createdAt: nowIso,
+        updatedAt: nowIso,
+      };
+      await putItem(clientRec);
+
+      const tempGmailId = form.tempGmailClientId;
+      if (tempGmailId) {
+        try {
+          const tempKey = { PK: `AGENCY#${agency.id}`, SK: `GMAIL_TOKEN#${tempGmailId}` };
+          const tempRec = await getItem(tempKey);
+          if (tempRec?.tokens) {
+            await putItem({ ...tempRec, PK: `AGENCY#${agency.id}`, SK: `GMAIL_TOKEN#${clientId}`, clientId });
+            await deleteItem(tempKey);
+          }
+        } catch (e) {
+          console.error('[intake-api:submit] Gmail token remap failed', e);
+        }
+      }
+    }
+
     await putItem({
-      PK: `AGENCY#${payload.agencyEmail}`,
-      SK: `FORM#${id}`,
-      ...rec,
+      PK: `AGENCY#${agency.id}`,
+      SK: `FORM#${formId}`,
+      id: formId,
+      createdAt: now,
+      consumed: false,
+      agencyEmail: agency.email,
+      clientId,
+      data: form,
     });
-    console.info('[intake-api:submit:success]', { id, agencyEmail: payload.agencyEmail });
-    return NextResponse.json({ ok: true, id });
+
+    console.info('[intake-api:submit:success]', { id: formId, agencyId: agency.id, clientId });
+    return NextResponse.json({ ok: true, id: formId, clientId });
   } catch (e: any) {
     console.error('[intake-api:submit:error]', { error: e?.message });
     return NextResponse.json({ ok: false, error: e?.message || 'Submit failed' }, { status: 500 });
   }
 }
-
-

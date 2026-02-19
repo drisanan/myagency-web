@@ -199,7 +199,7 @@ const ghlLoginHandler = async (event: APIGatewayProxyEventV2): Promise<APIGatewa
         }
       }
     } else if (resolvedAgencyId && resolvedAgencyId !== 'READY') {
-      // Existing agency - update subscription level if changed in GHL
+      // Existing agency - ensure PROFILE exists and update subscription level
       try {
         const { GetCommand, UpdateCommand } = await import('@aws-sdk/lib-dynamodb');
         const existing = await docClient.send(new GetCommand({
@@ -207,7 +207,32 @@ const ghlLoginHandler = async (event: APIGatewayProxyEventV2): Promise<APIGatewa
           Key: { PK: `AGENCY#${resolvedAgencyId}`, SK: 'PROFILE' }
         }));
         
-        if (existing.Item && existing.Item.subscriptionLevel !== subscriptionLevel) {
+        if (!existing.Item) {
+          // PROFILE missing (e.g. deleted or never created) — recreate it
+          console.log(`Agency PROFILE missing for ${resolvedAgencyId}, recreating...`);
+          await docClient.send(new PutCommand({
+            TableName: TABLE_NAME,
+            Item: {
+              PK: `AGENCY#${resolvedAgencyId}`,
+              SK: 'PROFILE',
+              GSI1PK: `EMAIL#${contact.email}`,
+              GSI1SK: `AGENCY#${resolvedAgencyId}`,
+              id: resolvedAgencyId,
+              name: agencyName || 'Agency',
+              email: contact.email,
+              contactId: contact.id,
+              ...(agencyColor ? { color: agencyColor } : {}),
+              ...(agencyLogo ? { logoUrl: agencyLogo } : {}),
+              subscriptionLevel,
+              settings: {
+                ...(agencyColor ? { primaryColor: agencyColor } : {}),
+                ...(agencyLogo ? { logoDataUrl: agencyLogo } : {}),
+              },
+              createdAt: Date.now(),
+            }
+          }));
+          console.log(`Recreated PROFILE for ${resolvedAgencyId}`);
+        } else if (existing.Item.subscriptionLevel !== subscriptionLevel) {
           await docClient.send(new UpdateCommand({
             TableName: TABLE_NAME,
             Key: { PK: `AGENCY#${resolvedAgencyId}`, SK: 'PROFILE' },
@@ -217,8 +242,7 @@ const ghlLoginHandler = async (event: APIGatewayProxyEventV2): Promise<APIGatewa
           console.log(`Updated agency ${resolvedAgencyId} subscriptionLevel to ${subscriptionLevel}`);
         }
       } catch (updateErr: any) {
-        // Non-fatal - log and continue
-        console.error('Failed to update existing agency subscription', { error: updateErr?.message });
+        console.error('Failed to ensure agency PROFILE', { error: updateErr?.message });
       }
     }
 
