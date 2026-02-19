@@ -6,10 +6,22 @@ import { google } from 'googleapis';
 import { withSentry } from '../lib/sentry';
 import { verify as verifyFormToken } from '../lib/formsToken';
 
-// Fallback logic ensures we always have a valid string, even if env var fails
 const API_DOMAIN = 'api.myrecruiteragency.com';
-const REDIRECT_URI = process.env.GOOGLE_REDIRECT_URI || `https://${API_DOMAIN}/google/oauth/callback`;
-const FRONTEND_URL = process.env.FRONTEND_URL || 'https://www.myrecruiteragency.com';
+const PROD_REDIRECT_URI = `https://${API_DOMAIN}/google/oauth/callback`;
+const PROD_FRONTEND_URL = 'https://www.myrecruiteragency.com';
+
+function safeRedirectUri(): string {
+  const uri = process.env.GOOGLE_REDIRECT_URI || PROD_REDIRECT_URI;
+  if (uri.includes('localhost') || uri.includes('127.0.0.1')) return PROD_REDIRECT_URI;
+  return uri;
+}
+
+const REDIRECT_URI = safeRedirectUri();
+const FRONTEND_URL = (() => {
+  const url = process.env.FRONTEND_URL || PROD_FRONTEND_URL;
+  if (url.includes('localhost') || url.includes('127.0.0.1')) return PROD_FRONTEND_URL;
+  return url;
+})();
 
 const SCOPES = [
   'https://www.googleapis.com/auth/gmail.send',
