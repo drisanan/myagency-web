@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verify } from '../../forms/token';
 import { putItem, getItem, deleteItem, queryGSI1 } from '@/infra-adapter/dynamo';
-import { hashAccessCode } from '@/infra/src/lib/auth';
+import bcrypt from 'bcryptjs';
 
 function newId(prefix: string) {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
 
       let accessCodeHash: string | undefined;
       if (form.accessCode) {
-        accessCodeHash = await hashAccessCode(form.accessCode);
+        accessCodeHash = await bcrypt.hash(form.accessCode, 10);
       }
 
       const username = form.username?.toLowerCase().replace(/[^a-z0-9-]/g, '') || undefined;
