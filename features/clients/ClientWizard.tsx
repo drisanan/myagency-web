@@ -8,7 +8,7 @@ import { getSports, formatSportLabel } from '@/features/recruiter/divisionMappin
 import { useRouter } from 'next/navigation';
 import { FaGoogle, FaCheck, FaTimes, FaTrash, FaPlus, FaExclamationTriangle } from 'react-icons/fa';
 import { checkUsernameAvailability } from '@/services/profilePublic';
-import { uploadMedia, validateVideoFile } from '@/services/uploads';
+import { uploadMedia, validateVideoFile, validateImageFile } from '@/services/uploads';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || '';
 
@@ -93,18 +93,7 @@ function formatPhone(raw: string): string {
   return out;
 }
 
-// Image size constants - DynamoDB has 400KB item limit, base64 adds ~33% overhead
-const MAX_SINGLE_IMAGE_KB = 500; // 500KB per image max
-const MAX_SINGLE_IMAGE_BYTES = MAX_SINGLE_IMAGE_KB * 1024;
-const MAX_TOTAL_GALLERY_KB = 2400; // 2.4MB total for all gallery images
-const MAX_TOTAL_GALLERY_BYTES = MAX_TOTAL_GALLERY_KB * 1024;
-const MAX_IMAGES = 6; // Reduced from 10 to be safer
-
-function calculateBase64Size(base64String: string): number {
-  // Base64 strings include the data:image/xxx;base64, prefix
-  const base64Data = base64String.split(',')[1] || base64String;
-  return Math.ceil(base64Data.length * 0.75); // Base64 to bytes approximation
-}
+const MAX_IMAGES = 10;
 
 const MAX_HIGHLIGHT_VIDEOS = 4;
 
@@ -128,18 +117,9 @@ function GalleryStep({
   const [urlValue, setUrlValue] = React.useState('');
   const [uploadingVideoIndex, setUploadingVideoIndex] = React.useState<number | null>(null);
   const [uploadProgress, setUploadProgress] = React.useState<number>(0);
+  const [uploadingImages, setUploadingImages] = React.useState(false);
 
-  // Calculate current total size of gallery
-  const currentTotalBytes = React.useMemo(() => {
-    return images.reduce((sum, img) => {
-      if (img.startsWith('data:')) {
-        return sum + calculateBase64Size(img);
-      }
-      return sum + 100; // URL strings are small
-    }, 0);
-  }, [images]);
-
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
     
@@ -148,45 +128,39 @@ function GalleryStep({
       return;
     }
 
-    let addedCount = 0;
-    let runningTotal = currentTotalBytes;
+    if (!clientId) {
+      setError('Cannot upload images without a client ID. Please save the client first.');
+      return;
+    }
 
-    Array.from(files).forEach(file => {
-      if (file.size > MAX_SINGLE_IMAGE_BYTES) {
-        setError(`Each image must be ${MAX_SINGLE_IMAGE_KB}KB or smaller. "${file.name}" is ${Math.round(file.size / 1024)}KB. Please compress it.`);
+    const fileList = Array.from(files);
+    for (const file of fileList) {
+      const validation = validateImageFile(file);
+      if (!validation.valid) {
+        setError(validation.error || 'Invalid image');
+        if (fileInputRef.current) fileInputRef.current.value = '';
         return;
       }
-      
-      // Estimate base64 size (adds ~33% overhead)
-      const estimatedBase64Size = Math.ceil(file.size * 1.37);
-      if (runningTotal + estimatedBase64Size > MAX_TOTAL_GALLERY_BYTES) {
-        setError(`Total gallery size would exceed ${MAX_TOTAL_GALLERY_KB}KB limit. Please remove some images or use smaller files.`);
-        return;
+    }
+
+    setUploadingImages(true);
+    setError(null);
+    const newUrls: string[] = [];
+    try {
+      for (const file of fileList) {
+        const publicUrl = await uploadMedia(clientId, file, 'image');
+        newUrls.push(publicUrl);
       }
-      
-      runningTotal += estimatedBase64Size;
-      
-      const reader = new FileReader();
-      reader.onload = () => {
-        const result = reader.result as string;
-        const actualSize = calculateBase64Size(result);
-        
-        if (actualSize > MAX_SINGLE_IMAGE_BYTES) {
-          setError(`Image "${file.name}" exceeds ${MAX_SINGLE_IMAGE_KB}KB after encoding. Please use a smaller image.`);
-          return;
-        }
-        
-        onImagesChange([...images, result]);
-        addedCount++;
-        if (addedCount === files.length) {
-          setError(null);
-        }
-      };
-      reader.readAsDataURL(file);
-    });
-    
-    // Reset input
-    if (fileInputRef.current) fileInputRef.current.value = '';
+      onImagesChange([...images, ...newUrls]);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Image upload failed');
+      if (newUrls.length > 0) {
+        onImagesChange([...images, ...newUrls]);
+      }
+    } finally {
+      setUploadingImages(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
   };
 
   const handleAddUrl = () => {
@@ -206,14 +180,11 @@ function GalleryStep({
     setError(null);
   };
 
-  const totalKB = Math.round(currentTotalBytes / 1024);
-  const isNearLimit = currentTotalBytes > MAX_TOTAL_GALLERY_BYTES * 0.8;
-
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
       <Typography variant="subtitle1" fontWeight={600}>Profile Gallery</Typography>
       <Typography variant="body2" color="text.secondary">
-        Add up to {MAX_IMAGES} images to showcase on your public athlete profile. Each image must be under {MAX_SINGLE_IMAGE_KB}KB.
+        Add up to {MAX_IMAGES} images to showcase on your public athlete profile. Max 16MB per image.
       </Typography>
       
       {error && <Alert severity="error">{error}</Alert>}
@@ -255,7 +226,23 @@ function GalleryStep({
           </Box>
         ))}
         
-        {images.length < MAX_IMAGES && (
+        {uploadingImages && (
+          <Box
+            sx={{
+              width: 120,
+              height: 120,
+              borderRadius: 0,
+              clipPath: 'polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px))',
+              border: '2px dashed #ccc',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <CircularProgress size={24} />
+          </Box>
+        )}
+        {!uploadingImages && images.length < MAX_IMAGES && (
           <Box
             onClick={() => fileInputRef.current?.click()}
             sx={{
@@ -314,25 +301,13 @@ function GalleryStep({
         </Box>
       )}
       
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Typography variant="caption" color="text.secondary">
-          {images.length}/{MAX_IMAGES} images added
-        </Typography>
-        <Typography 
-          variant="caption" 
-          color={isNearLimit ? 'warning.main' : 'text.secondary'}
-          sx={{ fontWeight: isNearLimit ? 600 : 400 }}
-        >
-          {totalKB}KB / {MAX_TOTAL_GALLERY_KB}KB used
-        </Typography>
-      </Box>
+      <Typography variant="caption" color="text.secondary">
+        {images.length}/{MAX_IMAGES} images added
+      </Typography>
       
       <Alert severity="info" sx={{ mt: 1, '& .MuiAlert-message': { color: '#0A0A0A' } }}>
         <Typography variant="caption" sx={{ color: '#0A0A0A' }}>
-          <strong>Tip:</strong> For best results, compress images before uploading. Use tools like 
-          <a href="https://tinypng.com" target="_blank" rel="noopener noreferrer" style={{ marginLeft: 4, color: '#0A0A0A' }}>TinyPNG</a> or 
-          <a href="https://squoosh.app" target="_blank" rel="noopener noreferrer" style={{ marginLeft: 4, color: '#0A0A0A' }}>Squoosh</a>.
-          Max {MAX_SINGLE_IMAGE_KB}KB per image.
+          <strong>Tip:</strong> Images are uploaded to cloud storage. Max 16MB per image. Supported: JPEG, PNG, GIF, WebP.
         </Typography>
       </Alert>
 
@@ -613,6 +588,7 @@ function BasicInfoStep({
   onConnectGmail,
   gmailError,
   publicMode = false,
+  clientId,
 }: {
   value: Record<string, any>;
   onChange: (v: Record<string, any>) => void;
@@ -624,11 +600,13 @@ function BasicInfoStep({
   onConnectGmail: () => void;
   gmailError?: string | null;
   publicMode?: boolean;
+  clientId?: string;
 }) {
   const sports = getSports();
   const [showUrlInput, setShowUrlInput] = React.useState(false);
   const fileInputRef = React.useRef<HTMLInputElement | null>(null);
   const [photoError, setPhotoError] = React.useState<string | null>(null);
+  const [uploadingPhoto, setUploadingPhoto] = React.useState(false);
   const [usernameStatus, setUsernameStatus] = React.useState<'idle' | 'checking' | 'available' | 'taken' | 'error'>('idle');
   const usernameCheckTimeout = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -660,26 +638,44 @@ function BasicInfoStep({
       }
     }, 800);
   };
-  const handlePhotoFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePhotoFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const MAX_PROFILE_IMAGE_KB = 500; // 500KB max for profile image
-    const MAX_PROFILE_IMAGE_BYTES = MAX_PROFILE_IMAGE_KB * 1024;
-    if (file.size > MAX_PROFILE_IMAGE_BYTES) {
-      setPhotoError(`Profile image must be ${MAX_PROFILE_IMAGE_KB}KB or smaller. Your image is ${Math.round(file.size / 1024)}KB. Please compress it using TinyPNG or Squoosh.`);
+    const validation = validateImageFile(file);
+    if (!validation.valid) {
+      setPhotoError(validation.error || 'Invalid image');
       return;
     }
-    const reader = new FileReader();
-    reader.onload = () => {
-      onChange({
-        ...value,
-        photoUrl: reader.result as string,
-        profileImageUrl: reader.result as string,
-        photoFileName: file.name,
-      });
+    if (clientId) {
+      setUploadingPhoto(true);
       setPhotoError(null);
-    };
-    reader.readAsDataURL(file);
+      try {
+        const publicUrl = await uploadMedia(clientId, file, 'image');
+        onChange({
+          ...value,
+          photoUrl: publicUrl,
+          profileImageUrl: publicUrl,
+          photoFileName: file.name,
+        });
+      } catch (err: unknown) {
+        setPhotoError(err instanceof Error ? err.message : 'Upload failed');
+      } finally {
+        setUploadingPhoto(false);
+      }
+    } else {
+      // Fallback for when no clientId (shouldn't happen in edit mode)
+      const reader = new FileReader();
+      reader.onload = () => {
+        onChange({
+          ...value,
+          photoUrl: reader.result as string,
+          profileImageUrl: reader.result as string,
+          photoFileName: file.name,
+        });
+        setPhotoError(null);
+      };
+      reader.readAsDataURL(file);
+    }
   };
   const triggerFile = () => fileInputRef.current?.click();
   const handleSportChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -736,7 +732,7 @@ function BasicInfoStep({
 
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
         <Box
-          onClick={triggerFile}
+          onClick={uploadingPhoto ? undefined : triggerFile}
           sx={{
             width: 96,
             height: 96,
@@ -744,7 +740,7 @@ function BasicInfoStep({
             borderRadius: '50%',
             overflow: 'hidden',
             border: '1px solid #E0E0E0',
-            cursor: 'pointer',
+            cursor: uploadingPhoto ? 'default' : 'pointer',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -753,15 +749,17 @@ function BasicInfoStep({
           }}
           data-testid="photo-preview"
         >
-          {value.photoUrl || value.profileImageUrl ? (
+          {uploadingPhoto ? (
+            <CircularProgress size={24} />
+          ) : value.photoUrl || value.profileImageUrl ? (
             <Box component="img" src={value.photoUrl || value.profileImageUrl} alt="Profile" sx={{ width: '100%', height: '100%', objectFit: 'cover' }} />
           ) : (
             <Typography variant="caption" color="text.secondary">Add Photo</Typography>
           )}
         </Box>
         <Stack spacing={0.5}>
-          <Button variant="outlined" onClick={triggerFile} sx={{ textTransform: 'none' }}>
-            {value.photoFileName ? `Uploaded: ${value.photoFileName}` : 'Upload / Replace'}
+          <Button variant="outlined" onClick={triggerFile} disabled={uploadingPhoto} sx={{ textTransform: 'none' }}>
+            {uploadingPhoto ? 'Uploading…' : value.photoFileName ? `Uploaded: ${value.photoFileName}` : 'Upload / Replace'}
           </Button>
           <Button variant="text" size="small" onClick={()=>setShowUrlInput((s)=>!s)} sx={{ textTransform: 'none', alignSelf: 'flex-start' }}>
             {showUrlInput ? 'Hide URL input' : 'Set via URL'}
@@ -1242,6 +1240,7 @@ export function ClientWizard({
             onConnectGmail={handleConnectGmail}
             gmailError={gmailError}
             publicMode={publicMode}
+            clientId={initialClient?.id || tempClientIdRef.current}
           />
         )}
         {activeStep === 1 && (

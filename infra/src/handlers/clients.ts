@@ -270,9 +270,21 @@ const clientsHandler: Handler = async (event: APIGatewayProxyEventV2) => {
       merged.accessCodeHash = await hashAccessCode(payload.accessCode);
       merged.authEnabled = true;
     }
-    await putItem(merged);
+
+    try {
+      await putItem(merged);
+    } catch (err: any) {
+      const msg = err?.message || 'Failed to save client';
+      console.error('[clients:put] putItem failed', { clientId, error: msg });
+      const isSize = msg.includes('size') || msg.includes('Item');
+      return response(400, {
+        ok: false,
+        error: isSize
+          ? 'Client record too large. Please use smaller images or upload media via the media uploader.'
+          : `Failed to save client: ${msg}`,
+      }, origin);
+    }
     
-    // Audit log: client updated
     await logAuditEvent({
       session,
       action: 'client_update',
