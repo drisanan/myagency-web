@@ -125,8 +125,13 @@ const promptsHandler = async (event: APIGatewayProxyEventV2) => {
       await incrementMetrics({ generated: 1 });
       return response(200, { ok: true, intro }, origin);
     } catch (err: any) {
-      console.error('AI Gen Error:', err);
-      return response(500, { ok: false, error: 'AI generation failed' }, origin);
+      console.error('AI Gen Error:', { message: err?.message, stack: err?.stack });
+      const msg = err?.message || 'AI generation failed';
+      const isConfig = msg.includes('not configured');
+      return response(isConfig ? 503 : 502, {
+        ok: false,
+        error: isConfig ? 'AI service not configured' : 'AI generation failed. Please try again.',
+      }, origin);
     }
   }
 
