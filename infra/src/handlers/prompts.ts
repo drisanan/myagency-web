@@ -100,21 +100,25 @@ const promptsHandler = async (event: APIGatewayProxyEventV2) => {
     // Destructure known fields from services/aiRecruiter.ts
     const { sport, collegeName, coachMessage, tone, qualities = [], additionalInsights } = body;
 
-    // Construct the prompt messages
-    const systemMsg = `You are an expert college recruiting assistant. Write a concise, effective intro email for a high school athlete contacting a college coach. Keep it under 150 words.`;
+    const systemMsg = `You are a college recruiting email writer. Write ONLY the introductory paragraph (2-4 sentences) for a high school athlete's email to a college coach. Rules:
+- Do NOT include any greeting, salutation, or sign-off (no "Hello", "Hey", "Dear", "Best regards", "Sincerely", etc.).
+- Do NOT use placeholders like [Name] or [School] — use the actual names provided.
+- Write in first person as the athlete.
+- Be genuine, confident, and conversational — not robotic or overly formal.
+- Keep it under 100 words.`;
     
     const userMsg = `
-      Context:
-      - Sport: ${sport || 'Not specified'}
-      - Target College: ${collegeName || 'Not specified'}
-      - Tone: ${tone || 'Professional yet personal'}
-      - Key Qualities to highlight: ${qualities.join(', ')}
-      
-      Instructions from User: ${coachMessage || 'Write an intro.'}
-      
-      Additional Data: ${additionalInsights || ''}
-      
-      Write the email body only. Do not include subject lines unless asked.
+Context:
+- Sport: ${sport || 'Not specified'}
+- Target College: ${collegeName || 'Not specified'}
+- Tone: ${tone || 'Professional yet personal'}
+- Key Qualities to highlight: ${qualities.join(', ')}
+
+Instructions: ${coachMessage || 'Write an intro.'}
+
+${additionalInsights || ''}
+
+Return ONLY the introductory paragraph text. No greeting, no closing, no subject line.
     `.trim();
 
     try {

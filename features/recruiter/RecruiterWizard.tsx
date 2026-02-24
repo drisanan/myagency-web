@@ -177,7 +177,7 @@ export function RecruiterWizard() {
             it.id || `List::${(it.school || '')}::${it.email || ''}::${(it.firstName || '')}-${(it.lastName || '')}::${it.title || ''}::${idx}`
           );
         
-          return { id, firstName: it.firstName || '', lastName: it.lastName || '', email: it.email || '', title: it.title || '' } as any;
+          return { id, firstName: it.firstName || '', lastName: it.lastName || '', email: it.email || '', title: it.title || '', school: it.school || '' } as any;
         })
         .filter((c: any) => map[c.id]);
     }
@@ -204,12 +204,8 @@ export function RecruiterWizard() {
 
   function personalizedHtmlForCoach(html: string, coach: any) {
     const coachLast = coach?.lastName || coach?.LastName || 'Coach';
-    // Match various greeting styles: Hello/Hey/Hi/Dear Coach <name>,
-    const re = /(Hello|Hey|Hi|Dear)\s+Coach\s+[^,<]*,/i;
-    if (re.test(html)) {
-      return html.replace(re, (match, greeting) => `${greeting} Coach ${coachLast},`);
-    }
-    return `<p>Hello Coach ${coachLast},</p>${html}`;
+    const re = /(Hello|Hey|Hi|Dear)\s+Coach\s+[^,<]*,/ig;
+    return html.replace(re, (_match, greeting) => `${greeting} Coach ${coachLast},`);
   }
 
   function applyIntroTokens(html: string, coach: any, universityLabel: string) {
@@ -265,7 +261,10 @@ export function RecruiterWizard() {
   function buildEmailPreview(): string {
     const enabledIds = Object.keys(enabledSections).filter((k) => enabledSections[k]);
     let emailContent = '';
-    const generatedIntro = `${contact.firstName || ''} ${contact.lastName || ''} - ${contact.school || ''}`.trim();
+    const athleteFullName = `${contact.firstName || ''} ${contact.lastName || ''}`.trim();
+    const sportLabel = currentClient?.sport || 'student';
+    const schoolClause = contact.school ? ` at ${contact.school}` : '';
+    const generatedIntro = `My name is ${athleteFullName} and I am a ${sportLabel} athlete${schoolClause}. I am reaching out to express my interest in your program at {{university_name}}.`;
     emailContent += `<p>Hello Coach {{coach_last_name}},</p><p>${generatedIntro}</p>`;
     if (enabledIds.includes('accomplishments')) {
       const valid = (contact.accomplishments || []).filter((item: string) => item && item.trim() !== '' && item !== 'undefined' && item !== 'null');
@@ -493,7 +492,7 @@ export function RecruiterWizard() {
       const recipientMeta = selectedCoaches.map((c: any) => ({
         email: c.email || c.Email || '',
         name: `${c.firstName || c.FirstName || ''} ${c.lastName || c.LastName || ''}`.trim(),
-        university: universityName || selectedList?.name || '',
+        university: c.school || c.School || universityName || selectedList?.name || '',
       })).filter((r) => r.email);
 
       const effectiveSubject = subjectLine || subjectBase;
@@ -552,7 +551,7 @@ export function RecruiterWizard() {
             clientId: id,
             athleteEmail: contact.email || '',
             recipientEmail: recipient,
-            university: universityName || selectedList?.name || '',
+            university: coachUniversity,
             campaignId,
           });
         }
@@ -563,7 +562,7 @@ export function RecruiterWizard() {
             clientId: id,
             athleteEmail: contact.email || '',
             recipientEmail: recipient,
-            university: universityName || selectedList?.name || '',
+            university: coachUniversity,
             campaignId,
           });
           personalizedHtml = `${personalizedHtml}<img src="${pixel}" alt="" width="1" height="1" style="display:none;" />`;
@@ -589,11 +588,10 @@ export function RecruiterWizard() {
           throw new Error(data?.error || 'Send failed');
         }
         
-        // Track this recipient for send recording
         sentRecipients.push({
           email: recipient,
           name: coachName,
-          university: universityName || selectedList?.name || '',
+          university: coachUniversity,
         });
         
         if (data.openUrl) {
@@ -710,11 +708,11 @@ CRITICAL INSTRUCTIONS:
 `.trim(),
       });
 
-      // Clean up any greeting/closing the AI might have added
       let introFixed = String(intro)
         .replace(/\[StudentName\]/gi, fullName)
-        .replace(/^(Hey|Hello|Hi|Dear|Greetings)[^,]*,?\s*/i, '')
-        .replace(/(Best regards|Sincerely|Thank you|Thanks)[\s\S]*/i, '')
+        .replace(/^(?:(?:Hey|Hello|Hi|Dear|Good\s+\w+|Greetings),?\s*)?(?:Coach\s+[^,.\n]*[,.]?\s*)?/i, '')
+        .replace(/^\s+/, '')
+        .replace(/(Best regards|Sincerely|Thank you|Thanks|Warm regards|Kind regards|Respectfully)[\s\S]*/i, '')
         .trim();
 
       // Merge AI intro with the rest of the composed email
@@ -782,11 +780,11 @@ CRITICAL INSTRUCTIONS:
 `.trim(),
     });
 
-    // Clean up any greeting/closing the AI might have added
     let introFixed = String(intro)
       .replace(/\[StudentName\]/gi, fullName)
-      .replace(/^(Hey|Hello|Hi|Dear|Greetings)[^,]*,?\s*/i, '')
-      .replace(/(Best regards|Sincerely|Thank you|Thanks)[\s\S]*/i, '')
+      .replace(/^(?:(?:Hey|Hello|Hi|Dear|Good\s+\w+|Greetings),?\s*)?(?:Coach\s+[^,.\n]*[,.]?\s*)?/i, '')
+      .replace(/^\s+/, '')
+      .replace(/(Best regards|Sincerely|Thank you|Thanks|Warm regards|Kind regards|Respectfully)[\s\S]*/i, '')
       .trim();
 
     const base = buildEmailPreview();
