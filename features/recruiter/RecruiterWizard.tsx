@@ -710,7 +710,7 @@ CRITICAL INSTRUCTIONS:
 
       let introFixed = String(intro)
         .replace(/\[StudentName\]/gi, fullName)
-        .replace(/^(?:(?:Hey|Hello|Hi|Dear|Good\s+\w+|Greetings),?\s*)?(?:Coach\s+[^,.\n]*[,.]?\s*)?/i, '')
+        .replace(/^(?:(?:Hey|Hello|Hi|Dear|Good\s+\w+|Greetings)[,!]?\s*)?(?:Coach\s+[\w'-]+(?:\s+[\w'-]+)?[,.:!]?\s*)?/i, '')
         .replace(/^\s+/, '')
         .replace(/(Best regards|Sincerely|Thank you|Thanks|Warm regards|Kind regards|Respectfully)[\s\S]*/i, '')
         .trim();
@@ -782,7 +782,7 @@ CRITICAL INSTRUCTIONS:
 
     let introFixed = String(intro)
       .replace(/\[StudentName\]/gi, fullName)
-      .replace(/^(?:(?:Hey|Hello|Hi|Dear|Good\s+\w+|Greetings),?\s*)?(?:Coach\s+[^,.\n]*[,.]?\s*)?/i, '')
+      .replace(/^(?:(?:Hey|Hello|Hi|Dear|Good\s+\w+|Greetings)[,!]?\s*)?(?:Coach\s+[\w'-]+(?:\s+[\w'-]+)?[,.:!]?\s*)?/i, '')
       .replace(/^\s+/, '')
       .replace(/(Best regards|Sincerely|Thank you|Thanks|Warm regards|Kind regards|Respectfully)[\s\S]*/i, '')
       .trim();
@@ -1490,7 +1490,7 @@ CRITICAL INSTRUCTIONS:
                         // Get the current email body (sections like accomplishments, academics, etc.)
                         const base = aiHtml || buildEmailPreview();
                         // Strip the existing intro (greeting + first paragraph)
-                        const stripped = base.replace(/^<p>Hello Coach[\s\S]*?<\/p>\s*<p>[\s\S]*?<\/p>/, '');
+                        const stripped = base.replace(/^<p>(?:Hello|Hey|Hi|Dear)\s+Coach[\s\S]*?<\/p>\s*<p>[\s\S]*?<\/p>/, '');
                         const rest = stripped || base;
                         // Get coach name for greeting
                         const coachLast = selectedCoaches[0]?.lastName || selectedCoaches[0]?.LastName || 'Coach';
