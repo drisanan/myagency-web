@@ -13,12 +13,14 @@ type SendGmailInput = {
 
 function buildMime(subject: string, html: string, to: string) {
   const lines = [];
+  lines.push('MIME-Version: 1.0');
   lines.push('From: me');
   lines.push(`To: ${to}`);
   lines.push(`Subject: ${subject}`);
   lines.push('Content-Type: text/html; charset="UTF-8"');
+  lines.push('Content-Transfer-Encoding: base64');
   lines.push('');
-  lines.push(html);
+  lines.push(Buffer.from(html).toString('base64'));
   return Buffer.from(lines.join('\r\n')).toString('base64url');
 }
 

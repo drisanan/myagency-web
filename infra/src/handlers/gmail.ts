@@ -237,9 +237,9 @@ const gmailHandler: Handler = async (event: APIGatewayProxyEventV2) => {
   return response(405, { ok: false, error: `Unsupported method/action ${method} ${action}` }, origin);
 };
 
-// Helper: Build RFC 2822 compliant message
 function buildMime(subject: string, html: string, to: string, cc?: string[]) {
   const lines = [];
+  lines.push('MIME-Version: 1.0');
   lines.push('From: me');
   lines.push(`To: ${to}`);
   if (cc?.length) {
@@ -247,8 +247,9 @@ function buildMime(subject: string, html: string, to: string, cc?: string[]) {
   }
   lines.push(`Subject: ${subject}`);
   lines.push('Content-Type: text/html; charset="UTF-8"');
+  lines.push('Content-Transfer-Encoding: base64');
   lines.push('');
-  lines.push(html);
+  lines.push(Buffer.from(html).toString('base64'));
   const message = lines.join('\r\n');
   return Buffer.from(message).toString('base64url');
 }
