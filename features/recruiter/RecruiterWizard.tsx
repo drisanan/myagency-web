@@ -20,6 +20,7 @@ import { listLists, CoachList } from '@/services/lists';
 import { hasMailed, markMailed } from '@/services/mailStatus';
 import { listPrompts, PromptRecord } from '@/services/prompts';
 import { wrapLinksWithTracking, recordEmailSends, createOpenPixelUrl } from '@/services/emailTracking';
+import { normalizeYouTubeUrl, normalizeHudlUrl, normalizeInstagramUrl, normalizeGenericUrl } from '@/services/urlNormalize';
 import { createCampaign } from '@/services/campaigns';
 
 type ClientRow = { id: string; email: string; firstName?: string; lastName?: string; sport?: string };
@@ -303,10 +304,10 @@ export function RecruiterWizard() {
     }
     if (enabledIds.includes('highlights')) {
       const highlights = [
-        contact.youtubeHighlightUrl ? { type: 'YouTube Highlight', url: `https://www.youtube.com/watch?v=${contact.youtubeHighlightUrl}` } : null,
-        contact.hudlLink ? { type: 'Hudl Profile', url: `https://www.hudl.com/profile/${contact.hudlLink}` } : null,
-        contact.instagramProfileUrl ? { type: 'Instagram', url: `https://www.instagram.com/${contact.instagramProfileUrl}` } : null,
-        ...(((contact as any).newsArticleLinks || []).map((url: string) => ({ type: 'Article', url })) || [])
+        contact.youtubeHighlightUrl ? { type: 'YouTube Highlight', url: normalizeYouTubeUrl(contact.youtubeHighlightUrl) } : null,
+        contact.hudlLink ? { type: 'Hudl Profile', url: normalizeHudlUrl(contact.hudlLink) } : null,
+        contact.instagramProfileUrl ? { type: 'Instagram', url: normalizeInstagramUrl(contact.instagramProfileUrl) } : null,
+        ...(((contact as any).newsArticleLinks || []).map((url: string) => ({ type: 'Article', url: normalizeGenericUrl(url) })) || [])
       ].filter(Boolean) as Array<{ type: string; url: string }>;
       if (highlights.length) {
         emailContent += `<p><strong>View My Highlights:</strong></p><ul>${highlights.map((h, i) => {

@@ -5,6 +5,7 @@ import { Box, Typography, Container, Chip, IconButton, CircularProgress } from '
 import { FaInstagram, FaTiktok, FaTwitter, FaFacebook, FaYoutube, FaEnvelope, FaPhone, FaMapMarkerAlt, FaGraduationCap, FaRunning } from 'react-icons/fa';
 import { getPublicProfile, PublicProfile } from '@/services/profilePublic';
 import { formatSportLabel } from '@/features/recruiter/divisionMapping';
+import { normalizeYouTubeUrl, normalizeHudlUrl, normalizeInstagramUrl } from '@/services/urlNormalize';
 
 // Sporty color palette
 const colors = {
@@ -365,7 +366,7 @@ export function AthleteProfileClient({ username }: { username: string }) {
                 <Box sx={{ display: 'flex', gap: 1.5, mt: 4, justifyContent: { xs: 'center', md: 'flex-start' } }}>
                   {radar.instagramProfileUrl && (
                     <SocialButton
-                      href={`https://instagram.com/${radar.instagramProfileUrl}`}
+                      href={normalizeInstagramUrl(radar.instagramProfileUrl)}
                       icon={<FaInstagram size={24} />}
                       label="Instagram"
                     />
@@ -450,7 +451,7 @@ export function AthleteProfileClient({ username }: { username: string }) {
             {radar.youtubeHighlightUrl && (
               <Box
                 component="a"
-                href={radar.youtubeHighlightUrl.startsWith('http') ? radar.youtubeHighlightUrl : `https://youtube.com/watch?v=${radar.youtubeHighlightUrl}`}
+                href={normalizeYouTubeUrl(radar.youtubeHighlightUrl)}
                 target="_blank"
                 rel="noopener noreferrer"
                 sx={{
@@ -477,7 +478,7 @@ export function AthleteProfileClient({ username }: { username: string }) {
             {radar.hudlLink && (
               <Box
                 component="a"
-                href={radar.hudlLink.startsWith('http') ? radar.hudlLink : `https://hudl.com/profile/${radar.hudlLink}`}
+                href={normalizeHudlUrl(radar.hudlLink)}
                 target="_blank"
                 rel="noopener noreferrer"
                 sx={{

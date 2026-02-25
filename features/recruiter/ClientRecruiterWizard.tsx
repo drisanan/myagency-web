@@ -30,6 +30,7 @@ import { getClient, setClientGmailTokens, getClientGmailTokens } from '@/service
 import { CoachList } from '@/services/lists';
 import { listAssignments } from '@/services/listAssignments';
 import { hasMailed, markMailed } from '@/services/mailStatus';
+import { normalizeYouTubeUrl, normalizeHudlUrl, normalizeInstagramUrl } from '@/services/urlNormalize';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.API_BASE_URL || '';
 
@@ -264,9 +265,9 @@ export function ClientRecruiterWizard() {
     }
     if (enabledIds.includes('highlights')) {
       const highlights = [
-        contact.youtubeHighlightUrl ? { type: 'YouTube Highlight', url: `https://www.youtube.com/watch?v=${contact.youtubeHighlightUrl}` } : null,
-        contact.hudlLink ? { type: 'Hudl Profile', url: `https://www.hudl.com/profile/${contact.hudlLink}` } : null,
-        contact.instagramProfileUrl ? { type: 'Instagram', url: `https://www.instagram.com/${contact.instagramProfileUrl}` } : null,
+        contact.youtubeHighlightUrl ? { type: 'YouTube Highlight', url: normalizeYouTubeUrl(contact.youtubeHighlightUrl) } : null,
+        contact.hudlLink ? { type: 'Hudl Profile', url: normalizeHudlUrl(contact.hudlLink) } : null,
+        contact.instagramProfileUrl ? { type: 'Instagram', url: normalizeInstagramUrl(contact.instagramProfileUrl) } : null,
       ].filter(Boolean) as Array<{ type: string; url: string }>;
       if (highlights.length) {
         emailContent += `<p><strong>View My Highlights:</strong></p><ul>${highlights.map((h) => `<li><a href="${h.url}" target="_blank">${h.type}</a></li>`).join('')}</ul>\n`;

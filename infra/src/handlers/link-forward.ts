@@ -114,6 +114,26 @@ const linkForwardHandler = async (event: APIGatewayProxyEventV2) => {
     finalDestination = `https://${finalDestination}`;
   }
 
+  // Fix double-prefixed URLs (e.g. https://www.hudl.com/profile/www.hudl.com/profile/123)
+  // caused by user supplying a full URL where only a slug was expected.
+  try {
+    const parsed = new URL(finalDestination);
+    const knownDomains = ['hudl.com', 'youtube.com', 'youtu.be', 'instagram.com', 'tiktok.com', 'twitter.com', 'facebook.com', 'spotify.com'];
+    const pathLower = parsed.pathname.toLowerCase();
+    const embeddedDomain = knownDomains.find((d) => pathLower.includes(d));
+    if (embeddedDomain) {
+      const pathStr = parsed.pathname + parsed.search;
+      const domainIdx = pathStr.toLowerCase().indexOf(embeddedDomain);
+      let wwwOffset = 0;
+      if (domainIdx >= 4 && pathStr.substring(domainIdx - 4, domainIdx).toLowerCase() === 'www.') {
+        wwwOffset = 4;
+      }
+      const corrected = pathStr.substring(domainIdx - wwwOffset);
+      finalDestination = `https://${corrected}`;
+      console.log('[link-forward] Fixed double-prefixed URL', { original: destination, fixed: finalDestination });
+    }
+  } catch { /* URL parsing failed, continue with original */ }
+
   // Record click if we have agency context (non-blocking - don't wait)
   if (agencyId && clientId) {
     const now = Date.now();
