@@ -4,8 +4,7 @@ import { Box, Typography, Paper } from '@mui/material';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import { ClientWizard } from '@/features/clients/ClientWizard';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.API_BASE_URL || '';
-const resolvedApiBase = API_BASE_URL || (typeof window !== 'undefined' ? `${window.location.origin}/api` : '');
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://api.myrecruiteragency.com';
 
 export default function IntakeFormPageClient({ token }: { token: string }) {
   const decodedToken = React.useMemo(() => {
@@ -16,12 +15,12 @@ export default function IntakeFormPageClient({ token }: { token: string }) {
 
   React.useEffect(() => {
     (async () => {
-      if (!resolvedApiBase) {
+      if (!API_BASE_URL) {
         console.error('[intake:agency:error]', { error: 'API_BASE_URL missing' });
         return;
       }
       try {
-        const res = await fetch(`${resolvedApiBase}/forms/agency?token=${encodeURIComponent(decodedToken)}`, {
+        const res = await fetch(`${API_BASE_URL}/forms/agency?token=${encodeURIComponent(decodedToken)}`, {
           credentials: 'include',
         });
         const data = await res.json();
@@ -73,8 +72,8 @@ export default function IntakeFormPageClient({ token }: { token: string }) {
   }, [agency?.settings?.primaryColor, agency?.settings?.secondaryColor]);
 
   async function submitPublic(payload: Record<string, any>) {
-    if (!resolvedApiBase) throw new Error('API_BASE_URL is not configured');
-    const res = await fetch(`${resolvedApiBase}/forms/submit`, {
+    if (!API_BASE_URL) throw new Error('API_BASE_URL is not configured');
+    const res = await fetch(`${API_BASE_URL}/forms/submit`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
