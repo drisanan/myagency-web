@@ -43,6 +43,33 @@ export async function generateIntro(body: IntroBody): Promise<string> {
   return String(data.intro ?? '');
 }
 
+export async function cleanupEmail(html: string): Promise<string> {
+  const base = requireApiBase();
+  const url = `${base}/ai/cleanup`;
+
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+    },
+    credentials: 'include',
+    body: JSON.stringify({ html }),
+  });
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new Error(`HTTP ${res.status}: ${text || res.statusText}`);
+  }
+
+  const data = await res.json();
+  if (data?.error) {
+    throw new Error(data.error);
+  }
+
+  return String(data.html ?? '');
+}
+
 export async function generateContentDraft(_body: unknown): Promise<string> {
   // Placeholder: will implement once the content endpoint is provided
   return '';
