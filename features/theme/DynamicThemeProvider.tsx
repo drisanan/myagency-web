@@ -29,8 +29,24 @@ const defaults = {
 
 type AgencySettings = Partial<typeof defaults> & { logoDataUrl?: string };
 
+function normalizeHex(value: string): string {
+  if (!value || value.startsWith('#') || value.startsWith('rgb') || value.startsWith('hsl') || value.startsWith('color')) return value;
+  if (/^[0-9a-fA-F]{3,8}$/.test(value)) return `#${value}`;
+  return value;
+}
+
+function normalizeColors<T extends Record<string, string>>(obj: T): T {
+  const out = { ...obj };
+  for (const key of Object.keys(out) as Array<keyof T>) {
+    if (typeof out[key] === 'string' && (key as string).toLowerCase().includes('color') || key === 'buttonText') {
+      (out as any)[key] = normalizeHex(out[key] as string);
+    }
+  }
+  return out;
+}
+
 function buildTheme(settings: AgencySettings) {
-  const s = { ...defaults, ...settings };
+  const s = normalizeColors({ ...defaults, ...settings });
   
   return createTheme({
     palette: {

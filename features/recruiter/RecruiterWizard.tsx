@@ -13,7 +13,7 @@ import { useSession } from '@/features/auth/session';
 import { listClientsByAgencyEmail, setClientGmailTokens, getClientGmailTokens } from '@/services/clients';
 import { listAgents, Agent } from '@/services/agents';
 import { getDivisions, getStates } from '@/services/recruiterMeta';
-import { listUniversities, getUniversityDetails, DIVISION_API_MAPPING } from '@/services/recruiter';
+import { listUniversities, getUniversityDetails, DIVISION_API_MAPPING, SUPPORTED_SPORTS } from '@/services/recruiter';
 import { UniversityLogo } from '@/components/UniversityLogo';
 import { EmailTemplate, listTemplates, saveTemplate, toTemplateHtml, applyTemplate } from '@/services/templates';
 import { listLists, CoachList } from '@/services/lists';
@@ -48,7 +48,9 @@ export function RecruiterWizard() {
   const [division, setDivision] = React.useState<string>('');
   const [states, setStates] = React.useState<Array<{ code: string; name: string }>>([]);
   const [state, setState] = React.useState<string>('');
+  const [selectedSport, setSelectedSport] = React.useState<string>('');
   const [schools, setSchools] = React.useState<Array<{ name: string; logo?: string }>>([]);
+  const [schoolsLoading, setSchoolsLoading] = React.useState(false);
   const [schoolSearch, setSchoolSearch] = React.useState('');
   const [lists, setLists] = React.useState<CoachList[]>([]);
   const [selectedListId, setSelectedListId] = React.useState<string>('');
@@ -95,7 +97,7 @@ export function RecruiterWizard() {
   const [agentGmailConnected, setAgentGmailConnected] = React.useState(false);
   const [agentGmailExpired, setAgentGmailExpired] = React.useState(false);
   const [agentGmailAccountEmail, setAgentGmailAccountEmail] = React.useState<string>('');
-  const agentQuillContainerRef = React.useRef<HTMLDivElement>(null);
+  const agentQuillRef = React.useRef<any>(null);
   const [cleanupLoading, setCleanupLoading] = React.useState(false);
 
   const currentClient = React.useMemo(() => clients.find(c => c.id === clientId) || null, [clients, clientId]);
@@ -747,7 +749,7 @@ export function RecruiterWizard() {
       for (const recipient of to) {
         const coach = selectedCoaches.find((c: any) => (c.email || c.Email) === recipient) || {} as any;
         const coachUniversity = coach.school || coach.School || universityName || selectedList?.name || resolvedCollegeName || '';
-        let personalizedHtml = applyIntroTokens(agentEmailBody, coach, coachUniversity);
+        let personalizedHtml = applyIntroTokens(aiHtml || agentEmailBody, coach, coachUniversity);
 
         if (session?.agencyId) {
           personalizedHtml = wrapLinksWithTracking(personalizedHtml, {
@@ -854,17 +856,17 @@ export function RecruiterWizard() {
   ];
 
   function insertTagAtCursor(tag: string) {
-    const qlContainer = agentQuillContainerRef.current?.querySelector('.ql-container');
-    const quill = (qlContainer as any)?.__quill;
-    if (!quill) return;
-    const range = quill.getSelection(true);
+    const editor = agentQuillRef.current?.getEditor?.();
+    if (!editor) return;
+    editor.focus();
+    const range = editor.getSelection(true);
     if (range) {
-      quill.insertText(range.index, tag);
-      quill.setSelection(range.index + tag.length, 0);
+      editor.insertText(range.index, tag);
+      editor.setSelection(range.index + tag.length, 0);
     } else {
-      const len = quill.getLength();
-      quill.insertText(len - 1, tag);
-      quill.setSelection(len - 1 + tag.length, 0);
+      const len = editor.getLength();
+      editor.insertText(len - 1, tag);
+      editor.setSelection(len - 1 + tag.length, 0);
     }
   }
 
@@ -1057,19 +1059,25 @@ CRITICAL INSTRUCTIONS:
     setSchools([]);
   }, [division]);
 
+  const resolvedSport = React.useMemo(() => {
+    if (senderType === 'agent') return selectedSport;
+    const client = clientId ? clients.find(c => c.id === clientId) : undefined;
+    return client?.sport || '';
+  }, [senderType, selectedSport, clientId, clients]);
+
   React.useEffect(() => {
-    if (division && state && clientId) {
-      const client = clients.find(c => c.id === clientId) || null;
-      const sport = client?.sport || '';
-      if (!sport) { setSchools([]); return; }
+    if (division && state && resolvedSport) {
+      setSchoolsLoading(true);
       const divisionSlug = DIVISION_API_MAPPING[division] || division;
-      listUniversities({ sport, division: divisionSlug, state })
+      listUniversities({ sport: resolvedSport, division: divisionSlug, state })
         .then(setSchools)
-        .catch((e) => { setSchools([]); setError(e?.message || 'Failed to load universities'); });
+        .catch((e) => { setSchools([]); setError(e?.message || 'Failed to load universities'); })
+        .finally(() => setSchoolsLoading(false));
     } else {
       setSchools([]);
+      setSchoolsLoading(false);
     }
-  }, [division, state, clientId, clients]);
+  }, [division, state, resolvedSport]);
 
   React.useEffect(() => {
     if (!selectedSchoolName) {
@@ -1077,14 +1085,12 @@ CRITICAL INSTRUCTIONS:
       setSelectedCoachIds({});
       return;
     }
-    const client = clients.find(c => c.id === clientId) || null;
-    const sport = client?.sport || '';
-    if (!sport || !division || !state) { setSchoolDetails(null); return; }
+    if (!resolvedSport || !division || !state) { setSchoolDetails(null); return; }
     const divisionSlug = DIVISION_API_MAPPING[division] || division;
-    getUniversityDetails({ sport, division: divisionSlug, state, school: selectedSchoolName })
+    getUniversityDetails({ sport: resolvedSport, division: divisionSlug, state, school: selectedSchoolName })
       .then((u) => { setSchoolDetails(u); setSelectedCoachIds({}); })
       .catch((e) => { setSchoolDetails(null); setSelectedCoachIds({}); setError(e?.message || 'Failed to load university'); });
-  }, [selectedSchoolName, clientId, division, state, clients]);
+  }, [selectedSchoolName, resolvedSport, division, state]);
   React.useEffect(() => { setError(null); }, [division, state, selectedSchoolName, clientId]);
 
   // FIX: Use userEmail for templates
@@ -1105,13 +1111,35 @@ CRITICAL INSTRUCTIONS:
 
   const handleNext = async () => {
     if (isLast) {
-      // Validate prerequisites before generating
-      if (!resolvedCollegeName && !listMode) {
-        setError('Select a university or coach list before generating the email.');
-        return;
-      }
       if (!selectedCoaches.length) {
         setError('Select at least one coach recipient before generating.');
+        return;
+      }
+
+      if (senderType === 'agent') {
+        if (!agentEmailBody.trim() || agentEmailBody.replace(/<[^>]*>/g, '').trim().length < 10) {
+          setError('Write your email in the composer above before generating.');
+          return;
+        }
+        try {
+          setIsGenerating(true);
+          setError(null);
+          const polished = await cleanupEmail(agentEmailBody);
+          setAiHtml(polished || agentEmailBody);
+          if (!subjectLine) {
+            const agentName = `${currentAgent?.firstName || ''} ${currentAgent?.lastName || ''}`.trim() || 'Agent';
+            setSubjectLine(`${agentName} — Coach Outreach`);
+          }
+        } catch (e: any) {
+          setError(e?.message || 'Failed to generate email');
+        } finally {
+          setIsGenerating(false);
+        }
+        return;
+      }
+
+      if (!resolvedCollegeName && !listMode) {
+        setError('Select a university or coach list before generating the email.');
         return;
       }
       try {
@@ -1119,7 +1147,6 @@ CRITICAL INSTRUCTIONS:
         setError(null);
         const html = await generateFullEmailHtml();
         setAiHtml(html);
-        // Pre-populate subject line if not already set by user
         if (!subjectLine) {
           const athleteName = `${contact.firstName || ''} ${contact.lastName || ''}`.trim();
           const gradYear = String((currentClient as any)?.radar?.graduationYear || (currentClient as any)?.graduationYear || '').trim();
@@ -1214,7 +1241,7 @@ CRITICAL INSTRUCTIONS:
               <Button
                 variant={senderType === 'client' ? 'contained' : 'outlined'}
                 size="small"
-                onClick={() => { setSenderType('client'); setSelectedAgentId(''); }}
+                onClick={() => { setSenderType('client'); setSelectedAgentId(''); setSelectedSport(''); }}
                 sx={senderType === 'client' ? { bgcolor: '#0A0A0A', color: '#CCFF00' } : {}}
               >
                 Client
@@ -1224,7 +1251,7 @@ CRITICAL INSTRUCTIONS:
                 <Button
                   variant={senderType === 'agent' ? 'contained' : 'outlined'}
                   size="small"
-                  onClick={() => { setSenderType('agent'); setClientId(''); }}
+                  onClick={() => { setSenderType('agent'); setClientId(''); setSelectedSport(''); }}
                   sx={senderType === 'agent' ? { bgcolor: '#0A0A0A', color: '#CCFF00' } : {}}
                   data-testid="agent-mode-btn"
                 >
@@ -1283,114 +1310,151 @@ CRITICAL INSTRUCTIONS:
           </Box>
         )}
         {activeStep === 1 && (
-          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 2, maxWidth: 800 }}>
-            <Typography variant="body2" color="text.secondary" sx={{ gridColumn: '1 / -1' }}>
-              Choose either Division + State or a saved List (not both). Selecting a list will skip Division/State.
+          <Box sx={{ maxWidth: 1000 }}>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              {senderType === 'agent'
+                ? 'Select Sport, Division, and State — or pick a saved List.'
+                : 'Choose Division + State, or pick a saved List.'}
             </Typography>
-            <TextField
-              size="small"
-              select
-              label="Division"
-              value={division}
-              onChange={(e) => { setDivision(e.target.value); setSelectedListId(''); setListMode(false); setSelectedCoachIds({}); }}
-              disabled={Boolean(selectedListId)}
-              inputProps={{ 'data-testid': 'recruiter-division' }}
-            >
-              {divisions.map((d) => (
-                <MenuItem key={d} value={d}>
-                  {d}
-                </MenuItem>
-              ))}
-            </TextField>
-            <TextField
-              size="small"
-              select
-              label="State"
-              value={state}
-              onChange={(e) => setState(e.target.value)}
-              disabled={!division || Boolean(selectedListId)}
-              inputProps={{ 'data-testid': 'recruiter-state' }}
-            >
-              {states.map((s) => (
-                <MenuItem key={s.code} value={s.code}>
-                  {s.name}
-                </MenuItem>
-              ))}
-            </TextField>
-            <TextField
-              size="small"
-              select
-              label="List"
-              value={selectedListId}
-              helperText="Picking a list skips Division/State and uses that list's coaches."
-              onChange={(e) => {
-                const id = String(e.target.value);
-                setSelectedListId(id);
-                const l = lists.find((x) => x.id === id) || null;
-                setSelectedList(l);
-                if (l) {
-                  setListMode(true);
-                  setDivision('');
-                  setState('');
-                  setSchools([]);
-                  const mapping: Record<string, boolean> = {};
-                  (l.items || []).forEach((it, idx) => {
-                    const rowId = String(
-                      it.id || `List::${(it.school || '')}::${(it.email || '')}::${(it.firstName || '')}-${(it.lastName || '')}::${it.title || ''}::${idx}`
-                    );
-                    mapping[rowId] = true;
-                  });
-                  setSelectedCoachIds(mapping);
-                  setSelectedSchoolName('');
-                  setSchoolDetails(null);
-                  setActiveStep(2);
-                } else {
-                  setListMode(false);
-                  setSelectedCoachIds({});
-                }
-              }}
-            >
-              <MenuItem value="">(Select a list)</MenuItem>
-              {lists.map((l) => (
-                <MenuItem key={l.id} value={l.id}>
-                  {l.name}
-                </MenuItem>
-              ))}
-            </TextField>
-            {schools.length > 0 && (
-            <Box sx={{ gridColumn: '1 / -1' }}>
-              <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
-                Universities
-              </Typography>
+
+            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: senderType === 'agent' ? '1fr 1fr 1fr' : '1fr 1fr' }, gap: 2 }}>
+              {senderType === 'agent' && (
+                <TextField
+                  size="small"
+                  select
+                  label="Sport"
+                  value={selectedSport}
+                  onChange={(e) => setSelectedSport(e.target.value)}
+                  disabled={Boolean(selectedListId)}
+                  inputProps={{ 'data-testid': 'recruiter-sport' }}
+                >
+                  {SUPPORTED_SPORTS.map((s) => (
+                    <MenuItem key={s.value} value={s.value}>
+                      {s.label}
+                    </MenuItem>
+                  ))}
+                </TextField>
+              )}
               <TextField
                 size="small"
-                label="Search school"
-                value={schoolSearch}
-                onChange={(e) => setSchoolSearch(e.target.value)}
-                placeholder="Type a school name"
-                sx={{ mb: 2, maxWidth: 320 }}
-              />
-              <Stack direction="row" spacing={2} sx={{ flexWrap: 'wrap' }}>
-                {visibleSchools.map((u) => (
-                  <Card
-                    key={u.name}
-                    onClick={() => setSelectedSchoolName(u.name)}
-                    sx={{
-                      width: 260,
-                      cursor: 'pointer',
-                      outline: selectedSchoolName === u.name ? '2px solid #CCFF00' : 'none',
-                    }}
-                  >
-                    <CardContent sx={{ display: 'grid', gap: 1, alignItems: 'center' }}>
-                      <Box sx={{ height: 48, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <UniversityLogo src={u.logo} alt={`${u.name} logo`} />
-                      </Box>
-                      <Typography>{u.name}</Typography>
-                    </CardContent>
-                  </Card>
+                select
+                label="Division"
+                value={division}
+                onChange={(e) => { setDivision(e.target.value); setSelectedListId(''); setListMode(false); setSelectedCoachIds({}); }}
+                disabled={Boolean(selectedListId)}
+                inputProps={{ 'data-testid': 'recruiter-division' }}
+              >
+                {divisions.map((d) => (
+                  <MenuItem key={d} value={d}>
+                    {d}
+                  </MenuItem>
                 ))}
-              </Stack>
+              </TextField>
+              <TextField
+                size="small"
+                select
+                label="State"
+                value={state}
+                onChange={(e) => setState(e.target.value)}
+                disabled={!division || Boolean(selectedListId)}
+                inputProps={{ 'data-testid': 'recruiter-state' }}
+              >
+                {states.map((s) => (
+                  <MenuItem key={s.code} value={s.code}>
+                    {s.name}
+                  </MenuItem>
+                ))}
+              </TextField>
             </Box>
+
+            <Box sx={{ mt: 2 }}>
+              <TextField
+                size="small"
+                select
+                label="List"
+                value={selectedListId}
+                helperText="Picking a list skips the filters above and uses that list's coaches."
+                onChange={(e) => {
+                  const id = String(e.target.value);
+                  setSelectedListId(id);
+                  const l = lists.find((x) => x.id === id) || null;
+                  setSelectedList(l);
+                  if (l) {
+                    setListMode(true);
+                    setDivision('');
+                    setState('');
+                    setSchools([]);
+                    const mapping: Record<string, boolean> = {};
+                    (l.items || []).forEach((it, idx) => {
+                      const rowId = String(
+                        it.id || `List::${(it.school || '')}::${(it.email || '')}::${(it.firstName || '')}-${(it.lastName || '')}::${it.title || ''}::${idx}`
+                      );
+                      mapping[rowId] = true;
+                    });
+                    setSelectedCoachIds(mapping);
+                    setSelectedSchoolName('');
+                    setSchoolDetails(null);
+                    setActiveStep(2);
+                  } else {
+                    setListMode(false);
+                    setSelectedCoachIds({});
+                  }
+                }}
+                sx={{ minWidth: 280 }}
+              >
+                <MenuItem value="">(Select a list)</MenuItem>
+                {lists.map((l) => (
+                  <MenuItem key={l.id} value={l.id}>
+                    {l.name}
+                  </MenuItem>
+                ))}
+              </TextField>
+            </Box>
+
+            {schoolsLoading && (
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mt: 4, justifyContent: 'center' }}>
+                <CircularProgress size={24} />
+                <Typography variant="body2" color="text.secondary">Loading universities…</Typography>
+              </Box>
+            )}
+
+            {!schoolsLoading && schools.length > 0 && (
+              <Box sx={{ mt: 3 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+                  <Typography variant="subtitle2" color="text.secondary">
+                    {schools.length} {schools.length === 1 ? 'University' : 'Universities'}
+                  </Typography>
+                  <TextField
+                    size="small"
+                    label="Search"
+                    value={schoolSearch}
+                    onChange={(e) => setSchoolSearch(e.target.value)}
+                    placeholder="Filter by name…"
+                    sx={{ maxWidth: 260 }}
+                  />
+                </Box>
+                <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', md: '1fr 1fr 1fr' }, gap: 2 }}>
+                  {visibleSchools.map((u) => (
+                    <Card
+                      key={u.name}
+                      onClick={() => setSelectedSchoolName(u.name)}
+                      sx={{
+                        cursor: 'pointer',
+                        outline: selectedSchoolName === u.name ? '2px solid #CCFF00' : 'none',
+                        transition: 'outline 0.15s, box-shadow 0.15s',
+                        '&:hover': { boxShadow: 4 },
+                      }}
+                    >
+                      <CardContent sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1, py: 2 }}>
+                        <Box sx={{ height: 48, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <UniversityLogo src={u.logo} alt={`${u.name} logo`} />
+                        </Box>
+                        <Typography variant="body2" align="center">{u.name}</Typography>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </Box>
+              </Box>
             )}
           </Box>
         )}
@@ -1636,7 +1700,6 @@ CRITICAL INSTRUCTIONS:
                 <Typography variant="caption" color="text.secondary">{agentEmailWordCount} word{agentEmailWordCount !== 1 ? 's' : ''}</Typography>
               </Box>
               <Box
-                ref={agentQuillContainerRef}
                 sx={{ 
                   bgcolor: '#fff', 
                   borderRadius: 0,
@@ -1647,6 +1710,7 @@ CRITICAL INSTRUCTIONS:
                 }}
               >
                 <ReactQuill
+                  ref={agentQuillRef}
                   theme="snow"
                   value={agentEmailBody}
                   onChange={(content: string) => setAgentEmailBody(content)}
@@ -1668,10 +1732,10 @@ CRITICAL INSTRUCTIONS:
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} alignItems="center">
               <Button
                 variant="contained"
-                disabled={agentEmailWordCount < 50 || cleanupLoading}
+                disabled={agentEmailWordCount < 15 || cleanupLoading}
                 onClick={handleCleanupEmail}
                 startIcon={cleanupBusy ? <CircularProgress size={16} color="inherit" /> : null}
-                sx={{ bgcolor: '#0A0A0A', color: '#CCFF00', '&:hover': { bgcolor: '#1A1A1A' }, '&.Mui-disabled': { bgcolor: '#E0E0E0', color: '#999' } }}
+                sx={{ bgcolor: '#CCFF00', color: '#0A0A0A', fontWeight: 700, '&:hover': { bgcolor: '#B8E600' }, '&.Mui-disabled': { bgcolor: '#2A2A2A', color: '#555', fontWeight: 400 } }}
               >
                 {cleanupBusy ? 'Cleaning up...' : 'Clean up Email'}
               </Button>
@@ -2060,9 +2124,11 @@ CRITICAL INSTRUCTIONS:
         <Button disabled={activeStep === 0} onClick={handleBack}>
           Back
         </Button>
-        <Button variant="contained" onClick={handleNext} disabled={!canNext || (isLast && isGenerating)}>
-          {isLast ? (isGenerating ? 'Generating…' : 'Generate') : 'Next'}
-        </Button>
+        {!(isLast && senderType === 'agent') && (
+          <Button variant="contained" onClick={handleNext} disabled={!canNext || (isLast && isGenerating)}>
+            {isLast ? (isGenerating ? 'Generating…' : 'Generate') : 'Next'}
+          </Button>
+        )}
       </Box>
 
       {/* ── Email Sent Confirmation Modal ── */}

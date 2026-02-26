@@ -6,6 +6,35 @@ const BASE_URL = 'https://1nkgfsilye.execute-api.us-west-1.amazonaws.com/univers
 const CACHE_TTL = 5 * 60 * 1000;
 const universityCache = new Map<string, { data: Array<{ name: string; logo?: string }>; expiresAt: number }>();
 
+export const SUPPORTED_SPORTS: Array<{ value: string; label: string }> = [
+  { value: 'Football', label: 'Football' },
+  { value: 'Softball', label: 'Softball' },
+  { value: 'Baseball', label: 'Baseball' },
+  { value: 'MensSoccer', label: "Men's Soccer" },
+  { value: 'WomensSoccer', label: "Women's Soccer" },
+  { value: 'MensBasketball', label: "Men's Basketball" },
+  { value: 'WomensBasketball', label: "Women's Basketball" },
+  { value: 'MensIceHockey', label: "Men's Ice Hockey" },
+  { value: 'WomensIceHockey', label: "Women's Ice Hockey" },
+  { value: 'MensTrack', label: "Men's Track" },
+  { value: 'WomensTrack', label: "Women's Track" },
+  { value: 'MensVolleyball', label: "Men's Volleyball" },
+  { value: 'WomensVolleyball', label: "Women's Volleyball" },
+  { value: 'WomensTennis', label: "Women's Tennis" },
+  { value: 'MensTennis', label: "Men's Tennis" },
+  { value: 'MensSwimming', label: "Men's Swimming" },
+  { value: 'WomensSwimming', label: "Women's Swimming" },
+  { value: 'WomensFlagFootball', label: "Women's Flag Football" },
+  { value: 'MensLacrosse', label: "Men's Lacrosse" },
+  { value: 'WomensLacrosse', label: "Women's Lacrosse" },
+  { value: 'WomensCrossCountry', label: "Women's Cross Country" },
+  { value: 'MensCrossCountry', label: "Men's Cross Country" },
+  { value: 'MensGolf', label: "Men's Golf" },
+  { value: 'WomensGolf', label: "Women's Golf" },
+  { value: 'Cheerleading', label: 'Cheerleading' },
+  { value: 'Dance', label: 'Dance' },
+];
+
 export const DIVISION_API_MAPPING: Record<string, string> = {
   D1: 'division-1',
   D1AA: 'division-1aa',
