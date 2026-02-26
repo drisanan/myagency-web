@@ -75,19 +75,20 @@ const gmailHandler: Handler = async (event: APIGatewayProxyEventV2) => {
     if (action === 'send') {
       if (!event.body) return response(400, { ok: false, error: 'Missing body' }, origin);
       const payload = JSON.parse(event.body);
-      const { clientId, recipients, subject, html, cc } = payload || {};
+      const { clientId, agentId, recipients, subject, html, cc } = payload || {};
 
-      if (!clientId || !Array.isArray(recipients) || !recipients.length || !subject || !html) {
-        return response(400, { ok: false, error: 'clientId, recipients[], subject, html required' }, origin);
+      if ((!clientId && !agentId) || !Array.isArray(recipients) || !recipients.length || !subject || !html) {
+        return response(400, { ok: false, error: 'clientId or agentId, recipients[], subject, html required' }, origin);
       }
 
+      const tokenSK = agentId ? `GMAIL_TOKEN#AGENT-${agentId}` : `GMAIL_TOKEN#${clientId}`;
       const tokenRec = await getItem({
         PK: `AGENCY#${session.agencyId}`,
-        SK: `GMAIL_TOKEN#${clientId}`,
+        SK: tokenSK,
       }) as GmailTokenRecord | undefined;
 
       if (!tokenRec?.tokens) {
-        return response(400, { ok: false, error: 'No Gmail tokens stored for this client. Please reconnect Gmail.' }, origin);
+        return response(400, { ok: false, error: 'No Gmail tokens stored. Please reconnect Gmail.' }, origin);
       }
 
       let tokens = tokenRec.tokens;

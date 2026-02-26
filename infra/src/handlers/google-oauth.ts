@@ -83,16 +83,18 @@ const googleOauthHandler = async (event: APIGatewayProxyEventV2) => {
 
   // =========================================================================
   // ROUTE: Generate Login URL
-  // GET /google/oauth/url?clientId=...
+  // GET /google/oauth/url?clientId=...  OR  ?agentId=...
   // =========================================================================
   if (method === 'GET' && path.endsWith('/google/oauth/url')) {
     const clientId = event.queryStringParameters?.clientId;
-    if (!clientId) return response(400, { ok: false, error: 'Missing clientId parameter' }, origin);
+    const agentId = event.queryStringParameters?.agentId;
+    if (!clientId && !agentId) return response(400, { ok: false, error: 'Missing clientId or agentId parameter' }, origin);
 
     try {
       const formToken = event.queryStringParameters?.formToken;
       const statePayload = JSON.stringify({
-        clientId,
+        ...(clientId ? { clientId } : {}),
+        ...(agentId ? { agentId } : {}),
         agencyId: session.agencyId,
         ...(formToken ? { formToken } : {}),
       });
@@ -135,9 +137,9 @@ const googleOauthHandler = async (event: APIGatewayProxyEventV2) => {
 
     try {
       const decodedState = JSON.parse(Buffer.from(state, 'base64').toString('utf-8'));
-      const { clientId, agencyId: stateAgencyId } = decodedState;
+      const { clientId, agentId, agencyId: stateAgencyId } = decodedState;
 
-      if (!clientId) return response(400, { ok: false, error: 'Invalid state' }, origin);
+      if (!clientId && !agentId) return response(400, { ok: false, error: 'Invalid state' }, origin);
 
       // Use session agencyId when available, fall back to the agencyId
       // embedded in the state (public form flow where no cookie exists)
@@ -146,20 +148,21 @@ const googleOauthHandler = async (event: APIGatewayProxyEventV2) => {
 
       const { tokens } = await oauth2Client.getToken(code);
 
-      // Persist Tokens
+      const tokenSK = agentId ? `GMAIL_TOKEN#AGENT-${agentId}` : `GMAIL_TOKEN#${clientId}`;
       const tokenRecord = {
         PK: `AGENCY#${resolvedAgencyId}`,
-        SK: `GMAIL_TOKEN#${clientId}`,
-        clientId,
+        SK: tokenSK,
+        ...(clientId ? { clientId } : {}),
+        ...(agentId ? { agentId } : {}),
         agencyId: resolvedAgencyId,
         tokens, 
         createdAt: Date.now(),
       };
 
       await putItem(tokenRecord);
-      console.log('Tokens saved for client:', clientId);
+      console.log('Tokens saved for', agentId ? `agent: ${agentId}` : `client: ${clientId}`);
 
-      const successPayload = { type: 'google-oauth-success', clientId, tokens };
+      const successPayload = { type: 'google-oauth-success', clientId, agentId, tokens };
 
       return {
         statusCode: 200,
@@ -229,14 +232,16 @@ const googleOauthHandler = async (event: APIGatewayProxyEventV2) => {
 
   // =========================================================================
   // ROUTE: Check Status (For UI indicators)
-  // GET /google/status?clientId=...
+  // GET /google/status?clientId=...  OR  ?agentId=...
   // =========================================================================
   if (method === 'GET' && path.endsWith('/google/status')) {
     try {
       const clientId = event.queryStringParameters?.clientId;
-      if (!clientId) return response(400, { ok: false, error: 'Missing clientId' }, origin);
+      const agentId = event.queryStringParameters?.agentId;
+      if (!clientId && !agentId) return response(400, { ok: false, error: 'Missing clientId or agentId' }, origin);
 
-      const item = await getItem({ PK: `AGENCY#${session.agencyId}`, SK: `GMAIL_TOKEN#${clientId}` });
+      const tokenSK = agentId ? `GMAIL_TOKEN#AGENT-${agentId}` : `GMAIL_TOKEN#${clientId}`;
+      const item = await getItem({ PK: `AGENCY#${session.agencyId}`, SK: tokenSK });
       
       const hasTokens = Boolean(item?.tokens);
       const hasRefreshToken = Boolean(item?.tokens?.refresh_token);
