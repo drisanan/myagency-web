@@ -53,3 +53,6 @@ cursor_*.md
 # Playwright test results
 test-results/
 playwright-report/
+
+# MCP memory data files (local context, not shareable)
+.cursor/project-memory.json

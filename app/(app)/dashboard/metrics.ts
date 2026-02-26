@@ -77,7 +77,7 @@ export function computeMetricsFromApi(
   const curSends = current30?.totals?.sentCount ?? 0;
   const allSends = total60?.totals?.sentCount ?? 0;
   const prevSends = Math.max(0, allSends - curSends);
-
   const emailsSent = curSends;
-  const emailsDelta = percentDelta(curSends, prevSends);  return { emailsSent, emailsDelta };
+  const emailsDelta = percentDelta(curSends, prevSends);
+  return { emailsSent, emailsDelta };
 }
