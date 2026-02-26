@@ -97,7 +97,7 @@ export function RecruiterWizard() {
   const [agentGmailConnected, setAgentGmailConnected] = React.useState(false);
   const [agentGmailExpired, setAgentGmailExpired] = React.useState(false);
   const [agentGmailAccountEmail, setAgentGmailAccountEmail] = React.useState<string>('');
-  const agentQuillRef = React.useRef<any>(null);
+  const agentQuillContainerRef = React.useRef<HTMLDivElement>(null);
   const [cleanupLoading, setCleanupLoading] = React.useState(false);
 
   const currentClient = React.useMemo(() => clients.find(c => c.id === clientId) || null, [clients, clientId]);
@@ -856,17 +856,20 @@ export function RecruiterWizard() {
   ];
 
   function insertTagAtCursor(tag: string) {
-    const editor = agentQuillRef.current?.getEditor?.();
-    if (!editor) return;
-    editor.focus();
-    const range = editor.getSelection(true);
+    const container = agentQuillContainerRef.current;
+    if (!container) return;
+    const qlContainer = container.querySelector('.ql-container');
+    const quill = (qlContainer as any)?.__quill;
+    if (!quill) return;
+    quill.focus();
+    const range = quill.getSelection(true);
     if (range) {
-      editor.insertText(range.index, tag);
-      editor.setSelection(range.index + tag.length, 0);
+      quill.insertText(range.index, tag);
+      quill.setSelection(range.index + tag.length, 0);
     } else {
-      const len = editor.getLength();
-      editor.insertText(len - 1, tag);
-      editor.setSelection(len - 1 + tag.length, 0);
+      const len = quill.getLength();
+      quill.insertText(len - 1, tag);
+      quill.setSelection(len - 1 + tag.length, 0);
     }
   }
 
@@ -1700,6 +1703,7 @@ CRITICAL INSTRUCTIONS:
                 <Typography variant="caption" color="text.secondary">{agentEmailWordCount} word{agentEmailWordCount !== 1 ? 's' : ''}</Typography>
               </Box>
               <Box
+                ref={agentQuillContainerRef}
                 sx={{ 
                   bgcolor: '#fff', 
                   borderRadius: 0,
@@ -1710,7 +1714,6 @@ CRITICAL INSTRUCTIONS:
                 }}
               >
                 <ReactQuill
-                  ref={agentQuillRef}
                   theme="snow"
                   value={agentEmailBody}
                   onChange={(content: string) => setAgentEmailBody(content)}
