@@ -5,7 +5,7 @@ import { Box, Button, TextField, Typography, MenuItem, Stack, Divider, Paper, Ch
 import { useSession } from '@/features/auth/session';
 import { listClientsByAgencyEmail, getClient } from '@/services/clients';
 import { listPrompts, savePrompt, deletePrompt, PromptRecord, getPromptMetrics, type PromptMetrics } from '@/services/prompts';
-import { generateIntro } from '@/services/aiRecruiter';
+import { generateIntro, getEmailRules, updateEmailRules } from '@/services/aiRecruiter';
 import { useTour } from '@/features/tour/TourProvider';
 import { promptsSteps } from '@/features/tour/promptsSteps';
 import { MetricCard } from '@/app/(app)/dashboard/MetricCard';
@@ -84,8 +84,11 @@ export default function PromptPlaygroundPage() {
   const [clientProfile, setClientProfile] = React.useState<any | null>(null);
   const [profileLoading, setProfileLoading] = React.useState(false);
   const promptRef = React.useRef<HTMLTextAreaElement | null>(null);
+  const [emailRules, setEmailRules] = React.useState<string[]>([]);
+  const [rulesLoading, setRulesLoading] = React.useState(false);
+  const [rulesSaving, setRulesSaving] = React.useState(false);
+  const [newRule, setNewRule] = React.useState('');
 
-  // FIX: Safely grab the email regardless of property name
   const userEmail = session?.agencyEmail || session?.email;
 
   const currentClient = React.useMemo(
@@ -145,6 +148,17 @@ export default function PromptPlaygroundPage() {
   React.useEffect(() => {
     refreshMetrics();
   }, [refreshMetrics]);
+
+  React.useEffect(() => {
+    if (!userEmail) return;
+    let cancelled = false;
+    setRulesLoading(true);
+    getEmailRules()
+      .then((r) => { if (!cancelled) setEmailRules(r); })
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setRulesLoading(false); });
+    return () => { cancelled = true; };
+  }, [userEmail]);
 
   async function handleRun() {
     try {
@@ -285,6 +299,35 @@ CRITICAL INSTRUCTIONS:
       metrics.length ? `Metrics: ${metrics.map((m) => `${m.title}: ${m.value}`).join('; ')}` : '',
       highlights.length ? `Highlights: ${highlights.join('; ')}` : '',
     ].filter(Boolean).join(' | ') || 'No profile details available.';
+  }
+
+  async function handleAddRule() {
+    const trimmed = newRule.trim();
+    if (!trimmed) return;
+    const next = [...emailRules, trimmed];
+    setNewRule('');
+    try {
+      setRulesSaving(true);
+      const saved = await updateEmailRules(next);
+      setEmailRules(saved);
+    } catch (e: any) {
+      setError(e?.message || 'Failed to save rules');
+    } finally {
+      setRulesSaving(false);
+    }
+  }
+
+  async function handleRemoveRule(index: number) {
+    const next = emailRules.filter((_, i) => i !== index);
+    try {
+      setRulesSaving(true);
+      const saved = await updateEmailRules(next);
+      setEmailRules(saved);
+    } catch (e: any) {
+      setError(e?.message || 'Failed to save rules');
+    } finally {
+      setRulesSaving(false);
+    }
   }
 
   async function handleDeleteTemplate(id: string) {
@@ -500,6 +543,80 @@ CRITICAL INSTRUCTIONS:
           </Box>
         </Box>
       )}
+
+      {/* Email Rules Section */}
+      <Paper variant="outlined" sx={{ p: 2, borderRadius: 2.5, borderColor: 'divider' }}>
+        <Box sx={{ display: 'grid', gap: 2 }}>
+          <Typography variant="h5">AI Email Rules</Typography>
+          <Typography variant="body2" color="text.secondary">
+            These rules are automatically included in every AI email generation and cleanup call.
+            Add, remove, or edit rules to teach the AI your preferences over time.
+          </Typography>
+          {rulesLoading ? (
+            <Stack spacing={1}>
+              <Skeleton variant="rectangular" height={36} />
+              <Skeleton variant="rectangular" height={36} />
+              <Skeleton variant="rectangular" height={36} />
+            </Stack>
+          ) : (
+            <Stack spacing={1}>
+              {emailRules.map((rule, idx) => (
+                <Box
+                  key={idx}
+                  sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 1,
+                    p: 1,
+                    borderRadius: 1.5,
+                    border: '1px solid',
+                    borderColor: 'divider',
+                  }}
+                >
+                  <Typography variant="body2" sx={{ flex: 1 }}>
+                    {idx + 1}. {rule}
+                  </Typography>
+                  <Button
+                    size="small"
+                    color="error"
+                    variant="text"
+                    disabled={rulesSaving}
+                    onClick={() => handleRemoveRule(idx)}
+                    sx={{ minWidth: 'auto', px: 1 }}
+                  >
+                    <IoTrashOutline size={16} />
+                  </Button>
+                </Box>
+              ))}
+              {emailRules.length === 0 && (
+                <Typography variant="body2" color="text.secondary">
+                  No custom rules configured. Default rules are used automatically.
+                </Typography>
+              )}
+            </Stack>
+          )}
+          <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start' }}>
+            <TextField
+              fullWidth
+              size="small"
+              placeholder="Add a new rule, e.g. &quot;Always mention the athlete's GPA when available&quot;"
+              value={newRule}
+              onChange={(e) => setNewRule(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddRule(); } }}
+              disabled={rulesSaving}
+            />
+            <Button
+              variant="contained"
+              onClick={handleAddRule}
+              disabled={!newRule.trim() || rulesSaving}
+              startIcon={rulesSaving ? <CircularProgress size={14} color="inherit" /> : null}
+              sx={{ whiteSpace: 'nowrap' }}
+            >
+              Add Rule
+            </Button>
+          </Box>
+        </Box>
+      </Paper>
     </Box>
   );
 }

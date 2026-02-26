@@ -70,7 +70,34 @@ export async function cleanupEmail(html: string): Promise<string> {
   return String(data.html ?? '');
 }
 
+export async function getEmailRules(): Promise<string[]> {
+  const base = requireApiBase();
+  const res = await fetch(`${base}/ai/rules`, {
+    method: 'GET',
+    headers: { 'Accept': 'application/json' },
+    credentials: 'include',
+  });
+  if (!res.ok) return [];
+  const data = await res.json();
+  return Array.isArray(data?.rules) ? data.rules : [];
+}
+
+export async function updateEmailRules(rules: string[]): Promise<string[]> {
+  const base = requireApiBase();
+  const res = await fetch(`${base}/ai/rules`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify({ rules }),
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new Error(`HTTP ${res.status}: ${text || res.statusText}`);
+  }
+  const data = await res.json();
+  return Array.isArray(data?.rules) ? data.rules : rules;
+}
+
 export async function generateContentDraft(_body: unknown): Promise<string> {
-  // Placeholder: will implement once the content endpoint is provided
   return '';
 }

@@ -265,6 +265,12 @@ functions:
       - httpApi:
           path: /ai/cleanup
           method: post
+      - httpApi:
+          path: /ai/rules
+          method: get
+      - httpApi:
+          path: /ai/rules
+          method: put
   profile:
     handler: infra/src/handlers/profile.handler
     events:

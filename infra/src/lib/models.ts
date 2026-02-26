@@ -50,6 +50,13 @@ export type AgencyRecord = {
   createdAt?: number;
 };
 
+export type EmailRulesRecord = {
+  PK: string;                            // AGENCY#<id>
+  SK: 'EMAIL_RULES';
+  rules: string[];
+  updatedAt: number;
+};
+
 export type SessionContext = {
   agencyId: string;
   agencyEmail?: string;

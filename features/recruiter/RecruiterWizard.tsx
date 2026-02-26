@@ -244,6 +244,15 @@ export function RecruiterWizard() {
     return out;
   }
 
+  function sanitizeAiIntro(raw: string): string {
+    return raw
+      .replace(/<[^>]*>/g, '')
+      .replace(/^["'\s]+|["'\s]+$/g, '')
+      .replace(/^(Hey|Hello|Hi|Dear|Good\s+\w+|Greetings)[,!]?\s*(Coach\s+[\w'-]+(?:\s+[\w'-]+)?[,.:!]?\s*)?/i, '')
+      .replace(/(Best regards|Sincerely|Thank you|Thanks|Warm regards|Kind regards|Respectfully)[\s\S]*/i, '')
+      .trim();
+  }
+
   function buildSubjectLine(
     athleteName: string,
     gradYear: string,
@@ -269,14 +278,22 @@ export function RecruiterWizard() {
   function setField(section: string, fieldKey: string, checked: boolean) {
     setSelectedFields((p) => ({ ...p, [section]: { ...(p[section] ?? {}), [fieldKey]: checked } }));
   }
-  function buildEmailPreview(): string {
-    const enabledIds = Object.keys(enabledSections).filter((k) => enabledSections[k]);
-    let emailContent = '';
+  function buildGreeting(style?: string): string {
+    const greetings = ['Hey', 'Hello', 'Hi'];
+    const g = style || greetings[Math.floor(Math.random() * greetings.length)];
+    return `<p>${g} Coach {{coach_last_name}},</p>`;
+  }
+
+  function buildGenericIntro(): string {
     const athleteFullName = `${contact.firstName || ''} ${contact.lastName || ''}`.trim();
     const sportLabel = currentClient?.sport || 'student';
     const schoolClause = contact.school ? ` at ${contact.school}` : '';
-    const generatedIntro = `My name is ${athleteFullName} and I am a ${sportLabel} athlete${schoolClause}. I am reaching out to express my interest in your program at {{university_name}}.`;
-    emailContent += `<p>Hello Coach {{coach_last_name}},</p><p>${generatedIntro}</p>`;
+    return `<p>My name is ${athleteFullName} and I am a ${sportLabel} athlete${schoolClause}. I am reaching out to express my interest in your program at {{university_name}}.</p>`;
+  }
+
+  function buildEmailBody(): string {
+    const enabledIds = Object.keys(enabledSections).filter((k) => enabledSections[k]);
+    let emailContent = '';
     if (enabledIds.includes('accomplishments')) {
       const valid = (contact.accomplishments || []).filter((item: string) => item && item.trim() !== '' && item !== 'undefined' && item !== 'null');
       if (valid.length) {
@@ -356,6 +373,10 @@ export function RecruiterWizard() {
       emailContent += `\nFollow My Radar Page: <a href="${baseUrl}/athlete/${contact.username}" target="_blank">HERE</a>`;
     }
     return emailContent;
+  }
+
+  function buildEmailPreview(): string {
+    return buildGreeting('Hello') + buildGenericIntro() + buildEmailBody();
   }
 
   React.useEffect(() => {
@@ -898,37 +919,13 @@ export function RecruiterWizard() {
         coachMessage,
         tone: 'Casual and conversational, like a confident high school athlete',
         qualities: ['Passionate', 'Hardworking', 'Determined'],
-        additionalInsights: `
-Student full name: ${fullName}. Target school: ${collegeName}.
-
-CRITICAL INSTRUCTIONS:
-1. Write ONLY a brief introductory paragraph (2-4 sentences max).
-2. DO NOT include any greeting (no "Hey", "Hello", "Dear" - the system adds that).
-3. DO NOT include any closing, sign-off, or signature.
-4. DO NOT include placeholders like [StudentName] or [School Name] - use actual names.
-5. Keep it casual, genuine, and enthusiastic.
-6. End the paragraph naturally without closing remarks.
-`.trim(),
+        additionalInsights: `Student full name: ${fullName}. Target school: ${collegeName}.`,
       });
 
-      let introFixed = String(intro)
-        .replace(/\[StudentName\]/gi, fullName)
-        .replace(/^(?:(?:Hey|Hello|Hi|Dear|Good\s+\w+|Greetings)[,!]?\s*)?(?:Coach\s+[\w'-]+(?:\s+[\w'-]+)?[,.:!]?\s*)?/i, '')
-        .replace(/^\s+/, '')
-        .replace(/(Best regards|Sincerely|Thank you|Thanks|Warm regards|Kind regards|Respectfully)[\s\S]*/i, '')
-        .trim();
-
-      // Merge AI intro with the rest of the composed email
-      const base = buildEmailPreview();
-      // Strip the greeting paragraph AND the generic intro paragraph from base
-      const stripped = base
-        .replace(/^<p>(Hello|Hey|Hi|Dear)\s+Coach[^<]*<\/p>\s*/i, '') // Remove greeting paragraph
-        .replace(/^<p>[^<]{0,100}<\/p>\s*/i, ''); // Remove short generic intro paragraph (< 100 chars)
-      
-      // Build with liquid tag for coach name, then convert any remaining hardcoded values
-      const improved = convertToLiquidTags(
-        `<p>Hello Coach {{coach_last_name}},</p><p>${introFixed}</p>${stripped}`
-      );
+      const introClean = sanitizeAiIntro(String(intro).replace(/\[StudentName\]/gi, fullName));
+      const greeting = buildGreeting('Hello');
+      const body = buildEmailBody();
+      const improved = convertToLiquidTags(`${greeting}<p>${introClean}</p>${body}`);
       setAiHtml(improved);
       // Pre-populate subject line if not already set by user
       if (!subjectLine) {
@@ -958,10 +955,6 @@ CRITICAL INSTRUCTIONS:
     if (enabledSections.athletic) parts.push('athletic metrics');
     if (enabledSections.highlights) parts.push('highlights');
 
-    // Randomize greeting style
-    const greetings = ['Hey', 'Hello', 'Hi'];
-    const randomGreeting = greetings[Math.floor(Math.random() * greetings.length)];
-
     const coachMessage = `Write a brief, engaging introduction for ${fullName}, a ${sport} athlete. Mention: ${parts.join(', ') || 'basic profile details'}.`;
 
     const intro = await generateIntro({
@@ -970,36 +963,13 @@ CRITICAL INSTRUCTIONS:
       coachMessage,
       tone: 'Casual and conversational, like a confident high school athlete',
       qualities: ['Passionate', 'Hardworking', 'Determined'],
-      additionalInsights: `
-Student full name: ${fullName}. Target school: ${collegeName}.
-
-CRITICAL INSTRUCTIONS:
-1. Write ONLY a brief introductory paragraph (2-4 sentences max).
-2. DO NOT include any greeting (no "Hey", "Hello", "Dear" - the system adds that).
-3. DO NOT include any closing, sign-off, or signature.
-4. DO NOT include placeholders like [StudentName] or [School Name] - use actual names.
-5. Keep it casual, genuine, and enthusiastic.
-6. End the paragraph naturally without closing remarks.
-`.trim(),
+      additionalInsights: `Student full name: ${fullName}. Target school: ${collegeName}.`,
     });
 
-    let introFixed = String(intro)
-      .replace(/\[StudentName\]/gi, fullName)
-      .replace(/^(?:(?:Hey|Hello|Hi|Dear|Good\s+\w+|Greetings)[,!]?\s*)?(?:Coach\s+[\w'-]+(?:\s+[\w'-]+)?[,.:!]?\s*)?/i, '')
-      .replace(/^\s+/, '')
-      .replace(/(Best regards|Sincerely|Thank you|Thanks|Warm regards|Kind regards|Respectfully)[\s\S]*/i, '')
-      .trim();
-
-    const base = buildEmailPreview();
-    // Strip the greeting paragraph AND the generic intro paragraph from base
-    // The regex matches: <p>Hello/Hey/Hi Coach X,</p><p>generic intro</p>
-    // We use a more robust pattern that handles various greeting formats
-    const stripped = base
-      .replace(/^<p>(Hello|Hey|Hi|Dear)\s+Coach[^<]*<\/p>\s*/i, '') // Remove greeting paragraph
-      .replace(/^<p>[^<]{0,100}<\/p>\s*/i, ''); // Remove short generic intro paragraph (< 100 chars)
-    
-    // Build with liquid tag for coach name, then convert any remaining hardcoded values
-    const raw = `<p>${randomGreeting} Coach {{coach_last_name}},</p><p>${introFixed}</p>${stripped}`;
+    const introClean = sanitizeAiIntro(String(intro).replace(/\[StudentName\]/gi, fullName));
+    const greeting = buildGreeting();
+    const body = buildEmailBody();
+    const raw = `${greeting}<p>${introClean}</p>${body}`;
     return convertToLiquidTags(raw);
   }
 
@@ -1792,15 +1762,7 @@ CRITICAL INSTRUCTIONS:
                       setSelectedPromptId(id);
                       const p = prompts.find((x) => x.id === id);
                       if (p?.text) {
-                        // Get the current email body (sections like accomplishments, academics, etc.)
-                        const base = aiHtml || buildEmailPreview();
-                        // Strip the existing intro (greeting + first paragraph)
-                        const stripped = base.replace(/^<p>(?:Hello|Hey|Hi|Dear)\s+Coach[\s\S]*?<\/p>\s*<p>[\s\S]*?<\/p>/, '');
-                        const rest = stripped || base;
-                        // Get coach name for greeting
-                        const coachLast = selectedCoaches[0]?.lastName || selectedCoaches[0]?.LastName || 'Coach';
-                        // Merge: new greeting + prompt text as intro + rest of email body
-                        const merged = `<p>Hello Coach ${coachLast},</p><p>${p.text}</p>${rest}`;
+                        const merged = `${buildGreeting('Hello')}<p>${p.text}</p>${buildEmailBody()}`;
                         setAiHtml(merged);
                       }
                     }}
