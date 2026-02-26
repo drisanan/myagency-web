@@ -230,13 +230,20 @@ export function ClientRecruiterWizard() {
     setEnabledSections((p) => ({ ...p, [k]: v }));
   }
 
-  function buildEmailPreview(): string {
+  function buildGreeting(style?: string): string {
     const coachName = selectedCoach?.lastName || 'Coach';
+    const greetings = ['Hey', 'Hello', 'Hi'];
+    const g = style || greetings[Math.floor(Math.random() * greetings.length)];
+    return `<p>${g} Coach ${coachName},</p>`;
+  }
+
+  function buildGenericIntro(): string {
+    return `<p>${`${contact.firstName || ''} ${contact.lastName || ''} - ${contact.school || ''}`.trim()}</p>`;
+  }
+
+  function buildEmailBody(): string {
     const enabledIds = Object.keys(enabledSections).filter((k) => enabledSections[k]);
     let emailContent = '';
-    const generatedIntro = `${contact.firstName || ''} ${contact.lastName || ''} - ${contact.school || ''}`.trim();
-    emailContent += `<p>Hello Coach ${coachName},</p><p>${generatedIntro}</p>`;
-    
     if (enabledIds.includes('accomplishments')) {
       const valid = (contact.accomplishments || []).filter((item: string) => item && item.trim() !== '' && item !== 'undefined');
       if (valid.length) {
@@ -296,11 +303,23 @@ export function ClientRecruiterWizard() {
     return emailContent;
   }
 
+  function buildEmailPreview(): string {
+    return buildGreeting('Hello') + buildGenericIntro() + buildEmailBody();
+  }
+
+  function sanitizeAiIntro(raw: string): string {
+    return raw
+      .replace(/<[^>]*>/g, '')
+      .replace(/^["'\s]+|["'\s]+$/g, '')
+      .replace(/^(Hey|Hello|Hi|Dear|Good\s+\w+|Greetings)[,!]?\s*(Coach\s+[\w'-]+(?:\s+[\w'-]+)?[,.:!]?\s*)?/i, '')
+      .replace(/(Best regards|Sincerely|Thank you|Thanks|Warm regards|Kind regards|Respectfully)[\s\S]*/i, '')
+      .trim();
+  }
+
   async function handleGenerateAI() {
     try {
       setAiLoading(true);
       setError(null);
-      const coachLast = selectedCoach?.lastName || 'Coach';
       const fullName = `${contact.firstName || ''} ${contact.lastName || ''}`.trim();
       const collegeName = selectedCoach?.school || selectedList?.name || 'the university';
       const sport = contact.sport || '';
@@ -311,9 +330,6 @@ export function ClientRecruiterWizard() {
       if (enabledSections.athletic) parts.push('athletic metrics');
       if (enabledSections.highlights) parts.push('highlights');
 
-      const greetings = ['Hey', 'Hello', 'Hi'];
-      const randomGreeting = greetings[Math.floor(Math.random() * greetings.length)];
-
       const coachMessage = `Write a brief, engaging introduction for ${fullName}, a ${sport} athlete. Mention: ${parts.join(', ') || 'basic profile details'}.`;
 
       const intro = await generateIntro({
@@ -322,28 +338,11 @@ export function ClientRecruiterWizard() {
         coachMessage,
         tone: 'Casual and conversational, like a confident high school athlete',
         qualities: ['Passionate', 'Hardworking', 'Determined'],
-        additionalInsights: `
-Student full name: ${fullName}. Target school: ${collegeName}.
-
-CRITICAL INSTRUCTIONS:
-1. Write ONLY a brief introductory paragraph (2-4 sentences max).
-2. DO NOT include any greeting (no "Hey", "Hello", "Dear" - the system adds that).
-3. DO NOT include any closing, sign-off, or signature.
-4. DO NOT include placeholders like [StudentName] - use actual names.
-5. Keep it casual, genuine, and enthusiastic.
-`.trim(),
+        additionalInsights: `Student full name: ${fullName}. Target school: ${collegeName}.`,
       });
 
-      let introFixed = String(intro)
-        .replace(/\[StudentName\]/gi, fullName)
-        .replace(/^(Hey|Hello|Hi|Dear|Greetings)[^,]*,?\s*/i, '')
-        .replace(/(Best regards|Sincerely|Thank you|Thanks)[\s\S]*/i, '')
-        .trim();
-
-      const base = buildEmailPreview();
-      const stripped = base.replace(/^<p>Hello Coach[\s\S]*?<\/p>\s*<p>[\s\S]*?<\/p>/, '');
-      const rest = stripped || base;
-      const improved = `<p>${randomGreeting} Coach ${coachLast},</p><p>${introFixed}</p>${rest}`;
+      const introClean = sanitizeAiIntro(String(intro).replace(/\[StudentName\]/gi, fullName));
+      const improved = `${buildGreeting()}<p>${introClean}</p>${buildEmailBody()}`;
       setEmailHtml(improved);
     } catch (e: any) {
       setError(e?.message || 'AI generation failed');
