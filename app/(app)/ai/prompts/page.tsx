@@ -169,7 +169,7 @@ export default function PromptPlaygroundPage() {
       const profileSummary = buildJarvisProfileSummary(clientProfile);
       const intro = await generateIntro({
         sport,
-        collegeName: 'Selected University',
+        collegeName: '{{university_name}}',
         coachMessage: prompt || 'Write a concise, friendly introduction.',
         tone: 'Casual and conversational, like a confident high school athlete',
         qualities: ['Passionate', 'Hardworking', 'Determined'],

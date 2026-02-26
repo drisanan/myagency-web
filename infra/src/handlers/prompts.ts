@@ -102,7 +102,8 @@ const promptsHandler = async (event: APIGatewayProxyEventV2) => {
 
     const systemMsg = `You are a college recruiting email writer. Write ONLY the introductory paragraph (2-4 sentences) for a high school athlete's email to a college coach. Rules:
 - Do NOT include any greeting, salutation, or sign-off (no "Hello", "Hey", "Dear", "Best regards", "Sincerely", etc.).
-- Do NOT use placeholders like [Name] or [School] — use the actual names provided.
+- Do NOT use bracket placeholders like [Name] or [School] — use the actual names provided.
+- If the college name or coach name is given as a {{template_tag}} (e.g. {{university_name}}, {{coach_last_name}}), preserve it EXACTLY as-is in your output. Do NOT replace, rephrase, or remove these tags.
 - Write in first person as the athlete.
 - Be genuine, confident, and conversational — not robotic or overly formal.
 - Keep it under 100 words.`;
@@ -135,6 +136,48 @@ Return ONLY the introductory paragraph text. No greeting, no closing, no subject
       return response(isConfig ? 503 : 502, {
         ok: false,
         error: isConfig ? 'AI service not configured' : 'AI generation failed. Please try again.',
+      }, origin);
+    }
+  }
+
+  // =========================================================================
+  // ROUTE: AI Email Cleanup (Agent compose flow)
+  // POST /ai/cleanup
+  // =========================================================================
+  if (method === 'POST' && path.endsWith('/ai/cleanup')) {
+    if (!event.body) return response(400, { ok: false, error: 'Missing body' }, origin);
+    const body = JSON.parse(event.body || '{}');
+    const { html } = body;
+    if (!html) return response(400, { ok: false, error: 'html is required' }, origin);
+
+    const cleanupSystemMsg = `You are an expert email editor for college athletic recruiting. You receive a draft email written by a recruiting agent to college coaches on behalf of a high school athlete. Your job:
+
+1. Clean up grammar, spelling, and sentence structure.
+2. Make the tone professional yet personable — confident but not arrogant.
+3. Replace any specific coach names with the EXACT dynamic tags below where appropriate:
+   - {{coach_first_name}} for a coach's first name
+   - {{coach_last_name}} for a coach's last name  
+   - {{coach_full_name}} for the coach's full name
+   - {{university_name}} for the university/college name
+4. If the draft already uses these tags, preserve them exactly.
+5. Keep the core message, facts, and links intact — do not invent information.
+6. Return ONLY the cleaned-up HTML. No wrapping, no explanation, no markdown fences.`;
+
+    const cleanupUserMsg = `Clean up this recruiting email draft. Return only the improved HTML:\n\n${html}`;
+
+    try {
+      const cleaned = await callOpenAI([
+        { role: 'system', content: cleanupSystemMsg },
+        { role: 'user', content: cleanupUserMsg },
+      ]);
+      return response(200, { ok: true, html: cleaned }, origin);
+    } catch (err: any) {
+      console.error('AI Cleanup Error:', { message: err?.message, stack: err?.stack });
+      const msg = err?.message || 'AI cleanup failed';
+      const isConfig = msg.includes('not configured');
+      return response(isConfig ? 503 : 502, {
+        ok: false,
+        error: isConfig ? 'AI service not configured' : 'AI cleanup failed. Please try again.',
       }, origin);
     }
   }

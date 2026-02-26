@@ -1,10 +1,10 @@
 'use client';
 import React from 'react';
-import { Alert, Box, Button, Step, StepLabel, Stepper, TextField, Typography, Card, CardContent, Checkbox, FormControlLabel, MenuItem, Stack, Accordion, AccordionSummary, AccordionDetails, Switch, CircularProgress, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material';
+import { Alert, Box, Button, Step, StepLabel, Stepper, TextField, Typography, Card, CardContent, Checkbox, FormControlLabel, MenuItem, Stack, Accordion, AccordionSummary, AccordionDetails, Switch, CircularProgress, Dialog, DialogTitle, DialogContent, DialogActions, Chip } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import dynamic from 'next/dynamic';
-import { generateIntro } from '@/services/aiRecruiter';
+import { generateIntro, cleanupEmail } from '@/services/aiRecruiter';
 
 // Dynamically import ReactQuill to avoid SSR issues
 const ReactQuill = dynamic(() => import('react-quill-new'), { ssr: false });
@@ -89,6 +89,14 @@ export function RecruiterWizard() {
   const popupRef = React.useRef<Window | null>(null);
   const [prompts, setPrompts] = React.useState<PromptRecord[]>([]);
   const [selectedPromptId, setSelectedPromptId] = React.useState<string>('');
+
+  // Agent Gmail state (separate from client Gmail)
+  const [agentGmailConnecting, setAgentGmailConnecting] = React.useState(false);
+  const [agentGmailConnected, setAgentGmailConnected] = React.useState(false);
+  const [agentGmailExpired, setAgentGmailExpired] = React.useState(false);
+  const [agentGmailAccountEmail, setAgentGmailAccountEmail] = React.useState<string>('');
+  const agentQuillContainerRef = React.useRef<HTMLDivElement>(null);
+  const [cleanupLoading, setCleanupLoading] = React.useState(false);
 
   const currentClient = React.useMemo(() => clients.find(c => c.id === clientId) || null, [clients, clientId]);
   const currentAgent = React.useMemo(() => agents.find(a => a.id === selectedAgentId) || null, [agents, selectedAgentId]);
@@ -201,7 +209,7 @@ export function RecruiterWizard() {
     selectedList?.name ||
     schoolDetails?.schoolInfo?.School ||
     schoolDetails?.name ||
-    'Selected University';
+    '{{university_name}}';
 
   function personalizedHtmlForCoach(html: string, coach: any) {
     const coachLast = coach?.lastName || coach?.LastName || 'Coach';
@@ -357,41 +365,61 @@ export function RecruiterWizard() {
       const allowedOrigins = [window.location.origin, apiOrigin].filter(Boolean);
       if (!allowedOrigins.includes(e.origin)) return;
       if (e.data?.type === 'google-oauth-success') {
+        const returnedAgentId = e.data?.agentId;
         const id = e.data?.clientId || currentClient?.id || clientId || '';
-        console.info('[gmail-ui:oauth-success]', { clientId: id });
-        setGmailConnecting(false);
-        setGmailConnected(Boolean(id));
-        setGmailExpired(false);
-        setError(null);
-        try { popupRef.current?.close(); } catch {}
-        // Fetch the actual Google account email and persist tokens
-        (async () => {
-          try {
-            if (!id) return;
-            // Get the Google account email from status to show the real sender
-            const statusUrl = `${API_BASE_URL}/google/status?clientId=${encodeURIComponent(id)}`;
-            const statusRes = await fetch(statusUrl, { credentials: 'include' });
-            const statusData = await statusRes.json();
-            if (statusData?.email) setGmailAccountEmail(statusData.email);
 
-            const r = await fetch(`${API_BASE_URL}/google/tokens?clientId=${encodeURIComponent(id)}`, { credentials: 'include' });
-            const j = await r.json();
-            console.info('[gmail-ui:tokens:fetched]', {
-              clientId: id,
-              ok: j?.ok,
-              exists: Boolean(j?.tokens),
-              hasAccess: Boolean(j?.tokens?.access_token),
-              hasRefresh: Boolean(j?.tokens?.refresh_token),
-            });
-            if (j?.ok && j?.tokens) {
-              setClientGmailTokens(id, j.tokens);
-              console.info('[gmail-ui:tokens:stored]', { clientId: id });
-            }
-          } catch { /* ignore */ }
-        })();
+        if (returnedAgentId) {
+          // Agent OAuth flow completed
+          console.info('[gmail-ui:agent-oauth-success]', { agentId: returnedAgentId });
+          setAgentGmailConnecting(false);
+          setAgentGmailConnected(true);
+          setAgentGmailExpired(false);
+          setError(null);
+          try { popupRef.current?.close(); } catch {}
+          (async () => {
+            try {
+              const statusUrl = `${API_BASE_URL}/google/status?agentId=${encodeURIComponent(returnedAgentId)}`;
+              const statusRes = await fetch(statusUrl, { credentials: 'include' });
+              const statusData = await statusRes.json();
+              if (statusData?.email) setAgentGmailAccountEmail(statusData.email);
+            } catch { /* ignore */ }
+          })();
+        } else {
+          // Client OAuth flow completed
+          console.info('[gmail-ui:oauth-success]', { clientId: id });
+          setGmailConnecting(false);
+          setGmailConnected(Boolean(id));
+          setGmailExpired(false);
+          setError(null);
+          try { popupRef.current?.close(); } catch {}
+          (async () => {
+            try {
+              if (!id) return;
+              const statusUrl = `${API_BASE_URL}/google/status?clientId=${encodeURIComponent(id)}`;
+              const statusRes = await fetch(statusUrl, { credentials: 'include' });
+              const statusData = await statusRes.json();
+              if (statusData?.email) setGmailAccountEmail(statusData.email);
+
+              const r = await fetch(`${API_BASE_URL}/google/tokens?clientId=${encodeURIComponent(id)}`, { credentials: 'include' });
+              const j = await r.json();
+              console.info('[gmail-ui:tokens:fetched]', {
+                clientId: id,
+                ok: j?.ok,
+                exists: Boolean(j?.tokens),
+                hasAccess: Boolean(j?.tokens?.access_token),
+                hasRefresh: Boolean(j?.tokens?.refresh_token),
+              });
+              if (j?.ok && j?.tokens) {
+                setClientGmailTokens(id, j.tokens);
+                console.info('[gmail-ui:tokens:stored]', { clientId: id });
+              }
+            } catch { /* ignore */ }
+          })();
+        }
       }
       if (e.data?.type === 'google-oauth-error') {
         setGmailConnecting(false);
+        setAgentGmailConnecting(false);
         try { popupRef.current?.close(); } catch {}
         setError('Gmail connection failed. Please try again.');
       }
@@ -439,6 +467,68 @@ export function RecruiterWizard() {
     } catch (e: any) {
       setGmailConnecting(false);
       setError(e?.message || 'Failed to start Gmail connection');
+    }
+  }
+
+  // Agent Gmail status check
+  React.useEffect(() => {
+    if (!selectedAgentId || senderType !== 'agent') {
+      setAgentGmailConnected(false);
+      setAgentGmailExpired(false);
+      setAgentGmailAccountEmail('');
+      return;
+    }
+    if (typeof window === 'undefined' || typeof fetch === 'undefined') { setAgentGmailConnected(false); return; }
+    const statusUrl = `${API_BASE_URL}/google/status?agentId=${encodeURIComponent(selectedAgentId)}`;
+    fetch(statusUrl, { credentials: 'include' })
+      .then(r => r.json())
+      .then(d => {
+        const connected = Boolean(d?.connected);
+        const expired = Boolean(d?.expired) || (connected && !d?.canRefresh);
+        setAgentGmailConnected(connected && !expired);
+        setAgentGmailExpired(expired);
+        setAgentGmailAccountEmail(d?.email || '');
+      })
+      .catch(() => { setAgentGmailConnected(false); setAgentGmailExpired(false); setAgentGmailAccountEmail(''); });
+  }, [selectedAgentId, senderType]);
+
+  async function handleAgentConnectGmail() {
+    try {
+      if (!selectedAgentId) {
+        setError('Select an agent first');
+        return;
+      }
+      setAgentGmailConnecting(true);
+      const oauthUrl = `${API_BASE_URL}/google/oauth/url?agentId=${encodeURIComponent(selectedAgentId)}`;
+      const res = await fetch(oauthUrl, { credentials: 'include' });
+      const data = await res.json();
+      if (!data?.url) throw new Error('Failed to start Gmail connection flow');
+      const w = 500, h = 700;
+      const y = window.top?.outerHeight ? Math.max(0, (window.top.outerHeight - h) / 2) : 100;
+      const x = window.top?.outerWidth ? Math.max(0, (window.top.outerWidth - w) / 2) : 100;
+      popupRef.current = window.open(
+        data.url,
+        'an-google-oauth-agent',
+        `toolbar=no,location=no,status=no,menubar=no,scrollbars=yes,resizable=yes,width=${w},height=${h},top=${y},left=${x}`
+      );
+      if (!popupRef.current) throw new Error('Popup blocked. Allow popups and retry.');
+    } catch (e: any) {
+      setAgentGmailConnecting(false);
+      setError(e?.message || 'Failed to start Gmail connection');
+    }
+  }
+
+  async function handleCleanupEmail() {
+    if (!agentEmailBody.trim()) return;
+    try {
+      setCleanupLoading(true);
+      setError(null);
+      const cleaned = await cleanupEmail(agentEmailBody);
+      if (cleaned) setAgentEmailBody(cleaned);
+    } catch (e: any) {
+      setError(e?.message || 'Email cleanup failed');
+    } finally {
+      setCleanupLoading(false);
     }
   }
 
@@ -638,6 +728,83 @@ export function RecruiterWizard() {
     }
   }
 
+  async function handleAgentSendEmails() {
+    try {
+      setSendMessage(null);
+      setIsSendingEmails(true);
+      setError(null);
+
+      if (!selectedAgentId) { setError('Select an agent first'); return; }
+
+      const to = selectedRecipients;
+      if (!to.length) { setError('Select at least one coach with an email'); return; }
+
+      const agentName = `${currentAgent?.firstName || ''} ${currentAgent?.lastName || ''}`.trim();
+      const subject = subjectLine || `${agentName} — Athlete Recruiting`;
+
+      const sentRecipients: Array<{ email: string; name?: string; university?: string }> = [];
+
+      for (const recipient of to) {
+        const coach = selectedCoaches.find((c: any) => (c.email || c.Email) === recipient) || {} as any;
+        const coachUniversity = coach.school || coach.School || universityName || selectedList?.name || resolvedCollegeName || '';
+        let personalizedHtml = applyIntroTokens(agentEmailBody, coach, coachUniversity);
+
+        if (session?.agencyId) {
+          personalizedHtml = wrapLinksWithTracking(personalizedHtml, {
+            agencyId: session.agencyId,
+            clientId: selectedAgentId,
+            athleteEmail: currentAgent?.email || '',
+            recipientEmail: recipient,
+            university: coachUniversity,
+          });
+        }
+
+        const sendUrl = API_BASE_URL ? `${API_BASE_URL}/gmail/send` : '/api/gmail/send';
+        const res = await fetch(sendUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            agentId: selectedAgentId,
+            recipients: [recipient],
+            cc: ccEmails.length > 0 ? ccEmails : undefined,
+            subject,
+            html: personalizedHtml,
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok || !data?.ok) {
+          throw new Error(data?.error || 'Send failed');
+        }
+
+        sentRecipients.push({
+          email: recipient,
+          name: `${coach.firstName || coach.FirstName || ''} ${coach.lastName || coach.LastName || ''}`.trim(),
+          university: coachUniversity,
+        });
+      }
+
+      const msg = `Sent to ${to.length} recipient${to.length === 1 ? '' : 's'}`;
+      setSendMessage(msg);
+      setConfirmModalMessage(msg);
+      setConfirmModalOpen(true);
+    } catch (e: any) {
+      console.error(e);
+      const msg = (e?.message || 'Failed to send email').toLowerCase();
+      const isTokenError = msg.includes('revoked') || msg.includes('expired') || msg.includes('reconnect')
+        || msg.includes('invalid_grant') || msg.includes('invalid credentials') || msg.includes('not connected');
+      if (isTokenError) {
+        setAgentGmailConnected(false);
+        setAgentGmailExpired(true);
+        setError('Gmail credentials expired or were revoked. Please reconnect Gmail and try again.');
+      } else {
+        setError(e?.message || 'Failed to send email');
+      }
+    } finally {
+      setIsSendingEmails(false);
+    }
+  }
+
   // AI improvement flow for intro sentence
   const [aiLoading, setAiLoading] = React.useState(false);
   const [aiHtml, setAiHtml] = React.useState<string>('');
@@ -670,6 +837,36 @@ export function RecruiterWizard() {
   const generatingBusy = useDelayedBusy(isGenerating);
   const gmailConnectingBusy = useDelayedBusy(gmailConnecting);
   const sendingBusy = useDelayedBusy(isSendingEmails);
+  const agentGmailConnectingBusy = useDelayedBusy(agentGmailConnecting);
+  const cleanupBusy = useDelayedBusy(cleanupLoading);
+
+  const agentEmailWordCount = React.useMemo(() => {
+    if (!agentEmailBody) return 0;
+    const text = agentEmailBody.replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ').trim();
+    return text ? text.split(/\s+/).filter(Boolean).length : 0;
+  }, [agentEmailBody]);
+
+  const DYNAMIC_TAGS = [
+    { label: 'Coach First Name', tag: '{{coach_first_name}}' },
+    { label: 'Coach Last Name', tag: '{{coach_last_name}}' },
+    { label: 'Coach Full Name', tag: '{{coach_full_name}}' },
+    { label: 'University Name', tag: '{{university_name}}' },
+  ];
+
+  function insertTagAtCursor(tag: string) {
+    const qlContainer = agentQuillContainerRef.current?.querySelector('.ql-container');
+    const quill = (qlContainer as any)?.__quill;
+    if (!quill) return;
+    const range = quill.getSelection(true);
+    if (range) {
+      quill.insertText(range.index, tag);
+      quill.setSelection(range.index + tag.length, 0);
+    } else {
+      const len = quill.getLength();
+      quill.insertText(len - 1, tag);
+      quill.setSelection(len - 1 + tag.length, 0);
+    }
+  }
 
   async function handleImproveWithAI() {
     try {
@@ -1365,7 +1562,8 @@ CRITICAL INSTRUCTIONS:
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, maxWidth: 900 }}>
             <Box sx={{ bgcolor: '#f5f5f5', p: 2, borderRadius: 0, clipPath: 'polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px))', mb: 1 }}>
               <Typography variant="subtitle2" color="text.secondary">
-                Sending as Agent: <strong>{currentAgent?.firstName} {currentAgent?.lastName}</strong> ({currentAgent?.email})
+                Sending as Agent: <strong>{currentAgent?.firstName} {currentAgent?.lastName}</strong>
+                {agentGmailAccountEmail ? ` (${agentGmailAccountEmail})` : ` (${currentAgent?.email})`}
               </Typography>
             </Box>
 
@@ -1417,17 +1615,37 @@ CRITICAL INSTRUCTIONS:
               </Box>
             )}
 
+            {/* Dynamic Tags */}
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, alignItems: 'center' }}>
+              <Typography variant="caption" color="text.secondary" sx={{ mr: 0.5 }}>Insert tag:</Typography>
+              {DYNAMIC_TAGS.map((dt) => (
+                <Chip
+                  key={dt.tag}
+                  label={dt.label}
+                  size="small"
+                  onClick={() => insertTagAtCursor(dt.tag)}
+                  sx={{ cursor: 'pointer', bgcolor: '#0A0A0A', color: '#CCFF00', '&:hover': { bgcolor: '#1A1A1A' }, fontFamily: 'monospace', fontSize: '0.75rem' }}
+                />
+              ))}
+            </Box>
+
             {/* Freeform Email Composer for Agent */}
             <Box sx={{ border: '1px solid #E0E0E0', borderRadius: 0, clipPath: 'polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px))', p: 2, bgcolor: '#F5F5F5' }}>
-              <Typography variant="h6" sx={{ mb: 2 }}>Compose Email</Typography>
-              <Box sx={{ 
-                bgcolor: '#fff', 
-                borderRadius: 0,
-                clipPath: 'polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px))',
-                '& .ql-container': { minHeight: 300, fontSize: '14px', fontFamily: 'inherit' },
-                '& .ql-editor': { minHeight: 300 },
-                '& .ql-toolbar': { borderTopLeftRadius: 0, borderTopRightRadius: 0 },
-              }}>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                <Typography variant="h6">Compose Email</Typography>
+                <Typography variant="caption" color="text.secondary">{agentEmailWordCount} word{agentEmailWordCount !== 1 ? 's' : ''}</Typography>
+              </Box>
+              <Box
+                ref={agentQuillContainerRef}
+                sx={{ 
+                  bgcolor: '#fff', 
+                  borderRadius: 0,
+                  clipPath: 'polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px))',
+                  '& .ql-container': { minHeight: 300, fontSize: '14px', fontFamily: 'inherit' },
+                  '& .ql-editor': { minHeight: 300 },
+                  '& .ql-toolbar': { borderTopLeftRadius: 0, borderTopRightRadius: 0 },
+                }}
+              >
                 <ReactQuill
                   theme="snow"
                   value={agentEmailBody}
@@ -1447,31 +1665,50 @@ CRITICAL INSTRUCTIONS:
             </Box>
 
             {/* Agent Actions */}
-            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} alignItems="flex-start">
-              <Button
-                size="small"
-                onClick={() => navigator.clipboard.writeText(agentEmailBody)}
-                sx={{ bgcolor: '#0A0A0A', color: '#CCFF00', '&:hover': { bgcolor: '#1A1A1A' } }}
-              >
-                Copy Rich Text
-              </Button>
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} alignItems="center">
               <Button
                 variant="contained"
-                disabled={!selectedCoaches.length || !agentEmailBody.trim()}
-                sx={{ bgcolor: '#CCFF00', color: '#0A0A0A', '&:hover': { bgcolor: '#B8E600' } }}
-                onClick={() => {
-                  // For now, just copy - Gmail integration for agent can be added later
-                  setSendMessage(`Ready to send to ${selectedCoaches.length} recipient(s). Copy the content and paste into your email client.`);
-                }}
+                disabled={agentEmailWordCount < 50 || cleanupLoading}
+                onClick={handleCleanupEmail}
+                startIcon={cleanupBusy ? <CircularProgress size={16} color="inherit" /> : null}
+                sx={{ bgcolor: '#0A0A0A', color: '#CCFF00', '&:hover': { bgcolor: '#1A1A1A' }, '&.Mui-disabled': { bgcolor: '#E0E0E0', color: '#999' } }}
               >
-                Prepare Email
+                {cleanupBusy ? 'Cleaning up...' : 'Clean up Email'}
               </Button>
-              {sendMessage && (
-                <Typography variant="body2" color="success.main" sx={{ ml: 1 }} data-testid="send-confirmation">
-                  {sendMessage}
-                </Typography>
+
+              {(!agentGmailConnected || agentGmailExpired) ? (
+                <Button
+                  variant="contained"
+                  onClick={handleAgentConnectGmail}
+                  disabled={agentGmailConnecting}
+                  startIcon={agentGmailConnectingBusy ? <CircularProgress size={16} color="inherit" /> : null}
+                  sx={{ bgcolor: agentGmailExpired ? '#FFB800' : '#CCFF00', color: '#0A0A0A', '&:hover': { bgcolor: agentGmailExpired ? '#E6A600' : '#B8E600' } }}
+                >
+                  {agentGmailConnectingBusy ? 'Connecting...' : agentGmailExpired ? 'Reconnect Gmail' : 'Connect Gmail'}
+                </Button>
+              ) : (
+                <Button
+                  variant="contained"
+                  disabled={!selectedCoaches.length || !agentEmailBody.trim() || isSendingEmails}
+                  onClick={handleAgentSendEmails}
+                  startIcon={sendingBusy ? <CircularProgress size={16} color="inherit" /> : null}
+                  sx={{ bgcolor: '#CCFF00', color: '#0A0A0A', '&:hover': { bgcolor: '#B8E600' } }}
+                >
+                  {sendingBusy ? 'Sending...' : `Send to ${selectedCoaches.length} Recipient${selectedCoaches.length !== 1 ? 's' : ''}`}
+                </Button>
               )}
             </Stack>
+
+            {agentGmailExpired && (
+              <Typography variant="body2" color="warning.main" sx={{ fontStyle: 'italic' }}>
+                Gmail credentials expired — please reconnect.
+              </Typography>
+            )}
+            {sendMessage && (
+              <Typography variant="body2" color="success.main" data-testid="send-confirmation">
+                {sendMessage}
+              </Typography>
+            )}
           </Box>
         )}
         {activeStep === 3 && senderType === 'client' && (
