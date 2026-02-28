@@ -285,9 +285,11 @@ const googleOauthHandler = async (event: APIGatewayProxyEventV2) => {
   if (method === 'POST' && path.endsWith('/google/refresh')) {
     const body = JSON.parse(event.body || '{}');
     const clientId = body.clientId;
-    if (!clientId) return response(400, { ok: false, error: 'Missing clientId' }, origin);
+    const agentId = body.agentId;
+    if (!clientId && !agentId) return response(400, { ok: false, error: 'Missing clientId or agentId' }, origin);
 
-    const item = await getItem({ PK: `AGENCY#${session.agencyId}`, SK: `GMAIL_TOKEN#${clientId}` });
+    const tokenSK = agentId ? `GMAIL_TOKEN#AGENT-${agentId}` : `GMAIL_TOKEN#${clientId}`;
+    const item = await getItem({ PK: `AGENCY#${session.agencyId}`, SK: tokenSK });
     if (!item?.tokens?.refresh_token) {
       return response(400, { ok: false, error: 'No refresh token available - reconnection required' }, origin);
     }
@@ -304,7 +306,8 @@ const googleOauthHandler = async (event: APIGatewayProxyEventV2) => {
         updatedAt: Date.now(),
       });
 
-      console.log('Token refreshed for client:', clientId);
+      const label = agentId ? `agent:${agentId}` : `client:${clientId}`;
+      console.log('Token refreshed for', label);
       return response(200, { ok: true, expiryDate: credentials.expiry_date }, origin);
     } catch (e: any) {
       console.error('Token refresh failed', e);
