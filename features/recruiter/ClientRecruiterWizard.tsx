@@ -119,6 +119,16 @@ export function ClientRecruiterWizard() {
   // Contact info derived from client profile
   const contact = React.useMemo(() => {
     const radar = clientProfile?.radar ?? {};
+    const metricsFromArray = Array.isArray(radar.metrics)
+      ? radar.metrics.filter((m: any) => m?.title && m?.value)
+      : [];
+    const metricsFromFlat = [
+      { title: radar.athleteMetricsTitleOne, value: radar.athleteMetricsValueOne },
+      { title: radar.athleteMetricsTitleTwo, value: radar.athleteMetricsValueTwo },
+      { title: radar.athleteMetricsTitleThree, value: radar.athleteMetricsValueThree },
+      { title: radar.athleteMetricsTitleFour, value: radar.athleteMetricsValueFour },
+    ].filter(m => m.title && m.value);
+    const athleteMetrics = metricsFromArray.length ? metricsFromArray : metricsFromFlat;
     return {
       email: clientProfile?.email ?? '',
       phone: clientProfile?.phone ?? '',
@@ -131,14 +141,7 @@ export function ClientRecruiterWizard() {
       motivationalQuotes: radar.motivationalQuotes ?? (radar.athleteAdvice ? [radar.athleteAdvice] : []),
       gpa: radar.gpa ?? '',
       preferredAreaOfStudy: radar.preferredAreaOfStudy ?? '',
-      athleteMetricsTitleOne: radar.athleteMetricsTitleOne ?? '',
-      athleteMetricsValueOne: radar.athleteMetricsValueOne ?? '',
-      athleteMetricsTitleTwo: radar.athleteMetricsTitleTwo ?? '',
-      athleteMetricsValueTwo: radar.athleteMetricsValueTwo ?? '',
-      athleteMetricsTitleThree: radar.athleteMetricsTitleThree ?? '',
-      athleteMetricsValueThree: radar.athleteMetricsValueThree ?? '',
-      athleteMetricsTitleFour: radar.athleteMetricsTitleFour ?? '',
-      athleteMetricsValueFour: radar.athleteMetricsValueFour ?? '',
+      athleteMetrics,
       youtubeHighlightUrl: radar.youtubeHighlightUrl ?? '',
       hudlLink: radar.hudlLink ?? '',
       instagramProfileUrl: radar.instagramProfileUrl ?? '',
@@ -262,16 +265,8 @@ export function ClientRecruiterWizard() {
         contact.preferredAreaOfStudy ? `<li>Preferred Area of Study: ${contact.preferredAreaOfStudy}</li>` : ''
       ].filter(Boolean).join('')}</ul>\n`;
     }
-    if (enabledIds.includes('athletic')) {
-      const metrics = [
-        { title: contact.athleteMetricsTitleOne, value: contact.athleteMetricsValueOne },
-        { title: contact.athleteMetricsTitleTwo, value: contact.athleteMetricsValueTwo },
-        { title: contact.athleteMetricsTitleThree, value: contact.athleteMetricsValueThree },
-        { title: contact.athleteMetricsTitleFour, value: contact.athleteMetricsValueFour },
-      ].filter((m) => m.title && m.value);
-      if (metrics.length) {
-        emailContent += `<p><strong>Athletic Metrics:</strong></p><ul>${metrics.map((m) => `<li>${m.title}: ${m.value}</li>`).join('')}</ul>\n`;
-      }
+    if (enabledIds.includes('athletic') && contact.athleteMetrics.length > 0) {
+      emailContent += `<p><strong>Athletic Metrics:</strong></p><ul>${contact.athleteMetrics.map((m: { title: string; value: string }) => `<li>${m.title}: ${m.value}</li>`).join('')}</ul>\n`;
     }
     if (enabledIds.includes('highlights')) {
       const highlights = [

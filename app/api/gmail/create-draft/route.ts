@@ -261,13 +261,16 @@ export async function POST(req: NextRequest) {
     if (validCcRecipients.length > 0) {
       emailHeaders.push(`Cc: ${validCcRecipients.join(', ')}`);
     }
+    const bodyBase64 = Buffer.from(htmlBody).toString('base64').replace(/(.{76})/g, '$1\r\n');
     const raw = [
+      'MIME-Version: 1.0',
+      'From: me',
       ...emailHeaders,
       encodedSubjectHeader,
-      'MIME-Version: 1.0',
-      'Content-Type: text/html; charset=utf-8',
+      'Content-Type: text/html; charset="UTF-8"',
+      'Content-Transfer-Encoding: base64',
       '',
-      htmlBody,
+      bodyBase64,
     ].join('\r\n');
 
     const encoded = toBase64Url(raw);

@@ -147,6 +147,16 @@ export function RecruiterWizard() {
 
   const contact = React.useMemo(() => {
     const radar = (currentClient as any)?.radar ?? {};
+    const metricsFromArray = Array.isArray(radar.metrics)
+      ? radar.metrics.filter((m: any) => m?.title && m?.value)
+      : [];
+    const metricsFromFlat = [
+      { title: radar.athleteMetricsTitleOne, value: radar.athleteMetricsValueOne },
+      { title: radar.athleteMetricsTitleTwo, value: radar.athleteMetricsValueTwo },
+      { title: radar.athleteMetricsTitleThree, value: radar.athleteMetricsValueThree },
+      { title: radar.athleteMetricsTitleFour, value: radar.athleteMetricsValueFour },
+    ].filter(m => m.title && m.value);
+    const athleteMetrics = metricsFromArray.length ? metricsFromArray : metricsFromFlat;
     return {
       email: currentClient?.email ?? '',
       phone: (currentClient as any)?.phone ?? '',
@@ -158,14 +168,7 @@ export function RecruiterWizard() {
       motivationalQuotes: radar.motivationalQuotes ?? (radar.athleteAdvice ? [radar.athleteAdvice] : []),
       gpa: radar.gpa ?? '',
       preferredAreaOfStudy: radar.preferredAreaOfStudy ?? '',
-      athleteMetricsTitleOne: radar.athleteMetricsTitleOne ?? '',
-      athleteMetricsValueOne: radar.athleteMetricsValueOne ?? '',
-      athleteMetricsTitleTwo: radar.athleteMetricsTitleTwo ?? '',
-      athleteMetricsValueTwo: radar.athleteMetricsValueTwo ?? '',
-      athleteMetricsTitleThree: radar.athleteMetricsTitleThree ?? '',
-      athleteMetricsValueThree: radar.athleteMetricsValueThree ?? '',
-      athleteMetricsTitleFour: radar.athleteMetricsTitleFour ?? '',
-      athleteMetricsValueFour: radar.athleteMetricsValueFour ?? '',
+      athleteMetrics,
       youtubeHighlightUrl: radar.youtubeHighlightUrl ?? '',
       hudlLink: radar.hudlLink ?? '',
       instagramProfileUrl: radar.instagramProfileUrl ?? '',
@@ -317,21 +320,11 @@ export function RecruiterWizard() {
         (contact as any).preferredAreaOfStudy ? `<li>Preferred Area of Study: ${(contact as any).preferredAreaOfStudy}</li>` : ''
       ].filter(Boolean).join('')}</ul>\n`;
     }
-    if (enabledIds.includes('athletic')) {
-      const metrics = [
-        { title: contact.athleteMetricsTitleOne, value: contact.athleteMetricsValueOne },
-        { title: contact.athleteMetricsTitleTwo, value: contact.athleteMetricsValueTwo },
-        { title: contact.athleteMetricsTitleThree, value: contact.athleteMetricsValueThree },
-        { title: contact.athleteMetricsTitleFour, value: contact.athleteMetricsValueFour },
-      ].filter(m => m.title && m.value);
-      if (metrics.length) {
-        emailContent += `<p><strong>Athletic Metrics:</strong></p><ul>${metrics.map((m, i) => {
-          const prefix = metrics.length > 1 ? `${i + 1}. ` : '';
-          return `<li>${prefix}${m.title}: ${m.value}</li>`;
-        }).join('')}</ul>\n`;
-      } else {
-        emailContent += `<p><strong>Athletic Metrics:</strong></p><p>No athletic metrics available.</p>\n`;
-      }
+    if (enabledIds.includes('athletic') && contact.athleteMetrics.length > 0) {
+      emailContent += `<p><strong>Athletic Metrics:</strong></p><ul>${contact.athleteMetrics.map((m: { title: string; value: string }, i: number) => {
+        const prefix = contact.athleteMetrics.length > 1 ? `${i + 1}. ` : '';
+        return `<li>${prefix}${m.title}: ${m.value}</li>`;
+      }).join('')}</ul>\n`;
     }
     if (enabledIds.includes('highlights')) {
       const highlights = [
@@ -2134,13 +2127,8 @@ export function RecruiterWizard() {
                             label={item}
                           />
                         ))}
-                        {sectionKey === 'athletic' && [
-                          { k: 'm1', label: `${(contact as any).athleteMetricsTitleOne || ''}: ${(contact as any).athleteMetricsValueOne || ''}`.trim() },
-                          { k: 'm2', label: `${(contact as any).athleteMetricsTitleTwo || ''}: ${(contact as any).athleteMetricsValueTwo || ''}`.trim() },
-                          { k: 'm3', label: `${(contact as any).athleteMetricsTitleThree || ''}: ${(contact as any).athleteMetricsValueThree || ''}`.trim() },
-                          { k: 'm4', label: `${(contact as any).athleteMetricsTitleFour || ''}: ${(contact as any).athleteMetricsValueFour || ''}`.trim() },
-                        ]
-                        .filter(m => m.label !== ':')
+                        {sectionKey === 'athletic' && contact.athleteMetrics
+                        .map((m: { title: string; value: string }, i: number) => ({ k: `m${i}`, label: `${m.title}: ${m.value}` }))
                         .map((m) => (
                           <FormControlLabel
                             key={m.k}

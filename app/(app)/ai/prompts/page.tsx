@@ -277,12 +277,16 @@ CRITICAL INSTRUCTIONS:
     const accomplishments = Array.isArray(radar.accomplishments)
       ? radar.accomplishments.filter((item: string) => item && item.trim() !== '')
       : [];
-    const metrics = [
+    const metricsFromArray = Array.isArray(radar.metrics)
+      ? radar.metrics.filter((m: any) => m?.title && m?.value)
+      : [];
+    const metricsFromFlat = [
       { title: radar.athleteMetricsTitleOne, value: radar.athleteMetricsValueOne },
       { title: radar.athleteMetricsTitleTwo, value: radar.athleteMetricsValueTwo },
       { title: radar.athleteMetricsTitleThree, value: radar.athleteMetricsValueThree },
       { title: radar.athleteMetricsTitleFour, value: radar.athleteMetricsValueFour },
     ].filter((m) => m.title && m.value);
+    const metrics = metricsFromArray.length ? metricsFromArray : metricsFromFlat;
     const highlights = [
       radar.youtubeHighlightUrl ? `YouTube: ${radar.youtubeHighlightUrl}` : '',
       radar.hudlLink ? `Hudl: ${radar.hudlLink}` : '',
