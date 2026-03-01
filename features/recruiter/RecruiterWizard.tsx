@@ -6,8 +6,9 @@ import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import dynamic from 'next/dynamic';
 import { generateIntro, cleanupEmail } from '@/services/aiRecruiter';
 
-// Dynamically import ReactQuill to avoid SSR issues
-const ReactQuill = dynamic(() => import('react-quill-new'), { ssr: false });
+// Dynamically import ReactQuill to avoid SSR issues; capture Quill class for DOM lookups
+let QuillClass: any = null;
+const ReactQuill = dynamic(() => import('react-quill-new').then(mod => { QuillClass = mod.Quill; return mod; }), { ssr: false });
 import 'react-quill-new/dist/quill.snow.css';
 import { useSession } from '@/features/auth/session';
 import { listClientsByAgencyEmail, setClientGmailTokens, getClientGmailTokens, refreshGmailToken, refreshAgentGmailToken } from '@/services/clients';
@@ -924,18 +925,19 @@ export function RecruiterWizard() {
 
   function insertTagAtCursor(tag: string) {
     const container = agentQuillContainerRef.current;
-    if (!container) return;
+    if (!container || !QuillClass) return;
     const qlContainer = container.querySelector('.ql-container');
-    const quill = (qlContainer as any)?.__quill;
+    if (!qlContainer) return;
+    const quill = QuillClass.find(qlContainer as HTMLElement);
     if (!quill) return;
     quill.focus();
     const range = quill.getSelection(true);
     if (range) {
-      quill.insertText(range.index, tag);
+      quill.insertText(range.index, tag, 'user');
       quill.setSelection(range.index + tag.length, 0);
     } else {
       const len = quill.getLength();
-      quill.insertText(len - 1, tag);
+      quill.insertText(len - 1, tag, 'user');
       quill.setSelection(len - 1 + tag.length, 0);
     }
   }
@@ -2129,7 +2131,7 @@ export function RecruiterWizard() {
                         ))}
                         {sectionKey === 'athletic' && contact.athleteMetrics
                         .map((m: { title: string; value: string }, i: number) => ({ k: `m${i}`, label: `${m.title}: ${m.value}` }))
-                        .map((m) => (
+                        .map((m: { k: string; label: string }) => (
                           <FormControlLabel
                             key={m.k}
                             control={<Checkbox checked={Boolean(selectedFields.athletic?.[m.k])} onChange={(e) => setField('athletic', m.k, e.target.checked)} />}

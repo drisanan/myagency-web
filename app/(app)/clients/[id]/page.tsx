@@ -8,7 +8,6 @@ import {
   Card,
   CardContent,
   Chip,
-  Collapse,
   Divider,
   List,
   ListItem,
@@ -25,11 +24,9 @@ import { FaGoogle } from 'react-icons/fa';
 import { useParams, useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { getClient } from '@/services/clients';
-import { getMailEntries } from '@/services/mailStatus';
 import { NotesPanel } from '@/features/notes/NotesPanel';
 import { TasksPanel } from '@/features/tasks/TasksPanel';
 import { CoachNotesPanel } from '@/features/coachNotes';
-import { TaskTemplatesPanel } from '@/features/taskTemplates';
 import { CommunicationsPanel } from '@/features/communications';
 import { ProfileViewsPanel } from '@/features/profileViews';
 import { MeetingsPanel } from '@/features/meetings';
@@ -41,21 +38,12 @@ import { useSession } from '@/features/auth/session';
 import { fetchEmailMetrics } from '@/services/emailTracking';
 import { MetricCard } from '@/app/(app)/dashboard/MetricCard';
 
-type MailEntry = {
-  id?: string;
-  clientId?: string;
-  email?: string;
-  to?: string;
-  recipientFirstName?: string;
-  recipientLastName?: string;
+type RecentSend = {
+  recipientEmail: string;
+  recipientName?: string;
   university?: string;
-  position?: string;
   subject?: string;
-  body?: string;
-  html?: string;
-  sentAt?: number;
-  date?: number;
-  mailedAt?: number;
+  sentAt: number;
 };
 
 function EmailMetricsSection({ clientId }: { clientId: string }) {
@@ -142,7 +130,6 @@ export default function ClientProfilePage() {
 
   const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
   const [tab, setTab] = React.useState(0);
-  const [expandedId, setExpandedId] = React.useState<string | null>(null);
   const [client, setClient] = React.useState<any | null>(null);
   const [error, setError] = React.useState<string | null>(null);
   const [interestLists, setInterestLists] = React.useState<any[]>([]);
@@ -188,10 +175,13 @@ export default function ClientProfilePage() {
     };
   }, [id, userEmail, loading]);
 
-  const mails: MailEntry[] = React.useMemo(() => {
-    if (!client?.id) return [];
-    return (getMailEntries() as MailEntry[]).filter((m) => m.clientId === client.id);
-  }, [client?.id]);
+  const { data: metricsData } = useQuery({
+    queryKey: ['clientEmails', client?.id],
+    queryFn: () => fetchEmailMetrics({ clientId: client!.id }),
+    enabled: Boolean(client?.id),
+    staleTime: 2 * 60 * 1000,
+  });
+  const recentSends: RecentSend[] = metricsData?.recentSends || [];
 
   React.useEffect(() => {
     const t = searchParams?.get('tab');
@@ -316,62 +306,47 @@ export default function ClientProfilePage() {
             <Box sx={{ px: 2, pt: 2, pb: 1, display: 'flex', alignItems: 'center', gap: 2 }}>
               <Chip label="Sent" color="primary" variant="outlined" />
               <Typography variant="body2" color="text.secondary">
-                {mails.length} sent
+                {recentSends.length} sent
               </Typography>
             </Box>
             <Divider />
             <List disablePadding>
-              {mails.map((m) => {
-                const key = m.id || `${m.email || m.to || ''}-${m.subject || ''}-${(m as any).mailedAt || m.sentAt || m.date || ''}`;
-                const isOpen = expandedId === key;
-                const sent = m.sentAt || m.date || (m as any).mailedAt || Date.now();
+              {recentSends.map((s, idx) => {
+                const key = `${s.recipientEmail}-${s.sentAt}-${idx}`;
                 return (
                   <React.Fragment key={key}>
                     <ListItem
                       secondaryAction={
-                        <Stack alignItems="flex-end" spacing={0.5}>
-                          <Typography variant="body2" color="text.secondary">
-                            {new Date(sent).toLocaleDateString()} {new Date(sent).toLocaleTimeString()}
-                          </Typography>
-                          <Button size="small" onClick={() => setExpandedId(isOpen ? null : key)}>
-                            {isOpen ? 'Hide' : 'View'}
-                          </Button>
-                        </Stack>
+                        <Typography variant="body2" color="text.secondary">
+                          {new Date(s.sentAt).toLocaleDateString()} {new Date(s.sentAt).toLocaleTimeString()}
+                        </Typography>
                       }
                     >
                       <ListItemText
                         primary={
                           <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
                             <Typography variant="subtitle2">
-                              {(m.recipientFirstName || 'First') + ' ' + (m.recipientLastName || 'Last')}
+                              {s.recipientName || s.recipientEmail}
                             </Typography>
-                            <Typography variant="body2" color="text.secondary">
-                              • {m.university || 'University'}
-                            </Typography>
-                            <Typography variant="body2" color="text.secondary">
-                              • {m.position || 'Position'}
-                            </Typography>
+                            {s.university && (
+                              <Typography variant="body2" color="text.secondary">
+                                • {s.university}
+                              </Typography>
+                            )}
                           </Stack>
                         }
                         secondary={
                           <Typography variant="body2" color="text.secondary" noWrap>
-                            {m.subject || '(No subject)'}
+                            {s.subject || '(No subject)'}
                           </Typography>
                         }
                       />
                     </ListItem>
-                    <Collapse in={isOpen} timeout="auto" unmountOnExit>
-                      <Box sx={{ px: 3, pb: 2 }}>
-                        <Typography variant="body2" color="text.primary" sx={{ whiteSpace: 'pre-wrap' }}>
-                          {m.body || m.html || '(No content)'}
-                        </Typography>
-                      </Box>
-                    </Collapse>
                     <Divider />
                   </React.Fragment>
                 );
               })}
-              {mails.length === 0 && (
+              {recentSends.length === 0 && (
                 <Box sx={{ px: 3, py: 4 }}>
                   <Typography variant="body2" color="text.secondary">
                     No sent emails yet.

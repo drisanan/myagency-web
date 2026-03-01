@@ -39,6 +39,7 @@ export type EmailMetrics = {
     recipientEmail: string;
     recipientName?: string;
     university?: string;
+    subject?: string;
     sentAt: number;
   }>;
   recentClicks?: Array<{

@@ -12,18 +12,22 @@ export interface PresignedUrlResponse {
 export async function getPresignedUploadUrl(
   clientId: string,
   file: File,
-  mediaType: 'video' | 'image'
+  mediaType: 'video' | 'image',
+  formToken?: string
 ): Promise<PresignedUrlResponse> {
+  const payload: Record<string, any> = {
+    contentType: file.type,
+    fileSize: file.size,
+    clientId,
+    mediaType,
+  };
+  if (formToken) payload.formToken = formToken;
+
   const res = await fetch(`${API_BASE_URL}/uploads/presigned-url`, {
     method: 'POST',
     credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      contentType: file.type,
-      fileSize: file.size,
-      clientId,
-      mediaType,
-    }),
+    body: JSON.stringify(payload),
   });
 
   if (!res.ok) {
@@ -59,11 +63,12 @@ export async function uploadMedia(
   clientId: string,
   file: File,
   mediaType: 'video' | 'image',
-  onProgress?: (percent: number) => void
+  onProgress?: (percent: number) => void,
+  formToken?: string
 ): Promise<string> {
   // 1. Get presigned URL from backend
   onProgress?.(10);
-  const { presignedUrl, publicUrl } = await getPresignedUploadUrl(clientId, file, mediaType);
+  const { presignedUrl, publicUrl } = await getPresignedUploadUrl(clientId, file, mediaType, formToken);
 
   // 2. Upload directly to S3
   onProgress?.(30);

@@ -103,12 +103,14 @@ function GalleryStep({
   videos,
   onVideosChange,
   clientId,
+  formToken,
 }: { 
   images: string[]; 
   onImagesChange: (images: string[]) => void;
   videos: HighlightVideoItem[];
   onVideosChange: (videos: HighlightVideoItem[]) => void;
   clientId?: string;
+  formToken?: string;
 }) {
   const fileInputRef = React.useRef<HTMLInputElement | null>(null);
   const videoInputRef = React.useRef<HTMLInputElement | null>(null);
@@ -148,7 +150,7 @@ function GalleryStep({
     const newUrls: string[] = [];
     try {
       for (const file of fileList) {
-        const publicUrl = await uploadMedia(clientId, file, 'image');
+        const publicUrl = await uploadMedia(clientId, file, 'image', undefined, formToken);
         newUrls.push(publicUrl);
       }
       onImagesChange([...images, ...newUrls]);
@@ -336,7 +338,7 @@ function GalleryStep({
               setError(null);
               
               try {
-                const publicUrl = await uploadMedia(clientId, file, 'video', setUploadProgress);
+                const publicUrl = await uploadMedia(clientId, file, 'video', setUploadProgress, formToken);
                 onVideosChange(videos.map((v, i) => i === idx ? { ...v, url: publicUrl } : v));
               } catch (err: unknown) {
                 const errorMessage = err instanceof Error ? err.message : 'Upload failed';
@@ -589,6 +591,7 @@ function BasicInfoStep({
   gmailError,
   publicMode = false,
   clientId,
+  formToken,
 }: {
   value: Record<string, any>;
   onChange: (v: Record<string, any>) => void;
@@ -601,6 +604,7 @@ function BasicInfoStep({
   gmailError?: string | null;
   publicMode?: boolean;
   clientId?: string;
+  formToken?: string;
 }) {
   const sports = getSports();
   const [showUrlInput, setShowUrlInput] = React.useState(false);
@@ -650,7 +654,7 @@ function BasicInfoStep({
       setUploadingPhoto(true);
       setPhotoError(null);
       try {
-        const publicUrl = await uploadMedia(clientId, file, 'image');
+        const publicUrl = await uploadMedia(clientId, file, 'image', undefined, formToken);
         onChange({
           ...value,
           photoUrl: publicUrl,
@@ -1241,6 +1245,7 @@ export function ClientWizard({
             gmailError={gmailError}
             publicMode={publicMode}
             clientId={initialClient?.id || tempClientIdRef.current}
+            formToken={formToken}
           />
         )}
         {activeStep === 1 && (
@@ -1259,6 +1264,7 @@ export function ClientWizard({
             videos={basic.highlightVideos || []}
             onVideosChange={(videos) => setBasic((prev) => ({ ...prev, highlightVideos: videos }))}
             clientId={initialClient?.id || tempClientIdRef.current}
+            formToken={formToken}
           />
         )}
         {activeStep === 5 && (

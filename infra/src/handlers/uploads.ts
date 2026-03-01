@@ -4,6 +4,8 @@ import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { withSentry } from '../lib/sentry';
 import { response } from './cors';
 import { parseSessionFromRequest } from '../lib/session';
+import { verify } from '../lib/formsToken';
+import { queryGSI1 } from '../lib/dynamo';
 
 const s3 = new S3Client({ region: process.env.AWS_REGION || 'us-west-1' });
 const BUCKET = process.env.MEDIA_BUCKET || '';
@@ -21,6 +23,21 @@ function generateUUID(): string {
   });
 }
 
+async function resolveAgencyId(event: APIGatewayProxyEventV2, body: Record<string, any>): Promise<string | null> {
+  const session = parseSessionFromRequest(event);
+  if (session?.agencyId) return session.agencyId;
+
+  const { formToken } = body;
+  if (!formToken) return null;
+
+  const payload = verify<{ agencyEmail: string }>(formToken);
+  if (!payload?.agencyEmail) return null;
+
+  const agencies = await queryGSI1(`EMAIL#${payload.agencyEmail}`, 'AGENCY#');
+  const agency = agencies?.[0];
+  return agency?.id || null;
+}
+
 async function uploadsHandler(event: APIGatewayProxyEventV2): Promise<APIGatewayProxyResultV2> {
   const origin = event.headers?.origin;
   
@@ -28,19 +45,18 @@ async function uploadsHandler(event: APIGatewayProxyEventV2): Promise<APIGateway
     return response(200, {}, origin);
   }
 
-  // Verify session
-  const session = parseSessionFromRequest(event);
-  if (!session?.agencyId) {
-    console.error('[uploads:unauthorized] No valid session found');
-    return response(401, { error: 'Unauthorized' }, origin);
-  }
-
   try {
     const body = JSON.parse(event.body || '{}');
     const { contentType, fileSize, clientId, mediaType } = body;
 
+    const agencyId = await resolveAgencyId(event, body);
+    if (!agencyId) {
+      console.error('[uploads:unauthorized] No valid session or form token');
+      return response(401, { error: 'Unauthorized' }, origin);
+    }
+
     console.info('[uploads:request]', { 
-      agencyId: session.agencyId, 
+      agencyId, 
       clientId, 
       mediaType, 
       contentType, 
@@ -71,7 +87,7 @@ async function uploadsHandler(event: APIGatewayProxyEventV2): Promise<APIGateway
 
     // Generate unique key
     const ext = contentType.split('/')[1]?.replace('quicktime', 'mov') || (mediaType === 'video' ? 'mp4' : 'jpg');
-    const key = `${mediaType}s/${session.agencyId}/${clientId}/${generateUUID()}.${ext}`;
+    const key = `${mediaType}s/${agencyId}/${clientId}/${generateUUID()}.${ext}`;
 
     // Generate presigned URL (valid for 15 minutes)
     const command = new PutObjectCommand({

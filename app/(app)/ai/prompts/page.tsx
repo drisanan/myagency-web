@@ -300,7 +300,7 @@ CRITICAL INSTRUCTIONS:
       radar.gpa ? `GPA: ${radar.gpa}` : '',
       radar.preferredAreaOfStudy ? `Preferred Study: ${radar.preferredAreaOfStudy}` : '',
       accomplishments.length ? `Accomplishments: ${accomplishments.join('; ')}` : '',
-      metrics.length ? `Metrics: ${metrics.map((m) => `${m.title}: ${m.value}`).join('; ')}` : '',
+      metrics.length ? `Metrics: ${metrics.map((m: { title: string; value: string }) => `${m.title}: ${m.value}`).join('; ')}` : '',
       highlights.length ? `Highlights: ${highlights.join('; ')}` : '',
     ].filter(Boolean).join(' | ') || 'No profile details available.';
   }
