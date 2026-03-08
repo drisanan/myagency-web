@@ -21,6 +21,11 @@ jest.mock('../../lib/session', () => ({
   parseSessionFromRequest: mockParseSessionFromRequest,
 }));
 
+jest.mock('../../lib/dynamo', () => ({
+  getItem: jest.fn(),
+  queryGSI1: jest.fn(),
+}));
+
 // Mock Sentry
 jest.mock('../../lib/sentry', () => ({
   withSentry: (fn: Function) => fn,
@@ -33,6 +38,7 @@ process.env.AWS_REGION = 'us-west-1';
 // Import handler after mocks - need to use uploadsHandler directly since withSentry wraps it
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const uploadsModule = require('../uploads');
+const { getItem } = jest.requireMock('../../lib/dynamo');
 
 // Type assertion for the result
 interface APIGatewayResponse {
@@ -90,6 +96,7 @@ describe('uploads handler', () => {
       agencyEmail: 'test@agency.com',
       role: 'agency',
     });
+    getItem.mockResolvedValue({ id: 'client-123' });
     handler = uploadsModule.handler;
   });
 
@@ -190,11 +197,11 @@ describe('uploads handler', () => {
       expect(JSON.parse(result.body).error).toContain('File too large');
     });
 
-    it('should return 400 if image exceeds 16MB', async () => {
+    it('should return 400 if image exceeds 25MB', async () => {
       const event = createMockEvent({
         body: JSON.stringify({
           contentType: 'image/jpeg',
-          fileSize: 20 * 1024 * 1024, // 20MB
+          fileSize: 30 * 1024 * 1024, // 30MB
           clientId: 'client-123',
           mediaType: 'image',
         }),
@@ -220,6 +227,7 @@ describe('uploads handler', () => {
       expect(body.publicUrl).toContain('/videos/agency-123/client-123/');
       expect(body.publicUrl).toContain('.mp4');
       expect(body.key).toContain('videos/agency-123/client-123/');
+      expect(body.maxSize).toBe(100 * 1024 * 1024);
     });
 
     it('should return presigned URL for valid image upload request', async () => {
@@ -238,6 +246,18 @@ describe('uploads handler', () => {
       const body = JSON.parse(result.body);
       expect(body.publicUrl).toContain('/images/agency-123/client-456/');
       expect(body.publicUrl).toContain('.jpeg');
+      expect(mockGetSignedUrl).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          ContentLength: 2 * 1024 * 1024,
+          Metadata: expect.objectContaining({
+            agencyid: 'agency-123',
+            clientid: 'client-456',
+            mediatype: 'image',
+          }),
+        }),
+        expect.objectContaining({ expiresIn: 900 }),
+      );
     });
 
     it('should handle quicktime video type', async () => {

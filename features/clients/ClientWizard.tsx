@@ -2,7 +2,7 @@
 import React from 'react';
 import { Box, Button, Step, StepLabel, Stepper, Typography, CircularProgress, Stack, StepButton, Alert, Chip, InputAdornment, IconButton } from '@mui/material';
 import { useSession } from '@/features/auth/session';
-import { upsertClient, setClientGmailTokens } from '@/services/clients';
+import { ClientApiError, upsertClient, setClientGmailTokens } from '@/services/clients';
 import { MenuItem, TextField } from '@mui/material';
 import { getSports, formatSportLabel } from '@/features/recruiter/divisionMapping';
 import { useRouter } from 'next/navigation';
@@ -186,7 +186,7 @@ function GalleryStep({
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
       <Typography variant="subtitle1" fontWeight={600}>Profile Gallery</Typography>
       <Typography variant="body2" color="text.secondary">
-        Add up to {MAX_IMAGES} images to showcase on your public athlete profile. Max 16MB per image.
+        Add up to {MAX_IMAGES} images to showcase on your public athlete profile. Max 25MB per image.
       </Typography>
       
       {error && <Alert severity="error">{error}</Alert>}
@@ -309,7 +309,7 @@ function GalleryStep({
       
       <Alert severity="info" sx={{ mt: 1, '& .MuiAlert-message': { color: '#0A0A0A' } }}>
         <Typography variant="caption" sx={{ color: '#0A0A0A' }}>
-          <strong>Tip:</strong> Images are uploaded to cloud storage. Max 16MB per image. Supported: JPEG, PNG, GIF, WebP.
+          <strong>Tip:</strong> Images are uploaded to cloud storage. Max 25MB per image. Supported: JPEG, PNG, GIF, WebP.
         </Typography>
       </Alert>
 
@@ -931,7 +931,7 @@ export function ClientWizard({
     ...(initialClient?.radar ?? {}),
   });
   const isLast = activeStep === steps.length - 1;
-  const [errors, setErrors] = React.useState<{ email?: string; firstName?: string; lastName?: string; sport?: string; gmail?: string; phone?: string; accessCode?: string }>({});
+  const [errors, setErrors] = React.useState<{ email?: string; firstName?: string; lastName?: string; sport?: string; gmail?: string; phone?: string; accessCode?: string; username?: string }>({});
   const [submitting, setSubmitting] = React.useState(false);
   const [submitError, setSubmitError] = React.useState('');
   const [submitSuccess, setSubmitSuccess] = React.useState('');
@@ -1164,7 +1164,15 @@ export function ClientWizard({
         }
         return;
       } catch (e: any) {
-        setSubmitError(e?.message || 'Failed to save client');
+        if (e instanceof ClientApiError) {
+          if (e.fieldErrors) {
+            setErrors((prev) => ({ ...prev, ...e.fieldErrors }));
+            setActiveStep(0);
+          }
+          setSubmitError(e.requestId ? `${e.message} Request ID: ${e.requestId}` : e.message);
+        } else {
+          setSubmitError(e?.message || 'Failed to save client');
+        }
       } finally {
         setSubmitting(false);
       }
@@ -1231,6 +1239,7 @@ export function ClientWizard({
                   lastName: v.lastName ? undefined : prev.lastName,
                   sport: v.sport ? undefined : prev.sport,
                   phone: v.phone ? undefined : prev.phone,
+                  username: v.username ? undefined : prev.username,
                   accessCode: v.accessCode?.length === 6 ? undefined : prev.accessCode,
                   gmail: prev.gmail, // Keep gmail error until connected
                 }));

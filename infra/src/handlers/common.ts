@@ -6,6 +6,7 @@ import { SessionContext } from '../lib/models';
 import { parseSessionFromRequest } from '../lib/session';
 
 const IS_OFFLINE = process.env.IS_OFFLINE === 'true';
+const ALLOW_HEADER_SESSION_FALLBACK = IS_OFFLINE && process.env.ALLOW_HEADER_SESSION_FALLBACK === 'true';
 
 const client = new DynamoDBClient({ 
   region: process.env.AWS_REGION || 'us-west-1',
@@ -53,7 +54,12 @@ export function getSession(event: APIGatewayProxyEventV2): SessionContext | null
     });
   }
   if (parsed) return parsed;
-  // Fallback for temporary header-based dev mode
+
+  // Only allow the legacy header fallback in explicitly opted-in local development.
+  if (!ALLOW_HEADER_SESSION_FALLBACK) {
+    return null;
+  }
+
   const agencyId = (event.headers['x-agency-id'] as string) || (event.headers['X-Agency-Id'] as string);
   const agencyEmail = (event.headers['x-agency-email'] as string) || (event.headers['X-Agency-Email'] as string);
   const role = (event.headers['x-role'] as SessionContext['role']) || 'agency';
@@ -67,5 +73,19 @@ export function getSession(event: APIGatewayProxyEventV2): SessionContext | null
 
 export function requireSession(event: APIGatewayProxyEventV2): SessionContext | null {
   return getSession(event);
+}
+
+export function requireAgencySession(event: APIGatewayProxyEventV2): SessionContext | null {
+  const session = getSession(event);
+  if (!session?.agencyId) return null;
+  if (session.role === 'client') return null;
+  return session;
+}
+
+export function requireClientSelfSession(event: APIGatewayProxyEventV2, clientId?: string | null): SessionContext | null {
+  const session = getSession(event);
+  if (!session?.agencyId || !clientId) return null;
+  if (session.role !== 'client') return session;
+  return session.clientId === clientId ? session : null;
 }
 

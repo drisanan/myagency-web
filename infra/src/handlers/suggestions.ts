@@ -2,13 +2,13 @@ import { APIGatewayProxyEventV2 } from 'aws-lambda';
 import { Handler, requireSession } from './common';
 import { newId } from '../lib/ids';
 import { SuggestionRecord, SuggestionStatus } from '../lib/models';
-import { getItem, putItem, scanTable } from '../lib/dynamo';
+import { getItem, putItem, queryGSI1 } from '../lib/dynamo';
 import { response } from './cors';
 import { withSentry } from '../lib/sentry';
 import { SESClient, SendEmailCommand } from '@aws-sdk/client-ses';
 
 const OPENAI_BASE = 'https://api.openai.com';
-const OPENAI_KEY = process.env.OPENAI_KEY || '';
+const OPENAI_KEY = process.env.OPENAI_KEY?.trim() || '';
 const MODEL = 'gpt-4o-mini';
 const FROM_EMAIL = process.env.FROM_EMAIL || 'noreply@myrecruiteragency.com';
 const FRONTEND_URL = process.env.FRONTEND_URL || 'https://www.myrecruiteragency.com';
@@ -63,30 +63,37 @@ Format the output in clean markdown that's easy to read and copy.`;
 Generate the requirements document.`;
 
   try {
-    const res = await fetch(`${OPENAI_BASE}/v1/chat/completions`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${OPENAI_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: MODEL,
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt },
-        ],
-        temperature: 0.5,
-      }),
-    });
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15_000);
+    try {
+      const res = await fetch(`${OPENAI_BASE}/v1/chat/completions`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${OPENAI_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: MODEL,
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userPrompt },
+          ],
+          temperature: 0.5,
+        }),
+        signal: controller.signal,
+      });
 
-    const text = await res.text();
-    if (!res.ok) {
-      console.error('[suggestions] OpenAI error', { status: res.status, body: text });
-      return suggestion.originalSuggestion;
+      const text = await res.text();
+      if (!res.ok) {
+        console.error('[suggestions] OpenAI error', { status: res.status, body: text });
+        return suggestion.originalSuggestion;
+      }
+
+      const json = JSON.parse(text);
+      return json?.choices?.[0]?.message?.content || suggestion.originalSuggestion;
+    } finally {
+      clearTimeout(timeout);
     }
-
-    const json = JSON.parse(text);
-    return json?.choices?.[0]?.message?.content || suggestion.originalSuggestion;
   } catch (err) {
     console.error('[suggestions] Failed to generate requirements', err);
     return suggestion.originalSuggestion;
@@ -210,11 +217,10 @@ const suggestionsHandler: Handler = async (event: APIGatewayProxyEventV2) => {
       return response(200, { ok: true, suggestion: item ?? null }, origin);
     }
     
-    // Scan all suggestions (in production, use GSI for better performance)
-    const items = await scanTable({
-      FilterExpression: 'begins_with(PK, :pk) AND attribute_not_exists(deletedAt)',
-      ExpressionAttributeValues: { ':pk': 'SUGGESTION#' },
-    });
+    const statuses: SuggestionStatus[] = ['pending', 'resolved', 'denied'];
+    const items = (
+      await Promise.all(statuses.map((status) => queryGSI1(`STATUS#${status}`, 'SUGGESTION#')))
+    ).flat().filter((item: any) => !item?.deletedAt);
     
     // Sort by createdAt descending
     const sorted = (items || []).sort((a: any, b: any) => (b.createdAt || 0) - (a.createdAt || 0));

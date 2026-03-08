@@ -1,44 +1,46 @@
-// Mock next/server to avoid constructing real Next Request/Response types
-jest.mock('next/server', () => {
-  return {
-    NextResponse: {
-      json: (body: any, init?: any) => ({
-        json: async () => body,
-        status: init?.status ?? 200,
-      }),
-    },
-  };
-});
+/**
+ * @jest-environment node
+ */
 
+import { NextRequest } from 'next/server';
 import { POST } from '../create-draft/route';
 
-function makeReq(body: any) {
-  return {
-    json: async () => body,
-  } as any;
-}
+jest.mock('@/config/env', () => ({
+  getServerApiBaseUrl: () => 'https://api.example.test',
+}));
 
-describe('create-draft route - recipients and tokens', () => {
-  test('returns 400 when no valid recipient emails', async () => {
-    const res: any = await POST(makeReq({ clientId: 'c1', to: ['not-an-email'], subject: 'S', html: '<p>x</p>' }));
-    const json = await res.json();
-    expect(res.status).toBe(400);
-    expect(json.error).toMatch(/No valid recipient emails/i);
+describe('create-draft route', () => {
+  const originalFetch = global.fetch;
+
+  afterEach(() => {
+    global.fetch = originalFetch;
+    jest.clearAllMocks();
   });
 
-  test('parses Name <email@domain> and returns 401 when tokens missing', async () => {
-    const res: any = await POST(makeReq({ clientId: 'c1', to: ['John Doe <coach@ex.com>'], subject: 'S', html: '<p>x</p>' }));
-    const json = await res.json();
-    expect(res.status).toBe(401);
-    expect(json.error).toMatch(/Gmail not connected/i);
-  });
+  test('proxies request body to backend create-draft endpoint', async () => {
+    global.fetch = jest.fn().mockResolvedValue(
+      new Response(JSON.stringify({ ok: true, created: 2, openUrl: 'https://mail.google.com' }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      }),
+    ) as any;
 
-  test('parses mailto: links and returns 401 when tokens missing', async () => {
-    const res: any = await POST(makeReq({ clientId: 'c1', to: ['mailto:coach@ex.com?subject=Hi'], subject: 'S', html: '<p>x</p>' }));
-    const json = await res.json();
-    expect(res.status).toBe(401);
-    expect(json.error).toMatch(/Gmail not connected/i);
+    const req = new NextRequest('http://localhost/api/gmail/create-draft', {
+      method: 'POST',
+      body: JSON.stringify({ clientId: 'c1', to: ['coach@example.com'], subject: 'Hello', html: '<p>x</p>' }),
+      headers: { 'content-type': 'application/json', cookie: 'an_session=test' },
+    });
+
+    const res = await POST(req);
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body.ok).toBe(true);
+    expect(global.fetch).toHaveBeenCalledWith(
+      'https://api.example.test/gmail/create-draft',
+      expect.objectContaining({
+        method: 'POST',
+      }),
+    );
   });
 });
-
-

@@ -1,11 +1,18 @@
 import { APIGatewayProxyEventV2 } from 'aws-lambda';
 import { response } from './cors';
 import { parseSessionFromRequest } from '../lib/session';
-import { queryByPK, getItem } from '../lib/dynamo';
-import { EmailStatsRecord } from '../lib/models';
+import { queryByPK, queryGSI3 } from '../lib/dynamo';
 import { withSentry } from '../lib/sentry';
 import { logActivity } from '../lib/activity';
 import { recordEmailSendsInternal, recordEmailOpenInternal } from '../lib/emailMetrics';
+
+function withinDays(timestamp: number, cutoff: number) {
+  return Number.isFinite(timestamp) && timestamp >= cutoff;
+}
+
+function sortByNewest<T>(items: T[], getTimestamp: (item: T) => number) {
+  return [...items].sort((a, b) => getTimestamp(b) - getTimestamp(a));
+}
 
 const emailMetricsHandler = async (event: APIGatewayProxyEventV2) => {
   const headers = event.headers || {};
@@ -16,15 +23,13 @@ const emailMetricsHandler = async (event: APIGatewayProxyEventV2) => {
     return response(200, { ok: true }, origin);
   }
 
-  const session = parseSessionFromRequest(event);
-  if (!session?.agencyId) {
-    return response(401, { ok: false, error: 'Unauthorized' }, origin);
-  }
-
-  const agencyId = session.agencyId;
-
   // --- POST /email-metrics/send - Record email(s) sent ---
   if (method === 'POST' && event.rawPath?.includes('/send')) {
+    const session = parseSessionFromRequest(event);
+    if (!session?.agencyId) {
+      return response(401, { ok: false, error: 'Unauthorized' }, origin);
+    }
+    const agencyId = session.agencyId;
     if (!event.body) {
       return response(400, { ok: false, error: 'Missing body' }, origin);
     }
@@ -84,13 +89,14 @@ const emailMetricsHandler = async (event: APIGatewayProxyEventV2) => {
   // --- GET /email-metrics/open - Track email open (pixel) ---
   if (method === 'GET' && event.rawPath?.includes('/open')) {
     const params = event.queryStringParameters || {};
-    const clientId = params.clientId;
-    const recipientEmail = params.recipientEmail;
-    const clientEmail = params.clientEmail || '';
+    const agencyId = params.agencyId || '';
+    const clientId = params.clientId || '';
+    const recipientEmail = params.recipientEmail || '';
+    const clientEmail = params.clientEmail || params.agencyEmail || '';
     const university = params.university || '';
     const campaignId = params.campaignId || '';
 
-    if (clientId && recipientEmail) {
+    if (agencyId && clientId && recipientEmail) {
       try {
         await recordEmailOpenInternal({
           agencyId,
@@ -122,39 +128,42 @@ const emailMetricsHandler = async (event: APIGatewayProxyEventV2) => {
 
   // --- GET /email-metrics/stats - Get metrics for agency/client ---
   if (method === 'GET' && event.rawPath?.includes('/stats')) {
+    const session = parseSessionFromRequest(event);
+    if (!session?.agencyId) {
+      return response(401, { ok: false, error: 'Unauthorized' }, origin);
+    }
+    const agencyId = session.agencyId;
     const params = event.queryStringParameters || {};
     const clientId = params.clientId;
-    const period = params.period || `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
     const days = parseInt(params.days || '30', 10);
+    const cutoff = Date.now() - (days * 24 * 60 * 60 * 1000);
 
     // If clientId specified, get stats for that client
     if (clientId) {
-      const statsKey = period ? {
-        PK: `AGENCY#${agencyId}`,
-        SK: `EMAIL_STATS#${clientId}#${period}`,
-      } : null;
-      const stats = statsKey ? await getItem(statsKey) as EmailStatsRecord | undefined : undefined;
-      
-      // Get recent sends
-      const sends = await queryByPK(`AGENCY#${agencyId}`, `EMAIL_SEND#`);
-      const clientSends = sends.filter((s: Record<string, unknown>) => s.clientId === clientId);
-      
-      // Get recent clicks
-      const clicks = await queryByPK(`AGENCY#${agencyId}`, `EMAIL_CLICK#`);
-      const clientClicks = clicks.filter((c: Record<string, unknown>) => c.clientId === clientId);
+      const [sends, opens, clicks] = await Promise.all([
+        queryGSI3(`CLIENT#${clientId}`, 'EMAIL_SEND#'),
+        queryGSI3(`CLIENT#${clientId}`, 'EMAIL_OPEN#'),
+        queryGSI3(`CLIENT#${clientId}`, 'EMAIL_CLICK#'),
+      ]);
+      const clientSends = (sends as Record<string, unknown>[]).filter((s) => withinDays(Number(s.sentAt || 0), cutoff));
+      const clientOpens = (opens as Record<string, unknown>[]).filter((o) => withinDays(Number(o.openedAt || 0), cutoff));
+      const clientClicks = (clicks as Record<string, unknown>[]).filter((c) => withinDays(Number(c.clickedAt || 0), cutoff));
 
       return response(200, {
         ok: true,
         clientId,
-        period,
+        period: `last ${days} days`,
         stats: {
-          sentCount: stats?.sentCount || clientSends.length,
-          clickCount: stats?.clickCount || clientClicks.length,
+          sentCount: clientSends.length,
+          openCount: clientOpens.length,
+          clickCount: clientClicks.length,
           uniqueRecipients: new Set(clientSends.map((s: Record<string, unknown>) => s.recipientEmail)).size,
+          uniqueOpeners: new Set(clientOpens.map((o: Record<string, unknown>) => o.recipientEmail)).size,
           uniqueClickers: new Set(clientClicks.map((c: Record<string, unknown>) => c.recipientEmail)).size,
         },
-        recentSends: clientSends.slice(0, 20),
-        recentClicks: clientClicks.slice(0, 20),
+        recentSends: sortByNewest(clientSends, (s) => Number((s as Record<string, unknown>).sentAt || 0)).slice(0, 20),
+        recentOpens: sortByNewest(clientOpens, (o) => Number((o as Record<string, unknown>).openedAt || 0)).slice(0, 20),
+        recentClicks: sortByNewest(clientClicks, (c) => Number((c as Record<string, unknown>).clickedAt || 0)).slice(0, 20),
       }, origin);
     }
 
@@ -163,7 +172,6 @@ const emailMetricsHandler = async (event: APIGatewayProxyEventV2) => {
     const allClicks = await queryByPK(`AGENCY#${agencyId}`, `EMAIL_CLICK#`);
 
     // Filter by time period
-    const cutoff = Date.now() - (days * 24 * 60 * 60 * 1000);
     const recentSends = allSends.filter((s: Record<string, unknown>) => (s.sentAt as number) > cutoff);
     const recentClicks = allClicks.filter((c: Record<string, unknown>) => (c.clickedAt as number) > cutoff);
 

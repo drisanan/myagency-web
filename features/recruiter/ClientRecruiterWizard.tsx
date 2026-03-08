@@ -86,7 +86,7 @@ export function ClientRecruiterWizard() {
   }, [selectedList, selectedCoachId]);
 
   // Email content (editable)
-  const [emailHtml, setEmailHtml] = React.useState<string>('');
+  const [emailHtml, setEmailHtml] = React.useState<string | null>(null);
   const [isEditing, setIsEditing] = React.useState(false);
 
   // Email sections
@@ -304,6 +304,7 @@ export function ClientRecruiterWizard() {
   function buildEmailPreview(): string {
     return buildGreeting('Hello') + buildGenericIntro() + buildEmailBody();
   }
+  const previewHtml = emailHtml ?? buildEmailPreview();
 
   function sanitizeAiIntro(raw: string): string {
     return raw
@@ -353,20 +354,35 @@ export function ClientRecruiterWizard() {
     if (!clientId) return;
     setGmailRefreshing(true);
     try {
-      const result = await refreshGmailToken(clientId);
-      if (result?.ok) {
+      await refreshGmailToken(clientId);
+      setGmailConnected(true);
+      setGmailExpired(false);
+      setGmailCanRefresh(true);
+      try {
         const statusUrl = `${API_BASE_URL}/google/status?clientId=${encodeURIComponent(clientId)}`;
         const r = await fetch(statusUrl, { credentials: 'include' });
         const d = await r.json();
-        setGmailConnected(Boolean(d?.connected) && !Boolean(d?.expired));
+        setGmailConnected(Boolean(d?.connected ?? true) && !Boolean(d?.expired));
         setGmailExpired(Boolean(d?.expired));
-        setGmailCanRefresh(Boolean(d?.canRefresh));
+        setGmailCanRefresh(Boolean(d?.canRefresh ?? true));
         setGmailAccountEmail(d?.email || '');
-      } else {
-        setGmailCanRefresh(false);
+      } catch {
+        // Keep the optimistic state when the follow-up status fetch fails.
       }
-    } catch {
-      setGmailCanRefresh(false);
+    } catch (e: any) {
+      const message = String(e?.message || '').toLowerCase();
+      const needsReconnect =
+        message.includes('no refresh token') ||
+        message.includes('reconnection required') ||
+        message.includes('invalid_grant');
+      setGmailConnected(false);
+      setGmailExpired(true);
+      setGmailCanRefresh(!needsReconnect);
+      setError(
+        needsReconnect
+          ? 'Gmail refresh is no longer available. Please reconnect Gmail.'
+          : 'Failed to refresh Gmail. Please try again.'
+      );
     } finally {
       setGmailRefreshing(false);
     }
@@ -409,13 +425,14 @@ export function ClientRecruiterWizard() {
       }
 
       const subject = `Intro: ${contact.firstName || ''} ${contact.lastName || ''} → ${selectedCoach.school || selectedList?.name || ''}`.trim();
-      const html = emailHtml || buildEmailPreview();
+      const html = previewHtml;
       const savedTokens = getClientGmailTokens(clientId);
 
       const sendUrl = API_BASE_URL ? `${API_BASE_URL}/gmail/send` : '/api/gmail/send';
       const res = await fetch(sendUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({
           clientId,
           recipients: [selectedCoach.email],
@@ -434,7 +451,20 @@ export function ClientRecruiterWizard() {
       } catch {}
       setSendMessage('Email sent successfully!');
     } catch (e: any) {
-      setError(e?.message || 'Failed to send email');
+      const message = String(e?.message || '').toLowerCase();
+      const isTokenError =
+        message.includes('revoked') ||
+        message.includes('expired') ||
+        message.includes('reconnect') ||
+        message.includes('invalid_grant') ||
+        message.includes('not connected');
+      if (isTokenError) {
+        setGmailConnected(false);
+        setGmailExpired(true);
+        setError('Gmail credentials expired or were revoked. Please reconnect Gmail and try again.');
+      } else {
+        setError(e?.message || 'Failed to send email');
+      }
     } finally {
       setIsCreatingDraft(false);
     }
@@ -447,16 +477,17 @@ export function ClientRecruiterWizard() {
       activeStep === 2);
 
   const handleNext = () => {
-    if (activeStep === 1 && !emailHtml) {
-      // Auto-generate initial email when moving to compose step
-      setEmailHtml(buildEmailPreview());
-    }
     if (activeStep < STEPS.length - 1) {
       setActiveStep((s) => s + 1);
     }
   };
 
   const handleBack = () => setActiveStep((s) => Math.max(0, s - 1));
+
+  React.useEffect(() => {
+    setEmailHtml(null);
+    setIsEditing(false);
+  }, [selectedListId, selectedCoachId]);
 
   if (loading || loadingProfile) {
     return (
@@ -642,7 +673,7 @@ export function ClientRecruiterWizard() {
                     </Button>
                     <Button
                       size="small"
-                      onClick={() => navigator.clipboard.writeText(emailHtml || buildEmailPreview())}
+                      onClick={() => navigator.clipboard.writeText(previewHtml)}
                     >
                       Copy
                     </Button>
@@ -655,7 +686,7 @@ export function ClientRecruiterWizard() {
                     fullWidth
                     minRows={10}
                     maxRows={20}
-                    value={emailHtml || buildEmailPreview()}
+                    value={previewHtml}
                     onChange={(e) => setEmailHtml(e.target.value)}
                     sx={{ bgcolor: '#fff' }}
                     helperText="Edit the HTML content directly. Use <p>, <ul>, <li>, <a>, etc."
@@ -663,7 +694,7 @@ export function ClientRecruiterWizard() {
                 ) : (
                   <Box
                     sx={{ bgcolor: '#fff', p: 2, borderRadius: 0, clipPath: 'polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px))', minHeight: 200 }}
-                    dangerouslySetInnerHTML={{ __html: emailHtml || buildEmailPreview() }}
+                    dangerouslySetInnerHTML={{ __html: previewHtml }}
                   />
                 )}
 
@@ -750,10 +781,6 @@ export function ClientRecruiterWizard() {
                         checked={enabled}
                         onChange={(e) => {
                           toggleSection(sectionKey, e.target.checked);
-                          // Regenerate preview when sections change
-                          if (!isEditing) {
-                            setEmailHtml(buildEmailPreview());
-                          }
                         }}
                       />
                     }

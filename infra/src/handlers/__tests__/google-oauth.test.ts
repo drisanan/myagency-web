@@ -3,6 +3,10 @@
  */
 import { handler } from '../google-oauth';
 
+jest.mock('../common', () => ({
+  requireSession: jest.fn(() => ({ agencyId: 'agency-001', agencyEmail: 'agency1@an.test', role: 'agency' })),
+}));
+
 const ORIGIN = 'http://localhost:3000';
 process.env.GOOGLE_CLIENT_ID = 'fake';
 process.env.GOOGLE_CLIENT_SECRET = 'fake';

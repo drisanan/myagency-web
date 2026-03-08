@@ -1,7 +1,7 @@
 import { APIGatewayProxyEventV2 } from 'aws-lambda';
 import { response } from './cors';
 import { CampaignRecord, CampaignFollowupRecord, ClientRecord } from '../lib/models';
-import { getItem, putItem, scanBySKPrefix } from '../lib/dynamo';
+import { getItem, listAgencyIds, putItem, queryByPK } from '../lib/dynamo';
 import { sendGmailMessage } from '../lib/gmailSend';
 import { recordEmailSendsInternal } from '../lib/emailMetrics';
 import { withSentry } from '../lib/sentry';
@@ -40,8 +40,9 @@ function wrapLinksWithTracking(html: string, params: { agencyId: string; clientI
   });
 }
 
-function createOpenPixelUrl(params: { clientId: string; clientEmail: string; recipientEmail: string; university?: string; campaignId?: string }) {
+function createOpenPixelUrl(params: { agencyId: string; clientId: string; clientEmail: string; recipientEmail: string; university?: string; campaignId?: string }) {
   const url = new URL(`${resolveApiBase()}/email-metrics/open`);
+  url.searchParams.set('agencyId', params.agencyId);
   url.searchParams.set('clientId', params.clientId);
   url.searchParams.set('clientEmail', params.clientEmail);
   url.searchParams.set('recipientEmail', params.recipientEmail);
@@ -51,7 +52,10 @@ function createOpenPixelUrl(params: { clientId: string; clientEmail: string; rec
 }
 
 const runner = async () => {
-  const campaigns = await scanBySKPrefix('CAMPAIGN#') as CampaignRecord[];
+  const agencyIds = await listAgencyIds();
+  const campaigns = (
+    await Promise.all(agencyIds.map((agencyId) => queryByPK(`AGENCY#${agencyId}`, 'CAMPAIGN#')))
+  ).flat() as CampaignRecord[];
   const now = Date.now();
   const due = campaigns.filter((c) => c.status === 'scheduled' && c.scheduledAt && c.scheduledAt <= now);
 
@@ -74,6 +78,7 @@ const runner = async () => {
           campaignId: campaign.id,
         });
         const pixel = createOpenPixelUrl({
+          agencyId: campaign.agencyId,
           clientId: campaign.clientId,
           clientEmail: client?.email || '',
           recipientEmail: recipient.email,

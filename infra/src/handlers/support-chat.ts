@@ -12,7 +12,7 @@ import { response } from './cors';
 import { withSentry } from '../lib/sentry';
 
 const OPENAI_BASE = 'https://api.openai.com';
-const OPENAI_KEY = process.env.OPENAI_KEY || '';
+const OPENAI_KEY = process.env.OPENAI_KEY?.trim() || '';
 const MODEL = 'gpt-4o';
 
 // ─── Tool Definitions ───────────────────────────────────────────────
@@ -310,7 +310,7 @@ const supportChatHandler: Handler = async (event: APIGatewayProxyEventV2) => {
   if (!session) return response(401, { ok: false, error: 'Missing session' }, origin);
 
   if (!OPENAI_KEY) {
-    return response(500, { ok: false, error: 'AI support is not configured' }, origin);
+    return response(503, { ok: false, error: 'AI support is not configured' }, origin);
   }
 
   if (!event.body) return response(400, { ok: false, error: 'Missing body' }, origin);
@@ -355,22 +355,33 @@ const supportChatHandler: Handler = async (event: APIGatewayProxyEventV2) => {
   ];
 
   try {
+    const sendOpenAiRequest = async (messages: any[]) => {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 15_000);
+      try {
+        return await fetch(`${OPENAI_BASE}/v1/chat/completions`, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${OPENAI_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model: MODEL,
+            messages,
+            tools,
+            tool_choice: 'auto',
+            temperature: 0.4,
+            max_tokens: 1500,
+          }),
+          signal: controller.signal,
+        });
+      } finally {
+        clearTimeout(timeout);
+      }
+    };
+
     // Initial call to OpenAI with tools
-    let aiResponse = await fetch(`${OPENAI_BASE}/v1/chat/completions`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${OPENAI_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: MODEL,
-        messages: conversation,
-        tools,
-        tool_choice: 'auto',
-        temperature: 0.4,
-        max_tokens: 1500,
-      }),
-    });
+    let aiResponse = await sendOpenAiRequest(conversation);
 
     if (!aiResponse.ok) {
       const errText = await aiResponse.text();
@@ -405,21 +416,7 @@ const supportChatHandler: Handler = async (event: APIGatewayProxyEventV2) => {
       }
 
       // Send tool results back to OpenAI
-      aiResponse = await fetch(`${OPENAI_BASE}/v1/chat/completions`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${OPENAI_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: MODEL,
-          messages: conversation,
-          tools,
-          tool_choice: 'auto',
-          temperature: 0.4,
-          max_tokens: 1500,
-        }),
-      });
+      aiResponse = await sendOpenAiRequest(conversation);
 
       if (!aiResponse.ok) {
         console.warn('[support-chat] OpenAI tool-round error, stopping tool loop');

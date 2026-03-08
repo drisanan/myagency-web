@@ -3,6 +3,10 @@
  */
 import { handler } from '../gmail';
 
+jest.mock('../common', () => ({
+  requireSession: jest.fn(() => ({ agencyId: 'agency-001', agencyEmail: 'agency1@an.test', role: 'agency' })),
+}));
+
 const ORIGIN = 'http://localhost:3000';
 
 process.env.GOOGLE_CLIENT_ID = 'fake';
@@ -23,7 +27,7 @@ function makeEvent(method: string, action: string, body?: any, qs?: Record<strin
     requestContext: { http: { method } },
     pathParameters: { action },
     queryStringParameters: qs,
-    headers: { 'x-agency-id': 'agency-001', origin: ORIGIN },
+    headers: { origin: ORIGIN },
     body: body ? JSON.stringify(body) : undefined,
   } as any;
 }

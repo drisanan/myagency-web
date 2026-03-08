@@ -12,7 +12,7 @@ jest.mock('../common', () => {
   const original = jest.requireActual('../common');
   return {
     ...original,
-    requireSession: jest.fn(() => ({ agencyId: 'agency-001', agencyEmail: 'agency1@an.test', role: 'agency' })),
+    requireAgencySession: jest.fn(() => ({ agencyId: 'agency-001', agencyEmail: 'agency1@an.test', role: 'agency' })),
   };
 });
 
@@ -21,11 +21,12 @@ jest.mock('../../lib/dynamo', () => {
     putItem: jest.fn(),
     getItem: jest.fn(),
     queryGSI1: jest.fn(),
+    queryGSI3: jest.fn(),
     queryByPK: jest.fn(),
   };
 });
 
-const { putItem, queryGSI1, queryByPK } = jest.requireMock('../../lib/dynamo');
+const { putItem, getItem, queryGSI1, queryGSI3, queryByPK } = jest.requireMock('../../lib/dynamo');
 const ORIGIN = 'http://localhost:3000';
 
 function makeEvent(method: string, path: string, body?: any, query?: Record<string, string>) {
@@ -52,17 +53,29 @@ describe('update-forms handler', () => {
 
   it('submits update form', async () => {
     queryGSI1.mockResolvedValue([{ id: 'agency-001', email: 'agency1@an.test' }]);
-    const token = sign({ agencyEmail: 'agency1@an.test', clientId: 'client-1', type: 'update' });
+    getItem.mockResolvedValue({ id: 'client-1', firstName: 'Ava', lastName: 'Smith' });
+    const token = sign({ agencyEmail: 'agency1@an.test', agencyId: 'agency-001', clientId: 'client-1', type: 'update' });
     const res = (await handler(makeEvent('POST', '/update-forms/submit', { token, form: { size: { height: '6ft' } } }))) as any;
     expect(res.statusCode).toBe(200);
-    expect(putItem).toHaveBeenCalled();
+    expect(putItem).toHaveBeenCalledWith(expect.objectContaining({
+      clientId: 'client-1',
+      size: { height: '6ft' },
+    }));
   });
 
   it('lists update submissions', async () => {
-    queryByPK.mockResolvedValue([{ id: 'u1' }]);
-    const res = (await handler(makeEvent('GET', '/update-forms/submissions'))) as any;
+    queryGSI3.mockResolvedValue([{ id: 'u1', agencyId: 'agency-001', submittedAt: 2 }, { id: 'u2', agencyId: 'agency-001', submittedAt: 1 }]);
+    const res = (await handler(makeEvent('GET', '/update-forms/submissions', undefined, { clientId: 'client-1' }))) as any;
     const body = JSON.parse(res.body || '{}');
     expect(res.statusCode).toBe(200);
-    expect(body.items).toHaveLength(1);
+    expect(body.items.map((item: any) => item.id)).toEqual(['u1', 'u2']);
+  });
+
+  it('marks update submissions reviewed', async () => {
+    queryByPK.mockResolvedValue([{ id: 'u1', agencyId: 'agency-001', submittedAt: 1 }]);
+    const res = (await handler(makeEvent('POST', '/update-forms/consume', { ids: ['u1'] }))) as any;
+    const body = JSON.parse(res.body || '{}');
+    expect(res.statusCode).toBe(200);
+    expect(body.reviewed).toBe(1);
   });
 });

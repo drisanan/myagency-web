@@ -1,29 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { recordClick, todayISO } from '../store';
+import { getServerApiBaseUrl } from '@/config/env';
 
 export async function GET(req: NextRequest) {
-  const { searchParams } = new URL(req.url);
-  const agency = searchParams.get('agency')?.trim();
-  const tid = searchParams.get('tid')?.trim();
-  const target = searchParams.get('u') || '';
+  const incoming = new URL(req.url);
+  const redirectUrl = new URL(`${getServerApiBaseUrl().replace(/\/$/, '')}/r`);
+  const target = incoming.searchParams.get('u') || '';
+  const agency = incoming.searchParams.get('agency') || '';
+  const tid = incoming.searchParams.get('tid') || '';
 
-  if (agency && tid) {
-    try {
-      recordClick(agency, todayISO(), tid);
-    } catch {
-      // swallow errors to keep redirect working
-    }
-  }
+  if (target) redirectUrl.searchParams.set('d', target);
+  if (agency) redirectUrl.searchParams.set('g', agency);
+  if (tid) redirectUrl.searchParams.set('tid', tid);
 
-  let redirectTo = 'https://athletenarrative.com';
-  try {
-    const url = new URL(target);
-    if (['http:', 'https:'].includes(url.protocol)) {
-      redirectTo = url.toString();
-    }
-  } catch {
-    // fall back to homepage
-  }
-
-  return NextResponse.redirect(redirectTo, { status: 302 });
+  return NextResponse.redirect(redirectUrl, { status: 302 });
 }

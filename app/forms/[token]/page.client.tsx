@@ -4,7 +4,7 @@ import { Box, Typography, Paper } from '@mui/material';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import { ClientWizard } from '@/features/clients/ClientWizard';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://api.myrecruiteragency.com';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || '/api';
 
 export default function IntakeFormPageClient({ token }: { token: string }) {
   const decodedToken = React.useMemo(() => {

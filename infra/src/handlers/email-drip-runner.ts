@@ -1,7 +1,7 @@
 import { APIGatewayProxyEventV2 } from 'aws-lambda';
 import { Handler, requireSession } from './common';
 import { DripEnrollmentRecord, EmailDripRecord, ClientRecord } from '../lib/models';
-import { getItem, putItem, queryByPK, scanBySKPrefix } from '../lib/dynamo';
+import { getItem, listAgencyIds, putItem, queryByPK } from '../lib/dynamo';
 import { response } from './cors';
 import { sendGmailMessage } from '../lib/gmailSend';
 import { logActivity } from '../lib/activity';
@@ -22,7 +22,9 @@ async function listEnrollments(agencyId?: string) {
   if (agencyId) {
     return queryByPK(`AGENCY#${agencyId}`, 'DRIP_ENROLL#') as Promise<DripEnrollmentRecord[]>;
   }
-  return scanBySKPrefix('DRIP_ENROLL#') as Promise<DripEnrollmentRecord[]>;
+  const agencyIds = await listAgencyIds();
+  const items = await Promise.all(agencyIds.map((id) => queryByPK(`AGENCY#${id}`, 'DRIP_ENROLL#')));
+  return items.flat() as DripEnrollmentRecord[];
 }
 
 async function processEnrollment(enrollment: DripEnrollmentRecord, now: number) {

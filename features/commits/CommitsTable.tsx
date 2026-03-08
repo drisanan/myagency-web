@@ -1,7 +1,7 @@
 'use client';
 import React from 'react';
 import { Paper, Table, TableHead, TableRow, TableCell, TableBody, TextField, Stack, Typography, Box, useMediaQuery, useTheme, Chip } from '@mui/material';
-import { Commit, filterCommits } from '@/services/commits';
+import { type Commit, filterCommits } from '@/services/commitsShared';
 import { dashboardTablePaperSx, dashboardTableSx, responsiveTableContainerSx, mobileCardSx, hideOnMobile } from '@/components/tableStyles';
 
 export function CommitsTable({

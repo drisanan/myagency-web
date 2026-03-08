@@ -2,8 +2,8 @@
 # ─────────────────────────────────────────────────────────────
 # Safe production deploy for Serverless infrastructure.
 #
-# Reads ONLY the secrets (GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET,
-# OPENAI_KEY) from .env.local and explicitly sets production values
+# Reads ONLY the secrets required for infrastructure from .env.local and
+# explicitly sets production values
 # for any env var that differs between local dev and production.
 #
 # This prevents localhost URLs from leaking into production deploys.
@@ -17,7 +17,8 @@ ENV_FILE="$PROJECT_DIR/.env.local"
 # ── 1. Extract only the secrets we need from .env.local ──
 if [[ ! -f "$ENV_FILE" ]]; then
   echo "❌ .env.local not found at $ENV_FILE"
-  echo "   Create it with GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, and OPENAI_KEY"
+  echo "   Create it with GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, OPENAI_KEY,"
+  echo "   SESSION_SECRET, FORMS_SECRET, and CRON_SECRET"
   exit 1
 fi
 
@@ -29,9 +30,13 @@ get_env() {
 GOOGLE_CLIENT_ID="$(get_env GOOGLE_CLIENT_ID)"
 GOOGLE_CLIENT_SECRET="$(get_env GOOGLE_CLIENT_SECRET)"
 OPENAI_KEY="$(get_env OPENAI_KEY)"
+SESSION_SECRET="$(get_env SESSION_SECRET)"
+FORMS_SECRET="$(get_env FORMS_SECRET)"
+CRON_SECRET="$(get_env CRON_SECRET)"
 
-if [[ -z "$GOOGLE_CLIENT_ID" || -z "$GOOGLE_CLIENT_SECRET" ]]; then
-  echo "❌ GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET are required in .env.local"
+if [[ -z "$GOOGLE_CLIENT_ID" || -z "$GOOGLE_CLIENT_SECRET" || -z "$OPENAI_KEY" || -z "$SESSION_SECRET" || -z "$FORMS_SECRET" || -z "$CRON_SECRET" ]]; then
+  echo "❌ Missing one or more required secrets in .env.local"
+  echo "   Required: GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, OPENAI_KEY, SESSION_SECRET, FORMS_SECRET, CRON_SECRET"
   exit 1
 fi
 
@@ -45,6 +50,9 @@ echo ""
 export GOOGLE_CLIENT_ID
 export GOOGLE_CLIENT_SECRET
 export OPENAI_KEY
+export SESSION_SECRET
+export FORMS_SECRET
+export CRON_SECRET
 export AWS_PROFILE="${AWS_PROFILE:-myagency}"
 
 # Explicitly UNSET any localhost vars that might be in the shell environment

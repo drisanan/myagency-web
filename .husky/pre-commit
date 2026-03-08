@@ -52,3 +52,7 @@ if [ -n "$SECRET_FILES" ]; then
 fi
 
 echo "✅ Pre-commit environment checks passed!"
+echo "🧪 Running lint and stability checks..."
+
+npm run lint
+npm run test:stability

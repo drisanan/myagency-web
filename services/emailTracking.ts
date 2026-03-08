@@ -24,8 +24,10 @@ export type EmailMetrics = {
   period?: string;
   stats?: {
     sentCount: number;
+    openCount?: number;
     clickCount: number;
     uniqueRecipients?: number;
+    uniqueOpeners?: number;
     uniqueClickers?: number;
   };
   totals?: {
@@ -47,6 +49,11 @@ export type EmailMetrics = {
     destination: string;
     linkType?: string;
     clickedAt: number;
+  }>;
+  recentOpens?: Array<{
+    recipientEmail: string;
+    university?: string;
+    openedAt: number;
   }>;
 };
 
@@ -118,6 +125,7 @@ export function wrapLinksWithTracking(html: string, params: TrackingParams): str
 export function createOpenPixelUrl(params: TrackingParams): string {
   const base = API_BASE || 'https://api.athletenarrative.com';
   const url = new URL(`${base}/email-metrics/open`);
+  url.searchParams.set('agencyId', params.agencyId);
   url.searchParams.set('clientId', params.clientId);
   url.searchParams.set('clientEmail', params.athleteEmail);
   url.searchParams.set('recipientEmail', params.recipientEmail);

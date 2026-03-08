@@ -1,6 +1,6 @@
 import { defineConfig, devices } from '@playwright/test';
 
-const BASE_URL = process.env.BASE_URL || 'https://www.myrecruiteragency.com';
+const BASE_URL = process.env.BASE_URL || 'http://127.0.0.1:3000';
 
 export default defineConfig({
   testDir: './tests/e2e',

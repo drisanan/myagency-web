@@ -1,0 +1,38 @@
+name: Release Smoke
+
+on:
+  workflow_dispatch:
+    inputs:
+      api_base_url:
+        description: Public API base URL
+        required: true
+      app_base_url:
+        description: Public app base URL
+        required: true
+      public_form_token:
+        description: Optional known-good public form token
+        required: false
+      public_update_token:
+        description: Optional known-good public update-form token
+        required: false
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Run release smoke
+        run: node scripts/release-smoke.mjs
+        env:
+          SMOKE_API_BASE_URL: ${{ inputs.api_base_url }}
+          SMOKE_APP_BASE_URL: ${{ inputs.app_base_url }}
+          SMOKE_PUBLIC_FORM_TOKEN: ${{ inputs.public_form_token }}
+          SMOKE_PUBLIC_UPDATE_TOKEN: ${{ inputs.public_update_token }}

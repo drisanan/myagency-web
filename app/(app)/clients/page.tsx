@@ -9,15 +9,14 @@ import AddIcon from '@mui/icons-material/Add';
 
 import { ClientsList } from '@/features/clients/ClientsList';
 import { useSession } from '@/features/auth/session';
-import { listClientsByAgencyEmail, upsertClient } from '@/services/clients';
+import { createClient, getClient, listClientsByAgencyEmail } from '@/services/clients';
 import { useTour } from '@/features/tour/TourProvider';
 import { athletesSteps } from '@/features/tour/athletesSteps';
 import { SubscriptionQuota, useCanAddAthlete } from '@/features/settings/SubscriptionQuota';
 import { MetricCard } from '@/app/(app)/dashboard/MetricCard';
 import { IoAlertCircleOutline, IoPeopleOutline, IoPersonAddOutline } from 'react-icons/io5';
 
-// FIX: Hardcode the fallback to your actual API domain to prevent localhost issues
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://api.myrecruiteragency.com';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || '/api';
 
 export default function ClientsPage() {
   const { session, loading } = useSession();
@@ -76,6 +75,7 @@ export default function ClientsPage() {
 
         const data = await res.json();
         const items = (data?.items && Array.isArray(data.items)) ? data.items : [];
+        const knownClientIds = new Set((clientsMetricsQuery.data ?? []).map((client: any) => client?.id).filter(Boolean));
 
         if (items.length === 0) return;
 
@@ -85,28 +85,42 @@ export default function ClientsPage() {
         const idsToConsume: string[] = [];
         for (const s of items) {
           if (s.clientId) {
-            // Client was already created server-side during form submit
-            idsToConsume.push(s.id);
-            continue;
+            try {
+              if (knownClientIds.has(s.clientId)) {
+                idsToConsume.push(s.id);
+                continue;
+              }
+              const existingClient = await getClient(s.clientId);
+              if (existingClient?.id) {
+                idsToConsume.push(s.id);
+                continue;
+              }
+            } catch (err) {
+              console.warn('[ClientsPage] Unable to confirm intake-created client, will attempt hydration', s.clientId, err);
+            }
           }
 
-          // Legacy path: submissions created before backend auto-created clients
+          // Legacy or recovery path: create the client from the stored submission payload.
           const v = s?.data || {};
           const clientPayload = {
+            ...(s.clientId ? { id: s.clientId } : {}),
             email: v.email || '',
             phone: v.phone || '',
             firstName: v.firstName || '',
             lastName: v.lastName || '',
             sport: v.sport || '',
             division: v.division || '',
-            agencyEmail: userEmail,
-            photoUrl: v.profileImageUrl || '',
+            photoUrl: v.photoUrl || v.profileImageUrl || v?.radar?.profileImage || '',
+            profileImageUrl: v.profileImageUrl || v.photoUrl || v?.radar?.profileImage || '',
+            galleryImages: Array.isArray(v.galleryImages) ? v.galleryImages : [],
+            highlightVideos: Array.isArray(v.highlightVideos) ? v.highlightVideos : [],
             radar: v.radar || {},
-            password: v.password || undefined, 
+            accessCode: v.accessCode || undefined,
+            accountStatus: v.accountStatus || 'pending',
           };
 
           try {
-            await upsertClient(clientPayload);
+            await createClient(clientPayload);
             idsToConsume.push(s.id);
           } catch (err) {
             console.error('[ClientsPage] Failed to create client from submission', s.id, err);
@@ -134,7 +148,7 @@ export default function ClientsPage() {
     syncSubmissions();
 
     return () => { mounted = false; };
-  }, [userEmail, loading, queryClient]); // FIX: Depend on userEmail
+  }, [userEmail, loading, queryClient, clientsMetricsQuery.data]);
 
   // 2. Loading State
   if (loading) {

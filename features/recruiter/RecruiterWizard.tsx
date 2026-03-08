@@ -22,7 +22,7 @@ import { hasMailed, markMailed } from '@/services/mailStatus';
 import { listPrompts, PromptRecord } from '@/services/prompts';
 import { wrapLinksWithTracking, recordEmailSends, createOpenPixelUrl } from '@/services/emailTracking';
 import { normalizeYouTubeUrl, normalizeHudlUrl, normalizeInstagramUrl, normalizeGenericUrl } from '@/services/urlNormalize';
-import { createCampaign } from '@/services/campaigns';
+import { createCampaign, updateCampaign } from '@/services/campaigns';
 
 type ClientRow = { id: string; email: string; firstName?: string; lastName?: string; sport?: string };
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.API_BASE_URL || '';
@@ -286,6 +286,11 @@ export function RecruiterWizard() {
   function setField(section: string, fieldKey: string, checked: boolean) {
     setSelectedFields((p) => ({ ...p, [section]: { ...(p[section] ?? {}), [fieldKey]: checked } }));
   }
+  function isSelectedFieldEnabled(section: string, fieldKey: string) {
+    const sectionSelections = selectedFields[section] ?? {};
+    const enabledKeys = Object.keys(sectionSelections).filter((key) => sectionSelections[key]);
+    return enabledKeys.length === 0 || Boolean(sectionSelections[fieldKey]);
+  }
   function buildGreeting(style?: string): string {
     const greetings = ['Hey', 'Hello', 'Hi'];
     const g = style || greetings[Math.floor(Math.random() * greetings.length)];
@@ -303,7 +308,11 @@ export function RecruiterWizard() {
     const enabledIds = Object.keys(enabledSections).filter((k) => enabledSections[k]);
     let emailContent = '';
     if (enabledIds.includes('accomplishments')) {
-      const valid = (contact.accomplishments || []).filter((item: string) => item && item.trim() !== '' && item !== 'undefined' && item !== 'null');
+      const valid = (contact.accomplishments || [])
+        .filter((item: string, i: number) => {
+          if (!item || item.trim() === '' || item === 'undefined' || item === 'null') return false;
+          return isSelectedFieldEnabled('accomplishments', `acc-${i}`);
+        });
       if (valid.length) {
         emailContent += `<p><strong>Accomplishments:</strong></p><ul>${valid.map((item: string, i: number) => {
           const prefix = valid.length > 1 ? `${i + 1}. ` : '';
@@ -322,10 +331,15 @@ export function RecruiterWizard() {
       ].filter(Boolean).join('')}</ul>\n`;
     }
     if (enabledIds.includes('athletic') && contact.athleteMetrics.length > 0) {
-      emailContent += `<p><strong>Athletic Metrics:</strong></p><ul>${contact.athleteMetrics.map((m: { title: string; value: string }, i: number) => {
-        const prefix = contact.athleteMetrics.length > 1 ? `${i + 1}. ` : '';
+      const visibleMetrics = contact.athleteMetrics.filter((_: { title: string; value: string }, i: number) =>
+        isSelectedFieldEnabled('athletic', `m${i}`)
+      );
+      if (visibleMetrics.length) {
+        emailContent += `<p><strong>Athletic Metrics:</strong></p><ul>${visibleMetrics.map((m: { title: string; value: string }, i: number) => {
+        const prefix = visibleMetrics.length > 1 ? `${i + 1}. ` : '';
         return `<li>${prefix}${m.title}: ${m.value}</li>`;
-      }).join('')}</ul>\n`;
+        }).join('')}</ul>\n`;
+      }
     }
     if (enabledIds.includes('highlights')) {
       const highlights = [
@@ -520,20 +534,35 @@ export function RecruiterWizard() {
     if (!currentClient?.id) return;
     setGmailRefreshing(true);
     try {
-      const result = await refreshGmailToken(currentClient.id);
-      if (result?.ok) {
+      await refreshGmailToken(currentClient.id);
+      setGmailConnected(true);
+      setGmailExpired(false);
+      setGmailCanRefresh(true);
+      try {
         const statusUrl = `${API_BASE_URL}/google/status?clientId=${encodeURIComponent(currentClient.id)}`;
         const r = await fetch(statusUrl, { credentials: 'include' });
         const d = await r.json();
-        setGmailConnected(Boolean(d?.connected) && !Boolean(d?.expired));
+        setGmailConnected(Boolean(d?.connected ?? true) && !Boolean(d?.expired));
         setGmailExpired(Boolean(d?.expired));
-        setGmailCanRefresh(Boolean(d?.canRefresh));
+        setGmailCanRefresh(Boolean(d?.canRefresh ?? true));
         setGmailAccountEmail(d?.email || '');
-      } else {
-        setGmailCanRefresh(false);
+      } catch {
+        // Keep the optimistic state when the follow-up status fetch fails.
       }
-    } catch {
-      setGmailCanRefresh(false);
+    } catch (e: any) {
+      const message = String(e?.message || '').toLowerCase();
+      const needsReconnect =
+        message.includes('no refresh token') ||
+        message.includes('reconnection required') ||
+        message.includes('invalid_grant');
+      setGmailConnected(false);
+      setGmailExpired(true);
+      setGmailCanRefresh(!needsReconnect);
+      setError(
+        needsReconnect
+          ? 'Gmail refresh is no longer available. Please reconnect Gmail.'
+          : 'Failed to refresh Gmail. Please try again.'
+      );
     } finally {
       setGmailRefreshing(false);
     }
@@ -543,20 +572,35 @@ export function RecruiterWizard() {
     if (!selectedAgentId) return;
     setAgentGmailRefreshing(true);
     try {
-      const result = await refreshAgentGmailToken(selectedAgentId);
-      if (result?.ok) {
+      await refreshAgentGmailToken(selectedAgentId);
+      setAgentGmailConnected(true);
+      setAgentGmailExpired(false);
+      setAgentGmailCanRefresh(true);
+      try {
         const statusUrl = `${API_BASE_URL}/google/status?agentId=${encodeURIComponent(selectedAgentId)}`;
         const r = await fetch(statusUrl, { credentials: 'include' });
         const d = await r.json();
-        setAgentGmailConnected(Boolean(d?.connected) && !Boolean(d?.expired));
+        setAgentGmailConnected(Boolean(d?.connected ?? true) && !Boolean(d?.expired));
         setAgentGmailExpired(Boolean(d?.expired));
-        setAgentGmailCanRefresh(Boolean(d?.canRefresh));
+        setAgentGmailCanRefresh(Boolean(d?.canRefresh ?? true));
         setAgentGmailAccountEmail(d?.email || '');
-      } else {
-        setAgentGmailCanRefresh(false);
+      } catch {
+        // Keep the optimistic state when the follow-up status fetch fails.
       }
-    } catch {
-      setAgentGmailCanRefresh(false);
+    } catch (e: any) {
+      const message = String(e?.message || '').toLowerCase();
+      const needsReconnect =
+        message.includes('no refresh token') ||
+        message.includes('reconnection required') ||
+        message.includes('invalid_grant');
+      setAgentGmailConnected(false);
+      setAgentGmailExpired(true);
+      setAgentGmailCanRefresh(!needsReconnect);
+      setError(
+        needsReconnect
+          ? 'Gmail refresh is no longer available. Please reconnect Gmail.'
+          : 'Failed to refresh Gmail. Please try again.'
+      );
     } finally {
       setAgentGmailRefreshing(false);
     }
@@ -603,6 +647,8 @@ export function RecruiterWizard() {
   }
 
   async function handleSendEmails() {
+    let campaignId: string | undefined;
+    let sentRecipients: Array<{ email: string; name?: string; university?: string }> = [];
     try {
       setSendMessage(null);
       setIsSendingEmails(true);
@@ -615,7 +661,7 @@ export function RecruiterWizard() {
       // Ensure server has tokens for this client; rehydrate from client record if not
       try {
         const statusUrl = `${API_BASE_URL}/google/status?clientId=${encodeURIComponent(id)}`;
-        const statusRes = await fetch(statusUrl);
+        const statusRes = await fetch(statusUrl, { credentials: 'include' });
         const status = await statusRes.json();
         console.info('[gmail-ui:status]', { clientId: id, connected: Boolean(status?.connected) });
         if (!status?.connected) {
@@ -631,6 +677,7 @@ export function RecruiterWizard() {
             await fetch(tokensUrl, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
+              credentials: 'include',
               body: JSON.stringify({ clientId: id, tokens: saved }),
             });
             setGmailConnected(true);
@@ -647,7 +694,7 @@ export function RecruiterWizard() {
       const gradYear = String((currentClient as any)?.radar?.graduationYear || (currentClient as any)?.graduationYear || '').trim();
       const positionOrSport = String((currentClient as any)?.radar?.position || (currentClient as any)?.position || '').trim();
       const subjectBase = buildSubjectLine(athleteName, gradYear, positionOrSport, 0);
-      const html = aiHtml || buildEmailPreview();
+      const html = aiHtml ?? buildEmailPreview();
       const savedTokens = getClientGmailTokens(id);
       const campaignName = resolvedCollegeName || selectedList?.name || universityName || 'Coach Outreach';
       const recipientMeta = selectedCoaches.map((c: any) => ({
@@ -689,12 +736,9 @@ export function RecruiterWizard() {
         senderClientId: id,
         campaignName,
         personalizedMessage: followupMessage || undefined,
-        status: 'sent',
+        status: 'draft',
       });
-      const campaignId = campaign?.id;
-
-      // Track recipients for recording sends
-      const sentRecipients: Array<{ email: string; name?: string; university?: string }> = [];
+      campaignId = campaign?.id;
 
       // Send one email per recipient to avoid a single email with multiple TOs
       for (const recipient of to) {
@@ -776,12 +820,23 @@ export function RecruiterWizard() {
         }).catch(err => console.error('[RecruiterWizard] Failed to record sends', err));
       }
 
+      if (campaignId) {
+        updateCampaign(campaignId, { status: 'sent', sentAt: Date.now() }).catch((err) =>
+          console.error('[RecruiterWizard] Failed to finalize campaign', err)
+        );
+      }
+
       
       const msg = `Sent to ${to.length} recipient${to.length === 1 ? '' : 's'}`;
       setSendMessage(msg);
       setConfirmModalMessage(msg);
       setConfirmModalOpen(true);
     } catch (e: any) {
+      if (campaignId) {
+        updateCampaign(campaignId, { status: 'failed' }).catch((err) =>
+          console.error('[RecruiterWizard] Failed to mark campaign failed', err)
+        );
+      }
       console.error(e);
       const msg = (e?.message || 'Failed to send email').toLowerCase();
       const isTokenError = msg.includes('revoked') || msg.includes('expired') || msg.includes('reconnect')
@@ -877,7 +932,7 @@ export function RecruiterWizard() {
 
   // AI improvement flow for intro sentence
   const [aiLoading, setAiLoading] = React.useState(false);
-  const [aiHtml, setAiHtml] = React.useState<string>('');
+  const [aiHtml, setAiHtml] = React.useState<string | null>(null);
   const [isGenerating, setIsGenerating] = React.useState(false);
   const [isSendingEmails, setIsSendingEmails] = React.useState(false);
   const [isEditingPreview, setIsEditingPreview] = React.useState(false);
@@ -885,6 +940,7 @@ export function RecruiterWizard() {
   const [scheduleEnabled, setScheduleEnabled] = React.useState(false);
   const [scheduledAt, setScheduledAt] = React.useState('');
   const [followupMessage, setFollowupMessage] = React.useState('');
+  const previewHtml = aiHtml ?? buildEmailPreview();
 
   // Delayed busy indicator to avoid flicker on sub-1s actions
   const useDelayedBusy = (flag: boolean, delayMs = 1000) => {
@@ -1114,6 +1170,19 @@ export function RecruiterWizard() {
   }, [selectedSchoolName, resolvedSport, division, state]);
   React.useEffect(() => { setError(null); }, [division, state, selectedSchoolName, clientId]);
 
+  // Reset email content when client or sender context changes to avoid wrong data carryover
+  React.useEffect(() => {
+    setAiHtml(null);
+    setSubjectLine('');
+    setIsEditingPreview(false);
+    setSelectedPromptId('');
+    setSelectedTemplateId('');
+    setScheduleEnabled(false);
+    setScheduledAt('');
+    setFollowupMessage('');
+    setSendMessage(null);
+  }, [clientId, senderType, selectedAgentId, selectedListId, selectedSchoolName, listMode]);
+
   // FIX: Use userEmail for templates
   React.useEffect(() => {
     if (!userEmail) return;
@@ -1199,7 +1268,7 @@ export function RecruiterWizard() {
 
   function handleSaveTemplate() {
     if (!userEmail) return;
-    const html = (aiHtml || buildEmailPreview());
+    const html = previewHtml;
     const ctx = currentEmailContext();
     const placeholderHtml = toTemplateHtml(html, ctx);
     const rec = saveTemplate({
@@ -1262,7 +1331,19 @@ export function RecruiterWizard() {
               <Button
                 variant={senderType === 'client' ? 'contained' : 'outlined'}
                 size="small"
-                onClick={() => { setSenderType('client'); setSelectedAgentId(''); setSelectedSport(''); }}
+                onClick={() => {
+                  setSenderType('client');
+                  setSelectedAgentId('');
+                  setSelectedSport('');
+                  setSelectedListId('');
+                  setSelectedList(null);
+                  setListMode(false);
+                  setDivision('');
+                  setState('');
+                  setSelectedSchoolName('');
+                  setSchoolDetails(null);
+                  setSelectedCoachIds({});
+                }}
                 sx={senderType === 'client' ? { bgcolor: '#0A0A0A', color: '#CCFF00' } : {}}
               >
                 Client
@@ -1272,7 +1353,19 @@ export function RecruiterWizard() {
                 <Button
                   variant={senderType === 'agent' ? 'contained' : 'outlined'}
                   size="small"
-                  onClick={() => { setSenderType('agent'); setClientId(''); setSelectedSport(''); }}
+                  onClick={() => {
+                    setSenderType('agent');
+                    setClientId('');
+                    setSelectedSport('');
+                    setSelectedListId('');
+                    setSelectedList(null);
+                    setListMode(false);
+                    setDivision('');
+                    setState('');
+                    setSelectedSchoolName('');
+                    setSchoolDetails(null);
+                    setSelectedCoachIds({});
+                  }}
                   sx={senderType === 'agent' ? { bgcolor: '#0A0A0A', color: '#CCFF00' } : {}}
                   data-testid="agent-mode-btn"
                 >
@@ -1361,7 +1454,15 @@ export function RecruiterWizard() {
                 select
                 label="Division"
                 value={division}
-                onChange={(e) => { setDivision(e.target.value); setSelectedListId(''); setListMode(false); setSelectedCoachIds({}); }}
+                onChange={(e) => {
+                  setDivision(e.target.value);
+                  setSelectedListId('');
+                  setSelectedList(null);
+                  setListMode(false);
+                  setSelectedCoachIds({});
+                  setSelectedSchoolName('');
+                  setSchoolDetails(null);
+                }}
                 disabled={Boolean(selectedListId)}
                 inputProps={{ 'data-testid': 'recruiter-division' }}
               >
@@ -1376,7 +1477,12 @@ export function RecruiterWizard() {
                 select
                 label="State"
                 value={state}
-                onChange={(e) => setState(e.target.value)}
+                onChange={(e) => {
+                  setState(e.target.value);
+                  setSelectedSchoolName('');
+                  setSchoolDetails(null);
+                  setSelectedCoachIds({});
+                }}
                 disabled={!division || Boolean(selectedListId)}
                 inputProps={{ 'data-testid': 'recruiter-state' }}
               >
@@ -1417,8 +1523,11 @@ export function RecruiterWizard() {
                     setSchoolDetails(null);
                     setActiveStep(2);
                   } else {
+                    setSelectedList(null);
                     setListMode(false);
                     setSelectedCoachIds({});
+                    setSelectedSchoolName('');
+                    setSchoolDetails(null);
                   }
                 }}
                 sx={{ minWidth: 280 }}
@@ -1458,7 +1567,12 @@ export function RecruiterWizard() {
                   {visibleSchools.map((u) => (
                     <Card
                       key={u.name}
-                      onClick={() => setSelectedSchoolName(u.name)}
+                      onClick={() => {
+                        setSelectedListId('');
+                        setSelectedList(null);
+                        setListMode(false);
+                        setSelectedSchoolName(u.name);
+                      }}
                       sx={{
                         cursor: 'pointer',
                         outline: selectedSchoolName === u.name ? '2px solid #CCFF00' : 'none',
@@ -1939,7 +2053,7 @@ export function RecruiterWizard() {
                     </Button>
                     <Button
                       size="small"
-                      onClick={() => navigator.clipboard.writeText(aiHtml || buildEmailPreview())}
+                      onClick={() => navigator.clipboard.writeText(previewHtml)}
                       sx={{ bgcolor: '#0A0A0A', color: '#CCFF00', '&:hover': { bgcolor: '#1A1A1A' } }}
                     >
                       Copy Rich Text
@@ -1966,7 +2080,7 @@ export function RecruiterWizard() {
                   }}>
                     <ReactQuill
                       theme="snow"
-                      value={aiHtml || buildEmailPreview()}
+                      value={previewHtml}
                       onChange={(content: string) => setAiHtml(content)}
                       modules={{
                         toolbar: [
@@ -1982,7 +2096,7 @@ export function RecruiterWizard() {
                   </Box>
                 ) : (
                   <Box sx={{ bgcolor: '#fff', p: 2, borderRadius: 0, clipPath: 'polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px))', minHeight: 200 }}>
-                    <div dangerouslySetInnerHTML={{ __html: aiHtml || buildEmailPreview() }} />
+                    <div dangerouslySetInnerHTML={{ __html: previewHtml }} />
                   </Box>
                 )}
                 <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>

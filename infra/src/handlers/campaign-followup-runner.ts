@@ -1,7 +1,7 @@
 import { APIGatewayProxyEventV2 } from 'aws-lambda';
 import { response } from './cors';
 import { CampaignFollowupRecord, CampaignRecord, ClientRecord, ProfileViewRecord } from '../lib/models';
-import { getItem, putItem, queryGSI3, scanBySKPrefix } from '../lib/dynamo';
+import { getItem, listAgencyIds, putItem, queryByPK, queryGSI3 } from '../lib/dynamo';
 import { sendGmailMessage } from '../lib/gmailSend';
 import { listCampaignEmailStats } from '../lib/emailMetrics';
 import { withSentry } from '../lib/sentry';
@@ -35,7 +35,10 @@ function buildFollowupHtml(input: {
 }
 
 const runner = async () => {
-  const followups = await scanBySKPrefix('CAMPAIGN_FOLLOWUP#') as CampaignFollowupRecord[];
+  const agencyIds = await listAgencyIds();
+  const followups = (
+    await Promise.all(agencyIds.map((agencyId) => queryByPK(`AGENCY#${agencyId}`, 'CAMPAIGN_FOLLOWUP#')))
+  ).flat() as CampaignFollowupRecord[];
   const now = Date.now();
   const due = followups.filter((f) => f.status === 'pending' && f.scheduledFor <= now);
 

@@ -1,4 +1,9 @@
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || '';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || '/api';
+const MAX_VIDEO_SIZE = 100 * 1024 * 1024; // 100MB
+const MAX_IMAGE_SIZE = 25 * 1024 * 1024; // 25MB
+const MAX_IMAGE_SIZE_MB = Math.round(MAX_IMAGE_SIZE / 1024 / 1024);
+const ALLOWED_VIDEO_TYPES = ['video/mp4', 'video/quicktime', 'video/webm'];
+const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
 
 export interface PresignedUrlResponse {
   presignedUrl: string;
@@ -83,9 +88,6 @@ export async function uploadMedia(
  * Validate video file before upload
  */
 export function validateVideoFile(file: File): { valid: boolean; error?: string } {
-  const MAX_VIDEO_SIZE = 100 * 1024 * 1024; // 100MB
-  const ALLOWED_VIDEO_TYPES = ['video/mp4', 'video/quicktime', 'video/webm'];
-
   if (!ALLOWED_VIDEO_TYPES.includes(file.type)) {
     return { 
       valid: false, 
@@ -107,9 +109,6 @@ export function validateVideoFile(file: File): { valid: boolean; error?: string 
  * Validate image file before upload
  */
 export function validateImageFile(file: File): { valid: boolean; error?: string } {
-  const MAX_IMAGE_SIZE = 16 * 1024 * 1024; // 16MB
-  const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-
   if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
     return { 
       valid: false, 
@@ -120,7 +119,7 @@ export function validateImageFile(file: File): { valid: boolean; error?: string 
   if (file.size > MAX_IMAGE_SIZE) {
     return { 
       valid: false, 
-      error: `Image too large: ${Math.round(file.size / 1024 / 1024)}MB. Max 16MB allowed` 
+      error: `Image too large: ${Math.round(file.size / 1024 / 1024)}MB. Max ${MAX_IMAGE_SIZE_MB}MB allowed` 
     };
   }
 

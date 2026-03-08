@@ -31,6 +31,21 @@ const SCOPES = [
   'openid'
 ];
 
+type PublicFormTokenPayload = {
+  agencyEmail: string;
+  agencyId?: string;
+  clientId?: string;
+  type?: 'intake' | 'update';
+};
+
+function isAllowedPublicClientId(clientId: string | undefined, payload: PublicFormTokenPayload) {
+  if (!clientId) return false;
+  if (payload.type === 'update') {
+    return Boolean(payload.clientId && payload.clientId === clientId);
+  }
+  return clientId.startsWith('temp-');
+}
+
 const googleOauthHandler = async (event: APIGatewayProxyEventV2) => {
   const origin = event.headers?.origin || event.headers?.Origin || event.headers?.['origin'] || '';
   const method = (event.requestContext.http?.method || '').toUpperCase();
@@ -57,10 +72,21 @@ const googleOauthHandler = async (event: APIGatewayProxyEventV2) => {
     }
 
     if (formToken) {
-      const payload = verifyFormToken<{ agencyEmail: string }>(formToken);
+      const payload = verifyFormToken<PublicFormTokenPayload>(formToken);
+      const requestedClientId = event.queryStringParameters?.clientId;
+      const requestedAgentId = event.queryStringParameters?.agentId;
+      if (requestedAgentId) {
+        return response(403, { ok: false, error: 'Public forms cannot manage agent Gmail access' }, origin);
+      }
+      const isCallback = path.endsWith('/google/oauth/callback');
+      if (!payload?.agencyEmail || (!isCallback && !isAllowedPublicClientId(requestedClientId, payload))) {
+        return response(403, { ok: false, error: 'Invalid form token scope' }, origin);
+      }
       if (payload?.agencyEmail) {
         const agencies = await queryGSI1(`EMAIL#${payload.agencyEmail}`, 'AGENCY#');
-        const agency = agencies?.[0];
+        const agency = payload.agencyId
+          ? (agencies || []).find((item: any) => item.id === payload.agencyId) || agencies?.[0]
+          : agencies?.[0];
         if (agency?.id) {
           session = { agencyId: agency.id, agencyEmail: payload.agencyEmail, role: 'client' as const };
         }
@@ -92,6 +118,13 @@ const googleOauthHandler = async (event: APIGatewayProxyEventV2) => {
 
     try {
       const formToken = event.queryStringParameters?.formToken;
+      const publicPayload = formToken ? verifyFormToken<PublicFormTokenPayload>(formToken) : null;
+      if (formToken && agentId) {
+        return response(403, { ok: false, error: 'Public forms cannot manage agent Gmail access' }, origin);
+      }
+      if (formToken && (!publicPayload || !isAllowedPublicClientId(clientId || undefined, publicPayload))) {
+        return response(403, { ok: false, error: 'Invalid form token scope' }, origin);
+      }
       const statePayload = JSON.stringify({
         ...(clientId ? { clientId } : {}),
         ...(agentId ? { agentId } : {}),
@@ -138,8 +171,16 @@ const googleOauthHandler = async (event: APIGatewayProxyEventV2) => {
     try {
       const decodedState = JSON.parse(Buffer.from(state, 'base64').toString('utf-8'));
       const { clientId, agentId, agencyId: stateAgencyId } = decodedState;
+      const stateFormToken = decodedState?.formToken as string | undefined;
+      const publicPayload = stateFormToken ? verifyFormToken<PublicFormTokenPayload>(stateFormToken) : null;
 
       if (!clientId && !agentId) return response(400, { ok: false, error: 'Invalid state' }, origin);
+      if (stateFormToken && agentId) {
+        return response(403, { ok: false, error: 'Public forms cannot manage agent Gmail access' }, origin);
+      }
+      if (stateFormToken && (!publicPayload || !isAllowedPublicClientId(clientId, publicPayload))) {
+        return response(403, { ok: false, error: 'Invalid form token scope' }, origin);
+      }
 
       // Use session agencyId when available, fall back to the agencyId
       // embedded in the state (public form flow where no cookie exists)

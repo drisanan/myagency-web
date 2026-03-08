@@ -3,8 +3,8 @@ import React from 'react';
 import { Box, Button, Paper, Stack, TextField, Typography } from '@mui/material';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.API_BASE_URL || '';
-const resolvedApiBase = API_BASE_URL || (typeof window !== 'undefined' ? `${window.location.origin}/api` : '');
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.API_BASE_URL || '/api';
+const resolvedApiBase = API_BASE_URL;
 
 type EventRow = { name: string; date: string; location: string };
 
@@ -13,6 +13,7 @@ export default function UpdateFormPageClient({ token }: { token: string }) {
     try { return decodeURIComponent(token); } catch { return token; }
   }, [token]);
   const [agency, setAgency] = React.useState<{ name?: string; email?: string; settings?: { primaryColor?: string; secondaryColor?: string; logoDataUrl?: string } }>({});
+  const [client, setClient] = React.useState<{ firstName?: string; lastName?: string }>({});
   const [submitSuccess, setSubmitSuccess] = React.useState('');
   const [submitting, setSubmitting] = React.useState(false);
   const [error, setError] = React.useState('');
@@ -33,7 +34,10 @@ export default function UpdateFormPageClient({ token }: { token: string }) {
           credentials: 'include',
         });
         const data = await res.json();
-        if (data?.ok) setAgency(data.agency || {});
+        if (data?.ok) {
+          setAgency(data.agency || {});
+          setClient(data.client || {});
+        }
       } catch {}
     })();
   }, [decodedToken]);
@@ -137,6 +141,11 @@ export default function UpdateFormPageClient({ token }: { token: string }) {
             ) : null}
             <Box>
               <Typography variant="h5" gutterBottom sx={{ m: 0 }}>{agency?.name || 'Athlete Update'}</Typography>
+              {(client.firstName || client.lastName) && (
+                <Typography variant="body2" color="text.secondary">
+                  Updating profile for {[client.firstName, client.lastName].filter(Boolean).join(' ')}
+                </Typography>
+              )}
               {submitSuccess ? <Typography color="success.main">{submitSuccess}</Typography> : null}
               {error ? <Typography color="error.main">{error}</Typography> : null}
             </Box>

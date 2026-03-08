@@ -10,7 +10,7 @@ import { withSentry } from '../lib/sentry';
 // import fetch from 'node-fetch'; 
 
 const OPENAI_BASE = 'https://api.openai.com';
-const OPENAI_KEY = process.env.OPENAI_KEY || '';
+const OPENAI_KEY = process.env.OPENAI_KEY?.trim() || '';
 const MODEL = 'gpt-4o-mini';
 
 /**
@@ -19,30 +19,37 @@ const MODEL = 'gpt-4o-mini';
 async function callOpenAI(messages: any[], temperature = 0.7) {
   if (!OPENAI_KEY) throw new Error('OpenAI key not configured');
 
-  const res = await fetch(`${OPENAI_BASE}/v1/chat/completions`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${OPENAI_KEY}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: MODEL,
-      messages,
-      temperature,
-    }),
-  });
-
-  const text = await res.text();
-  if (!res.ok) {
-    console.error('openai.error', { status: res.status, body: text });
-    throw new Error(`OpenAI request failed (${res.status}): ${text || res.statusText}`);
-  }
-  
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15_000);
   try {
-    const json = JSON.parse(text);
-    return json?.choices?.[0]?.message?.content || '';
-  } catch {
-    return '';
+    const res = await fetch(`${OPENAI_BASE}/v1/chat/completions`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${OPENAI_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: MODEL,
+        messages,
+        temperature,
+      }),
+      signal: controller.signal,
+    });
+
+    const text = await res.text();
+    if (!res.ok) {
+      console.error('openai.error', { status: res.status, body: text });
+      throw new Error(`OpenAI request failed (${res.status}): ${text || res.statusText}`);
+    }
+
+    try {
+      const json = JSON.parse(text);
+      return json?.choices?.[0]?.message?.content || '';
+    } catch {
+      return '';
+    }
+  } finally {
+    clearTimeout(timeout);
   }
 }
 

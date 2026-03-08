@@ -5,17 +5,23 @@ import { handler } from '../forms-public';
 
 jest.mock('../../lib/formsToken', () => ({
   sign: jest.fn(() => 'signed-token'),
-  verify: jest.fn((token: string) => (token === 'valid' ? { agencyEmail: 'a@test.com' } : null)),
+  verify: jest.fn((token: string) => (token === 'valid' ? { agencyEmail: 'a@test.com', agencyId: 'agency-001', type: 'intake' } : null)),
+}));
+
+jest.mock('../common', () => ({
+  requireAgencySession: jest.fn(() => ({ agencyId: 'agency-001', agencyEmail: 'a@test.com', role: 'agency' })),
 }));
 
 jest.mock('../../lib/dynamo', () => ({
   getItem: jest.fn(),
   putItem: jest.fn(),
+  deleteItem: jest.fn(),
   queryByPK: jest.fn(),
   queryGSI1: jest.fn(),
+  queryGSI3: jest.fn(),
 }));
 
-const { queryGSI1, queryByPK, getItem, putItem } = jest.requireMock('../../lib/dynamo');
+const { queryGSI1, queryGSI3, queryByPK, getItem, putItem } = jest.requireMock('../../lib/dynamo');
 const ORIGIN = 'http://localhost:3000';
 
 function makeEvent(method: string, path: string, body?: any, qs?: Record<string, string>) {
@@ -39,7 +45,7 @@ describe('forms-public handler', () => {
   });
 
   it('issues a token', async () => {
-    const res = (await handler(makeEvent('POST', '/forms/issue', { agencyEmail: 'a@test.com' }))) as any;
+    const res = (await handler(makeEvent('POST', '/forms/issue'))) as any;
     expect(res.statusCode).toBe(200);
     expect(res.headers['Access-Control-Allow-Origin']).toBe(ORIGIN);
     const body = JSON.parse(res.body || '{}');
@@ -68,37 +74,62 @@ describe('forms-public handler', () => {
   });
 
   it('submits form with valid token', async () => {
+    queryGSI1
+      .mockResolvedValueOnce([{ id: 'agency-001', name: 'Agency', email: 'a@test.com', settings: {} }])
+      .mockResolvedValueOnce([]);
+    queryGSI3.mockResolvedValueOnce([]);
     putItem.mockResolvedValue({});
-    const res = (await handler(makeEvent('POST', '/forms/submit', { token: 'valid', form: { email: 'x@test.com' } }))) as any;
+    const res = (await handler(makeEvent('POST', '/forms/submit', {
+      token: 'valid',
+      form: {
+        email: 'x@test.com',
+        firstName: 'Ava',
+        lastName: 'Smith',
+        sport: 'Football',
+        profileImageUrl: 'https://example.com/profile.jpg',
+        highlightVideos: [{ url: 'https://example.com/video' }],
+      },
+    }))) as any;
     expect(res.statusCode).toBe(200);
     expect(res.headers['Access-Control-Allow-Origin']).toBe(ORIGIN);
+    expect(putItem).toHaveBeenCalledWith(expect.objectContaining({
+      email: 'x@test.com',
+      firstName: 'Ava',
+      profileImageUrl: 'https://example.com/profile.jpg',
+      highlightVideos: [{ url: 'https://example.com/video' }],
+      accountStatus: 'pending',
+    }));
   });
 
-  it('lists submissions requires agencyEmail', async () => {
+  it('lists submissions requires session', async () => {
+    const { requireAgencySession } = jest.requireMock('../common');
+    requireAgencySession.mockReturnValueOnce(null);
     const res = (await handler(makeEvent('GET', '/forms/submissions', undefined, {}))) as any;
-    expect(res.statusCode).toBe(400);
+    expect(res.statusCode).toBe(401);
     expect(res.headers['Access-Control-Allow-Origin']).toBe(ORIGIN);
   });
 
   it('lists submissions returns items', async () => {
     queryByPK.mockResolvedValueOnce([{ consumed: false }, { consumed: true }]);
-    const res = (await handler(makeEvent('GET', '/forms/submissions', undefined, { agencyEmail: 'a@test.com' }))) as any;
+    const res = (await handler(makeEvent('GET', '/forms/submissions', undefined, {}))) as any;
     expect(res.statusCode).toBe(200);
     const body = JSON.parse(res.body || '{}');
     expect(body.items).toHaveLength(1);
     expect(res.headers['Access-Control-Allow-Origin']).toBe(ORIGIN);
   });
 
-  it('consume requires params', async () => {
-    const res = (await handler(makeEvent('POST', '/forms/consume', { foo: 'bar' }))) as any;
-    expect(res.statusCode).toBe(400);
+  it('consume requires session', async () => {
+    const { requireAgencySession } = jest.requireMock('../common');
+    requireAgencySession.mockReturnValueOnce(null);
+    const res = (await handler(makeEvent('POST', '/forms/consume', { ids: ['f1'] }))) as any;
+    expect(res.statusCode).toBe(401);
     expect(res.headers['Access-Control-Allow-Origin']).toBe(ORIGIN);
   });
 
   it('consume marks items', async () => {
     getItem.mockResolvedValue({ id: 'f1' });
     putItem.mockResolvedValue({});
-    const res = (await handler(makeEvent('POST', '/forms/consume', { agencyEmail: 'a@test.com', ids: ['f1'] }))) as any;
+    const res = (await handler(makeEvent('POST', '/forms/consume', { ids: ['f1'] }))) as any;
     expect(res.statusCode).toBe(200);
     expect(res.headers['Access-Control-Allow-Origin']).toBe(ORIGIN);
   });

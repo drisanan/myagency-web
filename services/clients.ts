@@ -1,10 +1,33 @@
 import { getAgencyById } from '@/services/agencies';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.API_BASE_URL;
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.API_BASE_URL || '/api';
 
 function requireApiBase() {
   if (!API_BASE_URL) throw new Error('API_BASE_URL is not configured');
   return API_BASE_URL;
+}
+
+export class ClientApiError extends Error {
+  status: number;
+  code?: string;
+  fieldErrors?: Record<string, string>;
+  requestId?: string;
+
+  constructor(message: string, options: { status: number; code?: string; fieldErrors?: Record<string, string>; requestId?: string }) {
+    super(message);
+    this.name = 'ClientApiError';
+    this.status = options.status;
+    this.code = options.code;
+    this.fieldErrors = options.fieldErrors;
+    this.requestId = options.requestId;
+  }
+}
+
+function createRequestId() {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return `client-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
 // Standardized fetch wrapper ensuring credentials (cookies) are sent
@@ -14,8 +37,10 @@ async function apiFetch(path: string, init?: RequestInit) {
     throw new Error('fetch is not available');
   }
   
+  const requestId = createRequestId();
   const headers: Record<string, string> = { 
     'Content-Type': 'application/json', 
+    'x-client-request-id': requestId,
     ...(init?.headers as any) 
   };
   
@@ -38,9 +63,18 @@ async function apiFetch(path: string, init?: RequestInit) {
   
   if (!res.ok) {
     const text = await res.text();
-    throw new Error(`API ${path} failed: ${res.status} ${text}`);
+    let data: any = null;
+    try {
+      data = text ? JSON.parse(text) : null;
+    } catch {
+      data = null;
+    }
+    throw new ClientApiError(
+      data?.error || text || `API ${path} failed`,
+      { status: res.status, code: data?.code, fieldErrors: data?.fieldErrors, requestId },
+    );
   }
-  return res.json();
+  return res.json().catch(() => ({}));
 }
 
 export type Client = {
@@ -73,22 +107,28 @@ export async function listClientsByAgency(agencyId: string) {
 }
 
 export async function upsertClient(input: any) {
-  // FIX: Detect Update (PUT) vs Create (POST)
   if (input.id) {
-    console.log('[upsertClient] Updating existing client', input.id);
-    const data = await apiFetch(`/clients/${input.id}`, { 
-      method: 'PUT', 
-      body: JSON.stringify(input) 
-    });
-    return data?.client;
-  } else {
-    console.log('[upsertClient] Creating new client');
-    const data = await apiFetch('/clients', { 
-      method: 'POST', 
-      body: JSON.stringify(input) 
-    });
-    return data?.client;
+    return updateClient(input.id, input);
   }
+  return createClient(input);
+}
+
+export async function createClient(input: any) {
+  console.log('[clients] Creating new client');
+  const data = await apiFetch('/clients', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+  return data?.client;
+}
+
+export async function updateClient(id: string, input: any) {
+  console.log('[clients] Updating existing client', id);
+  const data = await apiFetch(`/clients/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(input),
+  });
+  return data?.client;
 }
 
 export async function getClient(id: string) {

@@ -22,7 +22,7 @@ import {
 import { IoChevronDownOutline, IoPaperPlaneOutline, IoHandLeftOutline, IoTrendingUpOutline, IoPeopleOutline } from 'react-icons/io5';
 import { FaGoogle } from 'react-icons/fa';
 import { useParams, useRouter } from 'next/navigation';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { getClient } from '@/services/clients';
 import { NotesPanel } from '@/features/notes/NotesPanel';
 import { TasksPanel } from '@/features/tasks/TasksPanel';
@@ -37,6 +37,7 @@ import { useSearchParams } from 'next/navigation';
 import { useSession } from '@/features/auth/session';
 import { fetchEmailMetrics } from '@/services/emailTracking';
 import { MetricCard } from '@/app/(app)/dashboard/MetricCard';
+import { issueUpdateForm, listUpdateForms, markUpdateFormsReviewed } from '@/services/updateForms';
 
 type RecentSend = {
   recipientEmail: string;
@@ -44,6 +45,33 @@ type RecentSend = {
   university?: string;
   subject?: string;
   sentAt: number;
+};
+
+type RecentOpen = {
+  recipientEmail: string;
+  university?: string;
+  openedAt: number;
+};
+
+type RecentClick = {
+  recipientEmail: string;
+  destination: string;
+  linkType?: string;
+  clickedAt: number;
+};
+
+type UpdateSubmission = {
+  id: string;
+  submittedAt: number;
+  reviewedAt?: number;
+  reviewedBy?: string;
+  size?: Record<string, string>;
+  speed?: Record<string, string>;
+  academics?: Record<string, string>;
+  upcomingEvents?: Array<{ name?: string; date?: string; location?: string }>;
+  highlightVideo?: string;
+  schoolInterests?: string[];
+  notes?: string;
 };
 
 function EmailMetricsSection({ clientId }: { clientId: string }) {
@@ -54,10 +82,7 @@ function EmailMetricsSection({ clientId }: { clientId: string }) {
     staleTime: 5 * 60 * 1000,
   });
 
-  const stats = data?.stats || { sentCount: 0, clickCount: 0, uniqueClickers: 0 };
-  const clickRate = stats.sentCount > 0 
-    ? Math.round((stats.clickCount / stats.sentCount) * 100) 
-    : 0;
+  const stats = data?.stats || { sentCount: 0, openCount: 0, clickCount: 0, uniqueClickers: 0 };
 
   if (isLoading) {
     return (
@@ -85,6 +110,19 @@ function EmailMetricsSection({ clientId }: { clientId: string }) {
         }
       />
       <MetricCard
+        title="Email Opens"
+        value={stats.openCount || 0}
+        icon={<IoTrendingUpOutline size={20} />}
+        footer={
+          <>
+            <IoTrendingUpOutline color="#CCFF00" size={18} />
+            <Typography variant="body2" sx={{ color: '#FFFFFF60' }}>
+              Last 30 days
+            </Typography>
+          </>
+        }
+      />
+      <MetricCard
         title="Link Clicks"
         value={stats.clickCount}
         icon={<IoHandLeftOutline size={20} />}
@@ -92,19 +130,9 @@ function EmailMetricsSection({ clientId }: { clientId: string }) {
           <>
             <IoTrendingUpOutline color="#CCFF00" size={18} />
             <Typography variant="body2" sx={{ color: '#FFFFFF60' }}>
-              Coach engagement
+              Last 30 days
             </Typography>
           </>
-        }
-      />
-      <MetricCard
-        title="Click Rate"
-        value={`${clickRate}%`}
-        icon={<IoTrendingUpOutline size={20} />}
-        footer={
-          <Typography variant="body2" sx={{ color: '#FFFFFF60' }}>
-            {stats.clickCount} / {stats.sentCount} emails
-          </Typography>
         }
       />
       <MetricCard
@@ -118,6 +146,135 @@ function EmailMetricsSection({ clientId }: { clientId: string }) {
         }
       />
     </Box>
+  );
+}
+
+function ClientUpdateFormsSection({ clientId }: { clientId: string }) {
+  const queryClient = useQueryClient();
+  const [inviteUrl, setInviteUrl] = React.useState('');
+  const [issuing, setIssuing] = React.useState(false);
+  const [copied, setCopied] = React.useState(false);
+  const submissionsQuery = useQuery({
+    queryKey: ['client-update-forms', clientId],
+    queryFn: () => listUpdateForms(clientId),
+    enabled: Boolean(clientId),
+    staleTime: 30_000,
+  });
+
+  const reviewMutation = useMutation({
+    mutationFn: (ids: string[]) => markUpdateFormsReviewed(ids),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['client-update-forms', clientId] });
+    },
+  });
+
+  async function handleIssue() {
+    try {
+      setIssuing(true);
+      const data = await issueUpdateForm(clientId);
+      setInviteUrl(data.url);
+    } finally {
+      setIssuing(false);
+    }
+  }
+
+  async function handleCopy() {
+    if (!inviteUrl) return;
+    await navigator.clipboard.writeText(inviteUrl);
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 1500);
+  }
+
+  const submissions = (submissionsQuery.data || []) as UpdateSubmission[];
+
+  return (
+    <Stack spacing={2} sx={{ mt: 2 }}>
+      <Stack direction={{ xs: 'column', md: 'row' }} spacing={1} justifyContent="space-between" alignItems={{ xs: 'stretch', md: 'center' }}>
+        <Typography variant="subtitle1">Athlete Update Forms</Typography>
+        <Stack direction="row" spacing={1}>
+          <Button variant="outlined" onClick={handleIssue} disabled={issuing}>
+            {issuing ? 'Generating…' : 'Generate Update Link'}
+          </Button>
+          {inviteUrl && (
+            <Button variant="text" onClick={handleCopy}>
+              {copied ? 'Copied' : 'Copy Link'}
+            </Button>
+          )}
+        </Stack>
+      </Stack>
+
+      {inviteUrl && (
+        <Typography variant="body2" color="text.secondary" sx={{ wordBreak: 'break-all' }}>
+          {inviteUrl}
+        </Typography>
+      )}
+
+      {!submissionsQuery.isLoading && submissions.length === 0 && (
+        <Typography variant="body2" color="text.secondary">
+          No athlete update submissions yet.
+        </Typography>
+      )}
+
+      {submissions.map((submission) => (
+        <Card key={submission.id} variant="outlined">
+          <CardContent>
+            <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" spacing={1} sx={{ mb: 1.5 }}>
+              <Box>
+                <Typography variant="subtitle2">
+                  Submitted {new Date(submission.submittedAt).toLocaleString()}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  {submission.reviewedAt
+                    ? `Reviewed by ${submission.reviewedBy || 'agent'} on ${new Date(submission.reviewedAt).toLocaleString()}`
+                    : 'Pending review'}
+                </Typography>
+              </Box>
+              {!submission.reviewedAt && (
+                <Button
+                  variant="contained"
+                  onClick={() => reviewMutation.mutate([submission.id])}
+                  disabled={reviewMutation.isPending}
+                >
+                  Mark Reviewed
+                </Button>
+              )}
+            </Stack>
+
+            <Stack spacing={1}>
+              {submission.size && Object.keys(submission.size).length > 0 && (
+                <Typography variant="body2">Size: {Object.entries(submission.size).map(([key, value]) => `${key}: ${value}`).join(' • ')}</Typography>
+              )}
+              {submission.speed && Object.keys(submission.speed).length > 0 && (
+                <Typography variant="body2">Speed: {Object.entries(submission.speed).map(([key, value]) => `${key}: ${value}`).join(' • ')}</Typography>
+              )}
+              {submission.academics && Object.keys(submission.academics).length > 0 && (
+                <Typography variant="body2">Academics: {Object.entries(submission.academics).map(([key, value]) => `${key}: ${value}`).join(' • ')}</Typography>
+              )}
+              {(submission.upcomingEvents || []).length > 0 && (
+                <Typography variant="body2">
+                  Events: {(submission.upcomingEvents || []).map((event) => [event.name, event.date, event.location].filter(Boolean).join(' • ')).join(' | ')}
+                </Typography>
+              )}
+              {submission.highlightVideo && (
+                <Typography variant="body2" sx={{ wordBreak: 'break-all' }}>
+                  Highlight Video: {submission.highlightVideo}
+                </Typography>
+              )}
+              {(submission.schoolInterests || []).length > 0 && (
+                <Typography variant="body2">
+                  School Interests: {(submission.schoolInterests || []).join(', ')}
+                </Typography>
+              )}
+              {submission.notes && (
+                <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
+                  Notes: {submission.notes}
+                </Typography>
+              )}
+            </Stack>
+          </CardContent>
+        </Card>
+      ))}
+    </Stack>
   );
 }
 
@@ -177,11 +334,39 @@ export default function ClientProfilePage() {
 
   const { data: metricsData } = useQuery({
     queryKey: ['clientEmails', client?.id],
-    queryFn: () => fetchEmailMetrics({ clientId: client!.id }),
+    queryFn: () => fetchEmailMetrics({ clientId: client!.id, days: 30 }),
     enabled: Boolean(client?.id),
     staleTime: 2 * 60 * 1000,
   });
   const recentSends: RecentSend[] = metricsData?.recentSends || [];
+  const recentOpens: RecentOpen[] = metricsData?.recentOpens || [];
+  const recentClicks: RecentClick[] = metricsData?.recentClicks || [];
+  const engagementTimeline = React.useMemo(() => {
+    const sends = recentSends.map((entry) => ({
+      type: 'sent' as const,
+      timestamp: entry.sentAt,
+      title: entry.subject || '(No subject)',
+      subtitle: entry.recipientName || entry.recipientEmail,
+      detail: entry.university || entry.recipientEmail,
+    }));
+    const opens = recentOpens.map((entry) => ({
+      type: 'open' as const,
+      timestamp: entry.openedAt,
+      title: 'Email opened',
+      subtitle: entry.recipientEmail,
+      detail: entry.university || 'Tracking pixel viewed',
+    }));
+    const clicks = recentClicks.map((entry) => ({
+      type: 'click' as const,
+      timestamp: entry.clickedAt,
+      title: 'Link clicked',
+      subtitle: entry.recipientEmail,
+      detail: entry.destination,
+    }));
+    return [...sends, ...opens, ...clicks]
+      .sort((a, b) => b.timestamp - a.timestamp)
+      .slice(0, 30);
+  }, [recentClicks, recentOpens, recentSends]);
 
   React.useEffect(() => {
     const t = searchParams?.get('tab');
@@ -297,6 +482,7 @@ export default function ClientProfilePage() {
         <Tab label="Meetings" data-testid="meetings-tab" />
         <Tab label="Activity" data-testid="activity-tab" />
         <Tab label="Interests" />
+        <Tab label="Updates" />
         <Tab label="Account" data-testid="account-tab" />
       </Tabs>
 
@@ -304,41 +490,47 @@ export default function ClientProfilePage() {
         <Card variant="outlined" sx={{ borderRadius: 2 }}>
           <CardContent sx={{ p: 0 }}>
             <Box sx={{ px: 2, pt: 2, pb: 1, display: 'flex', alignItems: 'center', gap: 2 }}>
-              <Chip label="Sent" color="primary" variant="outlined" />
+              <Chip label="Last 30 Days" color="primary" variant="outlined" />
               <Typography variant="body2" color="text.secondary">
-                {recentSends.length} sent
+                {engagementTimeline.length} engagement events
               </Typography>
             </Box>
             <Divider />
             <List disablePadding>
-              {recentSends.map((s, idx) => {
-                const key = `${s.recipientEmail}-${s.sentAt}-${idx}`;
+              {engagementTimeline.map((item, idx) => {
+                const key = `${item.type}-${item.subtitle}-${item.timestamp}-${idx}`;
                 return (
                   <React.Fragment key={key}>
                     <ListItem
                       secondaryAction={
                         <Typography variant="body2" color="text.secondary">
-                          {new Date(s.sentAt).toLocaleDateString()} {new Date(s.sentAt).toLocaleTimeString()}
+                          {new Date(item.timestamp).toLocaleDateString()} {new Date(item.timestamp).toLocaleTimeString()}
                         </Typography>
                       }
                     >
                       <ListItemText
                         primary={
                           <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+                            <Chip
+                              size="small"
+                              label={item.type === 'sent' ? 'Sent' : item.type === 'open' ? 'Opened' : 'Clicked'}
+                              color={item.type === 'sent' ? 'primary' : item.type === 'open' ? 'success' : 'default'}
+                              variant="outlined"
+                            />
                             <Typography variant="subtitle2">
-                              {s.recipientName || s.recipientEmail}
+                              {item.subtitle}
                             </Typography>
-                            {s.university && (
-                              <Typography variant="body2" color="text.secondary">
-                                • {s.university}
-                              </Typography>
-                            )}
                           </Stack>
                         }
                         secondary={
-                          <Typography variant="body2" color="text.secondary" noWrap>
-                            {s.subject || '(No subject)'}
-                          </Typography>
+                          <>
+                            <Typography variant="body2" color="text.primary" noWrap>
+                              {item.title}
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary" noWrap>
+                              {item.detail}
+                            </Typography>
+                          </>
                         }
                       />
                     </ListItem>
@@ -346,10 +538,10 @@ export default function ClientProfilePage() {
                   </React.Fragment>
                 );
               })}
-              {recentSends.length === 0 && (
+              {engagementTimeline.length === 0 && (
                 <Box sx={{ px: 3, py: 4 }}>
                   <Typography variant="body2" color="text.secondary">
-                    No sent emails yet.
+                    No email engagement recorded in the last 30 days.
                   </Typography>
                 </Box>
               )}
@@ -423,6 +615,9 @@ export default function ClientProfilePage() {
         </Card>
       )}
       {tab === 9 && (
+        <ClientUpdateFormsSection clientId={client.id} />
+      )}
+      {tab === 10 && (
         <Box sx={{ mt: 2 }}>
           <AccountStatusPanel client={client as any} />
         </Box>

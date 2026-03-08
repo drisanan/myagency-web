@@ -6,6 +6,7 @@ import { GmailTokenRecord } from '../lib/models';
 import { google } from 'googleapis';
 import { response } from './cors';
 import { withSentry } from '../lib/sentry';
+import { recordEmailSendsInternal } from '../lib/emailMetrics';
 
 const gmailHandler: Handler = async (event: APIGatewayProxyEventV2) => {
   const origin = event.headers?.origin || event.headers?.Origin || event.headers?.['origin'] || '';
@@ -75,9 +76,11 @@ const gmailHandler: Handler = async (event: APIGatewayProxyEventV2) => {
     if (action === 'send') {
       if (!event.body) return response(400, { ok: false, error: 'Missing body' }, origin);
       const payload = JSON.parse(event.body);
-      const { clientId, agentId, recipients, subject, html, cc } = payload || {};
+      const { clientId, agentId, recipients, to, subject, html, cc } = payload || {};
+      const resolvedRecipients = normalizeRecipientEmails(Array.isArray(to) && to.length ? to : recipients);
+      const trackingId = payload?.trackingId || `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 
-      if ((!clientId && !agentId) || !Array.isArray(recipients) || !recipients.length || !subject || !html) {
+      if ((!clientId && !agentId) || !resolvedRecipients.length || !subject || !html) {
         return response(400, { ok: false, error: 'clientId or agentId, recipients[], subject, html required' }, origin);
       }
 
@@ -125,14 +128,21 @@ const gmailHandler: Handler = async (event: APIGatewayProxyEventV2) => {
 
       const gmail = google.gmail({ version: 'v1', auth: oauth2Client });
       const results: Array<{ to: string; ok: boolean; error?: string }> = [];
-      for (const to of recipients) {
+      for (const to of resolvedRecipients) {
         try {
           if (process.env.MOCK_GMAIL === 'true' || !tokens?.access_token) {
             console.log('Mocking send', { to });
             results.push({ to, ok: true });
             continue;
           }
-          const raw = buildMime(subject, html, to, Array.isArray(cc) ? cc : undefined);
+          const trackedHtml = applyTracking(html, {
+            agencyId: session.agencyId,
+            clientId,
+            agencyEmail: session.agencyEmail || session.agentEmail || '',
+            recipientEmail: to,
+            trackingId,
+          });
+          const raw = buildMime(subject, trackedHtml, to, normalizeRecipientEmails(cc));
           await gmail.users.messages.send({
             userId: 'me',
             requestBody: { raw },
@@ -144,8 +154,19 @@ const gmailHandler: Handler = async (event: APIGatewayProxyEventV2) => {
         }
       }
 
-      const sent = results.filter((r) => r.ok).length;
-      return response(200, { ok: true, sent, results }, origin);
+      const sentRecipients = results.filter((r) => r.ok).map((r) => ({ email: r.to }));
+      if (clientId && sentRecipients.length) {
+        await recordEmailSendsInternal({
+          agencyId: session.agencyId,
+          clientId,
+          clientEmail: '',
+          recipients: sentRecipients,
+          subject,
+        });
+      }
+
+      const sent = sentRecipients.length;
+      return response(200, { ok: true, sent, results, trackingId }, origin);
     }
 
     // --- D. Create Drafts ---
@@ -153,9 +174,11 @@ const gmailHandler: Handler = async (event: APIGatewayProxyEventV2) => {
     if (action === 'create-draft') {
       if (!event.body) return response(400, { ok: false, error: 'Missing body' }, origin);
       const payload = JSON.parse(event.body);
-      const { clientId, recipients, subject, html, cc } = payload || {};
+      const { clientId, recipients, to, subject, html, cc } = payload || {};
+      const resolvedRecipients = normalizeRecipientEmails(Array.isArray(to) && to.length ? to : recipients);
+      const trackingId = payload?.trackingId || `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 
-      if (!clientId || !Array.isArray(recipients) || !recipients.length || !subject || !html) {
+      if (!clientId || !resolvedRecipients.length || !subject || !html) {
         return response(400, { ok: false, error: 'clientId, recipients[], subject, html required' }, origin);
       }
 
@@ -209,7 +232,7 @@ const gmailHandler: Handler = async (event: APIGatewayProxyEventV2) => {
 
       // 4. Create Drafts
       const results: Array<{ to: string; ok: boolean; error?: string }> = [];
-      for (const to of recipients) {
+      for (const to of resolvedRecipients) {
         try {
           // Skip actual call if mocking or missing access token
           if (process.env.MOCK_GMAIL === 'true' || !tokens?.access_token) {
@@ -218,7 +241,14 @@ const gmailHandler: Handler = async (event: APIGatewayProxyEventV2) => {
             continue;
           }
 
-          const raw = buildMime(subject, html, to, Array.isArray(cc) ? cc : undefined);
+          const trackedHtml = applyTracking(html, {
+            agencyId: session.agencyId,
+            clientId,
+            agencyEmail: session.agencyEmail || session.agentEmail || '',
+            recipientEmail: to,
+            trackingId,
+          });
+          const raw = buildMime(subject, trackedHtml, to, normalizeRecipientEmails(cc));
           await gmail.users.drafts.create({
             userId: 'me',
             requestBody: { message: { raw } },
@@ -231,7 +261,8 @@ const gmailHandler: Handler = async (event: APIGatewayProxyEventV2) => {
       }
 
       const created = results.filter((r) => r.ok).length;
-      return response(200, { ok: true, created, results }, origin);
+      const openUrl = `https://mail.google.com/mail/u/0/#search/${encodeURIComponent(`in:drafts subject:\"${subject}\"`)}`;
+      return response(200, { ok: true, created, results, openUrl, trackingId }, origin);
     }
   }
 
@@ -253,6 +284,90 @@ function buildMime(subject: string, html: string, to: string, cc?: string[]) {
   lines.push(Buffer.from(html).toString('base64'));
   const message = lines.join('\r\n');
   return Buffer.from(message).toString('base64url');
+}
+
+function stripMailto(input: string): string {
+  let output = input.trim();
+  if (output.toLowerCase().startsWith('mailto:')) {
+    output = output.slice(7);
+  }
+  const queryIndex = output.indexOf('?');
+  if (queryIndex >= 0) output = output.slice(0, queryIndex);
+  return output.trim();
+}
+
+function extractAngleBracketEmails(input: string): string[] {
+  const results: string[] = [];
+  const regex = /<([^<>\s@]+@[^<>\s@]+\.[^<>\s@]+)>/g;
+  let match: RegExpExecArray | null;
+  while ((match = regex.exec(input)) !== null) {
+    results.push(match[1]);
+  }
+  return results;
+}
+
+function splitEmails(input: string): string[] {
+  return input.split(/[,\s;]+/g).map((part) => part.trim()).filter(Boolean);
+}
+
+function isValidEmail(input: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input) && !/[\r\n]/.test(input);
+}
+
+function normalizeRecipientEmails(input: unknown): string[] {
+  if (!Array.isArray(input)) return [];
+  const candidates: string[] = [];
+
+  for (const raw of input) {
+    if (typeof raw !== 'string') continue;
+    const angled = extractAngleBracketEmails(raw);
+    if (angled.length) {
+      candidates.push(...angled);
+      continue;
+    }
+    splitEmails(raw).forEach((token) => {
+      const cleaned = stripMailto(token.replace(/^["'()]+|["'()]+$/g, ''));
+      if (cleaned) candidates.push(cleaned);
+    });
+  }
+
+  return Array.from(new Set(candidates.filter(isValidEmail)));
+}
+
+function resolveApiBase() {
+  const base = process.env.API_BASE_URL || 'https://api.myrecruiteragency.com';
+  return base.startsWith('http') ? base : `https://${base}`;
+}
+
+function createTrackingUrl(destination: string, params: { agencyId: string; clientId?: string; recipientEmail: string }) {
+  const url = new URL(`${resolveApiBase()}/r`);
+  url.searchParams.set('d', destination);
+  url.searchParams.set('g', params.agencyId);
+  if (params.clientId) url.searchParams.set('c', params.clientId);
+  url.searchParams.set('r', params.recipientEmail);
+  return url.toString();
+}
+
+function createOpenPixelUrl(params: { agencyId: string; clientId?: string; recipientEmail: string; agencyEmail?: string; trackingId: string }) {
+  const url = new URL(`${resolveApiBase()}/email-metrics/open`);
+  url.searchParams.set('agencyId', params.agencyId);
+  if (params.clientId) url.searchParams.set('clientId', params.clientId);
+  if (params.agencyEmail) url.searchParams.set('agencyEmail', params.agencyEmail);
+  url.searchParams.set('recipientEmail', params.recipientEmail);
+  url.searchParams.set('tid', params.trackingId);
+  return url.toString();
+}
+
+function applyTracking(
+  html: string,
+  params: { agencyId: string; clientId?: string; recipientEmail: string; agencyEmail?: string; trackingId: string },
+) {
+  const pixel = `<img src="${createOpenPixelUrl(params)}" alt="" width="1" height="1" style="display:none;" />`;
+  let trackedHtml = /<\/body>/i.test(html) ? html.replace(/<\/body>/i, `${pixel}</body>`) : `${html}${pixel}`;
+  trackedHtml = trackedHtml.replace(/href\s*=\s*"(https?:[^"\s]+)"/gi, (_match, url) => {
+    return `href="${createTrackingUrl(url, params)}"`;
+  });
+  return trackedHtml;
 }
 
 export const handler = withSentry(gmailHandler);

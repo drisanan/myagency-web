@@ -25,6 +25,7 @@ jest.mock('../../lib/dynamo', () => {
     deleteItem: jest.fn(),
     queryByPK: jest.fn(),
     queryByPKPaginated: jest.fn(),
+    queryGSI1: jest.fn(),
     queryGSI3: jest.fn(),
   };
 });
@@ -40,7 +41,7 @@ jest.mock('../../lib/audit', () => ({
 }));
 
 import { handler } from '../clients';
-const { queryByPK, putItem, getItem } = jest.requireMock('../../lib/dynamo');
+const { queryByPK, putItem, getItem, queryGSI1, queryGSI3 } = jest.requireMock('../../lib/dynamo');
 
 function makeEvent(method: string, body?: any, params?: Record<string, string>) {
   return {
@@ -73,12 +74,51 @@ describe('clients handler', () => {
     getItem.mockResolvedValue({ subscriptionLevel: 'unlimited' });
     putItem.mockResolvedValue({});
     queryByPK.mockResolvedValue([]);
+    queryGSI1.mockResolvedValue([]);
+    queryGSI3.mockResolvedValue([]);
     const payload = { email: 'x@test.com', firstName: 'X', lastName: 'Y', sport: 'Football' };
     const res = (await handler(makeEvent('POST', payload))) as any;
     expect(res.statusCode).toBe(200);
     const body = parseBody(res);
     expect(body.client.email).toBe('x@test.com');
     expect(putItem).toHaveBeenCalled();
+  });
+
+  it('persists canonical media fields on create', async () => {
+    getItem.mockResolvedValue({ subscriptionLevel: 'unlimited' });
+    putItem.mockResolvedValue({});
+    queryByPK.mockResolvedValue([]);
+    queryGSI1.mockResolvedValue([]);
+    queryGSI3.mockResolvedValue([]);
+    const payload = {
+      email: 'ava@test.com',
+      firstName: 'Ava',
+      lastName: 'Smith',
+      sport: 'Football',
+      profileImageUrl: 'https://example.com/profile.jpg',
+      highlightVideos: [{ url: 'https://example.com/highlight.mp4', title: 'Senior Reel' }],
+      galleryImages: ['https://example.com/gallery-1.jpg'],
+      radar: { preferredPosition: 'WR' },
+    };
+    const res = (await handler(makeEvent('POST', payload))) as any;
+    const body = parseBody(res);
+    expect(res.statusCode).toBe(200);
+    expect(body.client.photoUrl).toBe('https://example.com/profile.jpg');
+    expect(body.client.profileImageUrl).toBe('https://example.com/profile.jpg');
+    expect(body.client.highlightVideos).toEqual([{ url: 'https://example.com/highlight.mp4', title: 'Senior Reel' }]);
+    expect(body.client.radar.profileImage).toBe('https://example.com/profile.jpg');
+  });
+
+  it('rejects duplicate client email within the agency', async () => {
+    getItem.mockResolvedValue({ subscriptionLevel: 'unlimited' });
+    queryByPK.mockResolvedValue([]);
+    queryGSI1.mockResolvedValue([{ id: 'existing-client', agencyId: 'agency-001' }]);
+    const payload = { email: 'taken@test.com', firstName: 'X', lastName: 'Y', sport: 'Football' };
+    const res = (await handler(makeEvent('POST', payload))) as any;
+    const body = parseBody(res);
+    expect(res.statusCode).toBe(400);
+    expect(body.code).toBe('DUPLICATE_EMAIL');
+    expect(body.fieldErrors.email).toMatch(/already/i);
   });
 
   it('gets a client by id', async () => {

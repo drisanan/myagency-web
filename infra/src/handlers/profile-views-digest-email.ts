@@ -1,7 +1,7 @@
 import { APIGatewayProxyEventV2 } from 'aws-lambda';
 import { Handler, requireSession } from './common';
 import { ClientRecord, ProfileViewRecord } from '../lib/models';
-import { getItem, queryByPK, scanBySKPrefix } from '../lib/dynamo';
+import { getItem, listAgencyIds, queryByPK } from '../lib/dynamo';
 import { response } from './cors';
 import { sendGmailMessage } from '../lib/gmailSend';
 import { logActivity } from '../lib/activity';
@@ -45,7 +45,9 @@ async function listViewsForAgency(agencyId?: string) {
   if (agencyId) {
     return queryByPK(`AGENCY#${agencyId}`, 'PROFILE_VIEW#') as Promise<ProfileViewRecord[]>;
   }
-  return scanBySKPrefix('PROFILE_VIEW#') as Promise<ProfileViewRecord[]>;
+  const agencyIds = await listAgencyIds();
+  const items = await Promise.all(agencyIds.map((id) => queryByPK(`AGENCY#${id}`, 'PROFILE_VIEW#')));
+  return items.flat() as ProfileViewRecord[];
 }
 
 const digestEmailHandler: Handler = async (event: APIGatewayProxyEventV2) => {

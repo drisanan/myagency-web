@@ -10,15 +10,30 @@ import { getStats, todayISO } from '../store';
 const agencyEmail = 'agency-metrics@test.dev';
 
 describe('metrics routes', () => {
+  const originalFetch = global.fetch;
+
+  beforeEach(() => {
+    process.env.API_BASE_URL = 'https://api.example.test';
+  });
+
+  afterEach(() => {
+    global.fetch = originalFetch;
+  });
+
   test('open pixel records opens', async () => {
-    const date = todayISO();
+    global.fetch = jest.fn().mockResolvedValue(
+      new Response(Buffer.from('gif'), {
+        status: 200,
+        headers: { 'Content-Type': 'image/gif' },
+      }),
+    ) as any;
     const req = new NextRequest(`http://localhost/api/metrics/open?tid=abc&agency=${agencyEmail}`);
     const res = await openHandler(req);
     expect(res.status).toBe(200);
-
-    const stats = getStats(agencyEmail, 1);
-    expect(stats.totals.opens).toBeGreaterThanOrEqual(1);
-    expect(stats.days[0].date).toBe(date);
+    expect(global.fetch).toHaveBeenCalledWith(
+      expect.stringContaining('https://api.example.test/email-metrics/open?tid=abc&agency=agency-metrics%40test.dev'),
+      expect.objectContaining({ cache: 'no-store' }),
+    );
   });
 
   test('click redirect records clicks and respects url', async () => {
@@ -28,9 +43,8 @@ describe('metrics routes', () => {
     );
     const res = await clickHandler(req);
     expect(res.status).toBe(302);
-    expect(res.headers.get('location')).toBe(target);
-    const stats = getStats(agencyEmail, 1);
-    expect(stats.days[0].clicks).toBeGreaterThanOrEqual(1);
+    expect(res.headers.get('location')).toContain('https://api.example.test/r?');
+    expect(res.headers.get('location')).toContain(`d=${encodeURIComponent(target)}`);
   });
 
   test('seed route populates sends/opens/clicks', async () => {

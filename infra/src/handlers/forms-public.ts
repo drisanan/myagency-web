@@ -1,11 +1,41 @@
 import { APIGatewayProxyEventV2 } from 'aws-lambda';
 import { response } from './cors';
 import { newId } from '../lib/ids';
-import { putItem, getItem, deleteItem, queryGSI1, queryByPK } from '../lib/dynamo';
+import { putItem, getItem, deleteItem, queryGSI1, queryGSI3, queryByPK } from '../lib/dynamo';
 import { verify, sign } from '../lib/formsToken';
-import { requireSession } from './common';
+import { requireAgencySession } from './common';
 import { withSentry } from '../lib/sentry';
 import { hashAccessCode } from '../lib/auth';
+import { ClientPayloadError, normalizeClientPayload } from '../lib/clientPayload';
+
+type IntakeTokenPayload = {
+  agencyEmail: string;
+  agencyId?: string;
+  type?: 'intake';
+  iat?: number;
+  exp?: number;
+};
+
+async function resolveAgency(payload: IntakeTokenPayload) {
+  if (payload.agencyId) {
+    const agenciesByEmail = await queryGSI1(`EMAIL#${payload.agencyEmail}`, 'AGENCY#');
+    const byId = (agenciesByEmail || []).find((agency: any) => agency.id === payload.agencyId);
+    if (byId) return byId;
+  }
+  const agencies = await queryGSI1(`EMAIL#${payload.agencyEmail}`, 'AGENCY#');
+  return agencies?.[0];
+}
+
+async function findAgencyClientByEmail(agencyId: string, email: string) {
+  const matches = await queryGSI1(`EMAIL#${email}`, 'CLIENT#');
+  return (matches || []).find((client: any) => client.agencyId === agencyId && !client.deletedAt) || null;
+}
+
+async function isUsernameTaken(agencyId: string, username?: string, currentClientId?: string) {
+  if (!username) return false;
+  const matches = await queryGSI3(`USERNAME#${username}`);
+  return (matches || []).some((client: any) => client.agencyId === agencyId && client.id !== currentClientId && !client.deletedAt);
+}
 
 const formsPublicHandler = async (event: APIGatewayProxyEventV2) => {
   const origin = event.headers?.origin || event.headers?.Origin || event.headers?.['origin'] || '';
@@ -25,13 +55,12 @@ const formsPublicHandler = async (event: APIGatewayProxyEventV2) => {
     const token = event.queryStringParameters?.token;
     if (!token) return response(400, { ok: false, error: 'Missing token' }, origin);
     
-    const payload = verify<{ agencyEmail: string }>(token);
-    if (!payload?.agencyEmail) {
+    const payload = verify<IntakeTokenPayload>(token);
+    if (!payload?.agencyEmail || (payload.type && payload.type !== 'intake')) {
       return response(400, { ok: false, error: 'Invalid or expired token' }, origin);
     }
 
-    const agencies = await queryGSI1(`EMAIL#${payload.agencyEmail}`, 'AGENCY#');
-    const agency = agencies?.[0];
+    const agency = await resolveAgency(payload);
     
     if (!agency) return response(404, { ok: false, error: 'Agency not found' }, origin);
 
@@ -48,57 +77,98 @@ const formsPublicHandler = async (event: APIGatewayProxyEventV2) => {
   // B. Athlete submitting the form
   if (method === 'POST' && path.endsWith('/forms/submit')) {
     if (!event.body) return response(400, { ok: false, error: 'Missing body' }, origin);
-    const body = JSON.parse(event.body);
+    let body: Record<string, any>;
+    try {
+      body = JSON.parse(event.body);
+    } catch {
+      return response(400, { ok: false, error: 'Invalid JSON body' }, origin);
+    }
     const { token, form } = body;
 
     if (!token || !form) return response(400, { ok: false, error: 'Missing token or form data' }, origin);
 
-    const payload = verify<{ agencyEmail: string }>(token);
-    if (!payload?.agencyEmail) return response(400, { ok: false, error: 'Invalid or expired token' }, origin);
+    const payload = verify<IntakeTokenPayload>(token);
+    if (!payload?.agencyEmail || (payload.type && payload.type !== 'intake')) {
+      return response(400, { ok: false, error: 'Invalid or expired token' }, origin);
+    }
 
-    const agencies = await queryGSI1(`EMAIL#${payload.agencyEmail}`, 'AGENCY#');
-    const agency = agencies?.[0];
+    const agency = await resolveAgency(payload);
     if (!agency) return response(404, { ok: false, error: 'Agency not found' }, origin);
 
     const formId = newId('form');
     const now = Date.now();
     const nowIso = new Date().toISOString();
 
-    // Create a pending CLIENT record so Gmail tokens have a real client ID
+    let normalized;
+    try {
+      normalized = normalizeClientPayload(form, {
+        requireRequiredFields: true,
+        defaultAccountStatus: 'pending',
+      });
+    } catch (error) {
+      if (error instanceof ClientPayloadError) {
+        return response(400, {
+          ok: false,
+          error: error.message,
+          code: 'INVALID_CLIENT_PAYLOAD',
+          fieldErrors: error.fieldErrors,
+        }, origin);
+      }
+      throw error;
+    }
+
+    const existingClient = await findAgencyClientByEmail(agency.id, normalized.email);
+    if (await isUsernameTaken(agency.id, normalized.username, existingClient?.id)) {
+      return response(400, {
+        ok: false,
+        error: 'Username is already taken.',
+        code: 'DUPLICATE_USERNAME',
+        fieldErrors: { username: 'Username is already taken.' },
+      }, origin);
+    }
+
+    // Create or refresh a pending CLIENT record so Gmail tokens have a real client ID
     let clientId: string | undefined;
-    if (form.email && form.firstName && form.lastName && form.sport) {
-      clientId = newId('client');
+    if (normalized.email && normalized.firstName && normalized.lastName && normalized.sport) {
+      clientId = existingClient?.id || newId('client');
 
       let accessCodeHash: string | undefined;
       if (form.accessCode) {
         accessCodeHash = await hashAccessCode(form.accessCode);
       }
 
-      const username = form.username?.toLowerCase().replace(/[^a-z0-9-]/g, '') || undefined;
-
       const clientRec: Record<string, any> = {
+        ...(existingClient || {}),
         PK: `AGENCY#${agency.id}`,
         SK: `CLIENT#${clientId}`,
-        GSI1PK: `EMAIL#${form.email}`,
+        GSI1PK: `EMAIL#${normalized.email}`,
         GSI1SK: `CLIENT#${clientId}`,
-        ...(username ? { GSI3PK: `USERNAME#${username}`, GSI3SK: `CLIENT#${clientId}` } : {}),
+        ...(normalized.username ? { GSI3PK: `USERNAME#${normalized.username}`, GSI3SK: `CLIENT#${clientId}` } : {}),
         id: clientId,
-        email: form.email,
-        firstName: form.firstName,
-        lastName: form.lastName,
-        sport: form.sport,
+        email: normalized.email,
+        firstName: normalized.firstName,
+        lastName: normalized.lastName,
+        sport: normalized.sport,
         agencyId: agency.id,
         agencyEmail: agency.email,
-        phone: form.phone || undefined,
-        username,
-        galleryImages: form.galleryImages || [],
-        radar: form.radar || {},
-        accessCodeHash,
-        authEnabled: Boolean(accessCodeHash),
+        phone: normalized.phone,
+        division: normalized.division,
+        username: normalized.username,
+        photoUrl: normalized.photoUrl,
+        profileImageUrl: normalized.profileImageUrl,
+        galleryImages: normalized.galleryImages,
+        highlightVideos: normalized.highlightVideos,
+        radar: normalized.radar,
+        ...(accessCodeHash ? { accessCodeHash, authEnabled: true } : {}),
         accountStatus: 'pending',
-        createdAt: nowIso,
+        createdAt: existingClient?.createdAt || nowIso,
         updatedAt: nowIso,
       };
+      if (!normalized.username) {
+        delete clientRec.username;
+        delete clientRec.GSI3PK;
+        delete clientRec.GSI3SK;
+      }
       await putItem(clientRec);
 
       // Remap Gmail tokens from temp ID to real client ID
@@ -131,7 +201,10 @@ const formsPublicHandler = async (event: APIGatewayProxyEventV2) => {
         consumed: false, 
         agencyEmail: agency.email,
         clientId,
-        data: form,
+        data: {
+          ...normalized,
+          accountStatus: 'pending',
+        },
     };
     
     await putItem(submission);
@@ -145,7 +218,7 @@ const formsPublicHandler = async (event: APIGatewayProxyEventV2) => {
 
   // Helper: Enforce session locally for these routes
   const ensureSession = () => {
-    const s = requireSession(event);
+    const s = requireAgencySession(event);
     if (!s) throw new Error('Unauthorized');
     return s;
   };
@@ -157,6 +230,8 @@ const formsPublicHandler = async (event: APIGatewayProxyEventV2) => {
       
       const payload = {
         agencyEmail: session.agencyEmail,
+        agencyId: session.agencyId,
+        type: 'intake' as const,
         iat: Date.now(),
         exp: Date.now() + (1000 * 60 * 60 * 24 * 30) // 30 days
       };

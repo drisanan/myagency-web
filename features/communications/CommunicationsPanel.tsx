@@ -132,6 +132,17 @@ export function CommunicationsPanel({ athleteId, coachEmail, defaultType, isAthl
     staleTime: 10000,
   });
 
+  const allMessagesQuery = useQuery({
+    queryKey: ['communications-all', athleteId, coachEmail],
+    queryFn: () => listCommunications({
+      ...(athleteId ? { clientId: athleteId } : {}),
+      ...(coachEmail ? { coachEmail } : {}),
+      limit: 200,
+    }),
+    enabled: Boolean(athleteId || coachEmail),
+    staleTime: 10000,
+  });
+
   const sendMutation = useMutation({
     mutationFn: sendCommunication,
     onSuccess: () => {
@@ -244,6 +255,7 @@ export function CommunicationsPanel({ athleteId, coachEmail, defaultType, isAthl
 
   const threads = threadsQuery.data || [];
   const messages = messagesQuery.data || [];
+  const allMessages = allMessagesQuery.data || [];
 
   return (
     <Box>
@@ -385,9 +397,8 @@ export function CommunicationsPanel({ athleteId, coachEmail, defaultType, isAthl
 
       {tab === 1 && (
         <Paper variant="outlined" sx={{ maxHeight: 500, overflow: 'auto' }}>
-          {/* All messages view - simplified */}
           <List>
-            {messages.map((msg) => (
+            {allMessages.map((msg) => (
               <React.Fragment key={msg.id}>
                 <ListItem>
                   <ListItemText
@@ -396,7 +407,7 @@ export function CommunicationsPanel({ athleteId, coachEmail, defaultType, isAthl
                       <>
                         {msg.fromEmail} → {msg.toEmail}
                         <br />
-                        {msg.body.slice(0, 100)}...
+                        {msg.body.slice(0, 100)}{msg.body.length > 100 ? '...' : ''}
                       </>
                     }
                   />
@@ -404,6 +415,11 @@ export function CommunicationsPanel({ athleteId, coachEmail, defaultType, isAthl
                 <Divider />
               </React.Fragment>
             ))}
+            {!allMessagesQuery.isLoading && allMessages.length === 0 && (
+              <ListItem>
+                <ListItemText primary="No messages yet." />
+              </ListItem>
+            )}
           </List>
         </Paper>
       )}

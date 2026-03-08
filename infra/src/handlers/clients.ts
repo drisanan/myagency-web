@@ -3,13 +3,91 @@ import { Handler, requireSession } from './common';
 import { newId } from '../lib/ids';
 import { ClientRecord, AgencyRecord, STARTER_USER_LIMIT, EmailDripRecord, DripEnrollmentRecord } from '../lib/models';
 import { hashAccessCode } from '../lib/auth';
-import { getItem, putItem, deleteItem, queryByPK, queryByPKPaginated, queryGSI3 } from '../lib/dynamo';
+import { getItem, putItem, deleteItem, queryByPK, queryByPKPaginated, queryGSI1, queryGSI3 } from '../lib/dynamo';
 import { response } from './cors';
 import { withSentry, captureMessage } from '../lib/sentry';
 import { logAuditEvent, extractAuditContext } from '../lib/audit';
+import { ClientPayloadError, normalizeClientPayload } from '../lib/clientPayload';
 
 function badRequest(origin: string, msg: string) {
   return response(400, { ok: false, error: msg }, origin);
+}
+
+function invalidClientPayload(origin: string, error: ClientPayloadError) {
+  return response(400, {
+    ok: false,
+    error: error.message,
+    code: 'INVALID_CLIENT_PAYLOAD',
+    fieldErrors: error.fieldErrors,
+  }, origin);
+}
+
+function parseJsonBody(event: APIGatewayProxyEventV2, origin: string) {
+  if (!event.body) return { ok: false as const, response: badRequest(origin, 'Missing body') };
+  try {
+    return { ok: true as const, value: JSON.parse(event.body) as Record<string, any> };
+  } catch {
+    return { ok: false as const, response: badRequest(origin, 'Invalid JSON body') };
+  }
+}
+
+async function ensureUniqueClientEmail(
+  origin: string,
+  agencyId: string,
+  email: string,
+  currentClientId?: string,
+) {
+  try {
+    const existing = await queryGSI1(`EMAIL#${email}`, 'CLIENT#');
+    const conflict = (existing || []).find((item: any) => item.agencyId === agencyId && item.id !== currentClientId && !item.deletedAt);
+    if (conflict) {
+      return response(400, {
+        ok: false,
+        error: 'Email is already assigned to another athlete in this agency.',
+        code: 'DUPLICATE_EMAIL',
+        fieldErrors: { email: 'Email is already in use.' },
+      }, origin);
+    }
+  } catch (error) {
+    console.error('[clients] Email uniqueness check failed:', error);
+    return response(503, {
+      ok: false,
+      error: 'Unable to verify email uniqueness right now. Please try again.',
+      code: 'EMAIL_CHECK_FAILED',
+      fieldErrors: { email: 'Unable to verify email right now.' },
+    }, origin);
+  }
+  return null;
+}
+
+async function ensureUniqueUsername(
+  origin: string,
+  agencyId: string,
+  username: string | undefined,
+  currentClientId?: string,
+) {
+  if (!username) return null;
+  try {
+    const existing = await queryGSI3(`USERNAME#${username}`);
+    const conflict = (existing || []).find((item: any) => item.agencyId === agencyId && item.id !== currentClientId && !item.deletedAt);
+    if (conflict) {
+      return response(400, {
+        ok: false,
+        error: 'Username is already taken.',
+        code: 'DUPLICATE_USERNAME',
+        fieldErrors: { username: 'Username is already taken.' },
+      }, origin);
+    }
+  } catch (error) {
+    console.error('[clients] Username uniqueness check failed:', error);
+    return response(503, {
+      ok: false,
+      error: 'Unable to verify username availability right now. Please try again.',
+      code: 'USERNAME_CHECK_FAILED',
+      fieldErrors: { username: 'Unable to verify username right now.' },
+    }, origin);
+  }
+  return null;
 }
 
 function getClientId(event: APIGatewayProxyEventV2) {
@@ -23,6 +101,7 @@ function enrollmentKey(dripId: string, clientId: string) {
 const clientsHandler: Handler = async (event: APIGatewayProxyEventV2) => {
   const origin = event.headers?.origin || event.headers?.Origin || event.headers?.['origin'] || '';
   const method = (event.requestContext.http?.method || '').toUpperCase();
+  const requestId = event.headers?.['x-client-request-id'] || event.headers?.['X-Client-Request-Id'] || '';
   
   // 1. Handle OPTIONS for CORS Preflight
   if (method === 'OPTIONS') return response(200, { ok: true }, origin);
@@ -89,12 +168,9 @@ const clientsHandler: Handler = async (event: APIGatewayProxyEventV2) => {
 
   // --- POST ---
   if (method === 'POST') {
-    if (!event.body) return badRequest(origin, 'Missing body');
-    const payload = JSON.parse(event.body);
-    
-    if (!payload.email || !payload.firstName || !payload.lastName || !payload.sport) {
-      return badRequest(origin, 'email, firstName, lastName, sport are required');
-    }
+    const parsed = parseJsonBody(event, origin);
+    if (!parsed.ok) return parsed.response;
+    const payload = parsed.value;
 
     // --- TIER LIMIT ENFORCEMENT ---
     const agency = await getItem({ PK: `AGENCY#${cleanAgencyId}`, SK: 'PROFILE' }) as AgencyRecord | undefined;
@@ -130,42 +206,53 @@ const clientsHandler: Handler = async (event: APIGatewayProxyEventV2) => {
       accessCodeHash = await hashAccessCode(payload.accessCode);
     }
 
-    // Validate username uniqueness if provided
-    let username = payload.username?.toLowerCase().replace(/[^a-z0-9-]/g, '');
-    if (username) {
-      try {
-        const existing = await queryGSI3(`USERNAME#${username}`);
-        if (existing.length > 0) {
-          return badRequest(origin, 'Username is already taken');
-        }
-      } catch (e) {
-        console.error('[clients] Username uniqueness check failed:', e);
-      }
+    let normalized;
+    try {
+      normalized = normalizeClientPayload(payload, {
+        requireRequiredFields: true,
+        defaultAccountStatus: payload.accountStatus || 'active',
+      });
+    } catch (error) {
+      if (error instanceof ClientPayloadError) return invalidClientPayload(origin, error);
+      throw error;
     }
+
+    const emailConflict = await ensureUniqueClientEmail(origin, cleanAgencyId, normalized.email);
+    if (emailConflict) return emailConflict;
+
+    const usernameConflict = await ensureUniqueUsername(origin, cleanAgencyId, normalized.username);
+    if (usernameConflict) return usernameConflict;
 
     const rec: ClientRecord = {
       PK: `AGENCY#${cleanAgencyId}`,
       SK: `CLIENT#${id}`,
-      GSI1PK: `EMAIL#${payload.email}`,
+      GSI1PK: `EMAIL#${normalized.email}`,
       GSI1SK: `CLIENT#${id}`,
-      ...(username ? { GSI3PK: `USERNAME#${username}`, GSI3SK: `CLIENT#${id}` } : {}),
+      ...(normalized.username ? { GSI3PK: `USERNAME#${normalized.username}`, GSI3SK: `CLIENT#${id}` } : {}),
       id,
-      email: payload.email,
-      firstName: payload.firstName,
-      lastName: payload.lastName,
-      sport: payload.sport,
+      email: normalized.email,
+      firstName: normalized.firstName,
+      lastName: normalized.lastName,
+      sport: normalized.sport,
       agencyId: cleanAgencyId,
       agencyEmail: session.agencyEmail,
-      phone: payload.phone,
-      username,
-      galleryImages: payload.galleryImages || [],
-      radar: payload.radar || {},
+      phone: normalized.phone,
+      division: normalized.division,
+      username: normalized.username,
+      photoUrl: normalized.photoUrl,
+      profileImageUrl: normalized.profileImageUrl,
+      galleryImages: normalized.galleryImages,
+      highlightVideos: normalized.highlightVideos,
+      radar: normalized.radar,
       accessCodeHash,
       authEnabled: Boolean(accessCodeHash),
+      programLevel: normalized.programLevel,
+      accountStatus: normalized.accountStatus,
       createdAt: now,
       updatedAt: now,
     };
     
+    console.info('[clients:create]', { requestId, agencyId: cleanAgencyId, clientId: id, email: normalized.email });
     await putItem(rec);
     
     // Audit log: client created
@@ -174,7 +261,7 @@ const clientsHandler: Handler = async (event: APIGatewayProxyEventV2) => {
       action: 'client_create',
       targetType: 'client',
       targetId: id,
-      targetName: `${payload.firstName} ${payload.lastName}`,
+      targetName: `${normalized.firstName} ${normalized.lastName}`,
       ...extractAuditContext(event),
     });
 
@@ -234,51 +321,78 @@ const clientsHandler: Handler = async (event: APIGatewayProxyEventV2) => {
   // --- PUT / PATCH ---
   if (method === 'PUT' || method === 'PATCH') {
     if (!clientId) return badRequest(origin, 'Missing client id');
-    if (!event.body) return badRequest(origin, 'Missing body');
-    const payload = JSON.parse(event.body);
+    const parsed = parseJsonBody(event, origin);
+    if (!parsed.ok) return parsed.response;
+    const payload = parsed.value;
     
     const existing = await getItem({ PK: `AGENCY#${cleanAgencyId}`, SK: `CLIENT#${clientId}` }) as ClientRecord | undefined;
     if (!existing) return response(404, { ok: false, message: 'Not found' }, origin);
     
     const now = new Date().toISOString();
-    
-    // Handle username update with uniqueness check
-    let username = payload.username?.toLowerCase().replace(/[^a-z0-9-]/g, '');
-    if (username && username !== existing.username) {
-      try {
-        const usernameCheck = await queryGSI3(`USERNAME#${username}`);
-        if (usernameCheck.length > 0) {
-          return badRequest(origin, 'Username is already taken');
-        }
-      } catch (e) {
-        console.error('[clients] Username uniqueness check failed:', e);
-      }
+
+    let normalized;
+    try {
+      normalized = normalizeClientPayload(payload, {
+        existing,
+        requireRequiredFields: true,
+      });
+    } catch (error) {
+      if (error instanceof ClientPayloadError) return invalidClientPayload(origin, error);
+      throw error;
     }
-    
+
+    if (normalized.email !== existing.email) {
+      const emailConflict = await ensureUniqueClientEmail(origin, cleanAgencyId, normalized.email, clientId);
+      if (emailConflict) return emailConflict;
+    }
+
+    if (normalized.username !== existing.username || Object.prototype.hasOwnProperty.call(payload, 'username')) {
+      const usernameConflict = await ensureUniqueUsername(origin, cleanAgencyId, normalized.username, clientId);
+      if (usernameConflict) return usernameConflict;
+    }
+
     const merged: ClientRecord = { 
       ...existing, 
-      ...payload, 
+      ...payload,
+      ...normalized,
       updatedAt: now,
-      ...(username ? { 
-        username,
-        GSI3PK: `USERNAME#${username}`, 
-        GSI3SK: `CLIENT#${clientId}` 
-      } : {}),
+      GSI1PK: `EMAIL#${normalized.email}`,
+      GSI1SK: `CLIENT#${clientId}`,
+      ...(normalized.username ? {
+        username: normalized.username,
+        GSI3PK: `USERNAME#${normalized.username}`,
+        GSI3SK: `CLIENT#${clientId}`,
+      } : {
+        username: undefined,
+        GSI3PK: undefined,
+        GSI3SK: undefined,
+      }),
     };
     
     if (payload.accessCode) {
       merged.accessCodeHash = await hashAccessCode(payload.accessCode);
       merged.authEnabled = true;
     }
+    delete (merged as Record<string, unknown>).accessCode;
+    delete (merged as Record<string, unknown>).password;
+    delete (merged as Record<string, unknown>).gmailTokens;
+    delete (merged as Record<string, unknown>).tempGmailClientId;
+    delete (merged as Record<string, unknown>).hasExistingAccessCode;
+    if (!normalized.username) {
+      delete merged.username;
+      delete merged.GSI3PK;
+      delete merged.GSI3SK;
+    }
 
     try {
       await putItem(merged);
     } catch (err: any) {
       const msg = err?.message || 'Failed to save client';
-      console.error('[clients:put] putItem failed', { clientId, error: msg });
+      console.error('[clients:put] putItem failed', { requestId, clientId, error: msg });
       const isSize = msg.includes('size') || msg.includes('Item');
       return response(400, {
         ok: false,
+        requestId,
         error: isSize
           ? 'Client record too large. Please use smaller images or upload media via the media uploader.'
           : `Failed to save client: ${msg}`,

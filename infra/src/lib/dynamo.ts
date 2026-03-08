@@ -103,6 +103,29 @@ export async function queryClientLists(clientId: string) {
   return res.Items ?? [];
 }
 
+export async function listAgencyIds() {
+  const res = await docClient.send(
+    new ScanCommand({
+      TableName: TABLE_NAME,
+      FilterExpression: 'SK = :profile AND begins_with(PK, :agency)',
+      ExpressionAttributeValues: {
+        ':profile': 'PROFILE',
+        ':agency': 'AGENCY#',
+      },
+      ProjectionExpression: 'id, PK',
+    }),
+  );
+
+  return (res.Items ?? [])
+    .map((item: Record<string, unknown>) => {
+      const id = typeof item.id === 'string' ? item.id : '';
+      if (id) return id;
+      const pk = typeof item.PK === 'string' ? item.PK : '';
+      return pk.startsWith('AGENCY#') ? pk.slice('AGENCY#'.length) : '';
+    })
+    .filter(Boolean) as string[];
+}
+
 export async function updateItem(params: {
   key: { PK: string; SK: string };
   updateExpression: string;

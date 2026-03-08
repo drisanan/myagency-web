@@ -3,14 +3,14 @@
  */
 import { type Page, type BrowserContext, expect } from '@playwright/test';
 
-const API_BASE = process.env.API_BASE_URL || 'https://api.myrecruiteragency.com';
+const API_BASE = process.env.API_BASE_URL || 'http://127.0.0.1:3001';
 
 // ── Auth ──
 
 export const DEFAULT_CREDENTIALS = {
-  email: process.env.TEST_EMAIL || 'drisanjames@gmail.com',
-  phone: process.env.TEST_PHONE || '2084407940',
-  accessCode: process.env.TEST_ACCESS || '123456',
+  email: process.env.TEST_EMAIL || '',
+  phone: process.env.TEST_PHONE || '',
+  accessCode: process.env.TEST_ACCESS || '',
 };
 
 /**
@@ -21,6 +21,9 @@ export async function login(
   page: Page,
   credentials = DEFAULT_CREDENTIALS,
 ) {
+  if (!credentials.email || !credentials.phone || !credentials.accessCode) {
+    throw new Error('E2E credentials are not configured. Set TEST_EMAIL, TEST_PHONE, and TEST_ACCESS.');
+  }
   await page.goto('/auth/login');
   await fillByLabel(page, 'Email', credentials.email);
   await fillByLabel(page, 'Phone', credentials.phone);

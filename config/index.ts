@@ -1,3 +1,5 @@
+import { getApiBaseUrl } from './env';
+
 export type ServiceConfig = {
   apiBaseUrl: string;
 };
@@ -25,8 +27,7 @@ let cachedTenantRegistry: TenantRegistry | null = null;
 
 export function getServiceConfig(): ServiceConfig {
   if (cachedServiceConfig) return cachedServiceConfig;
-  // Use env var for local dev, fallback to prod API
-  const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://api.myrecruiteragency.com';
+  const apiBaseUrl = getApiBaseUrl();
   cachedServiceConfig = { apiBaseUrl };
   return cachedServiceConfig;
 }

@@ -3,6 +3,10 @@
  */
 import { handler } from '../gmail';
 
+jest.mock('../common', () => ({
+  requireSession: jest.fn(() => ({ agencyId: 'agency-001', agencyEmail: 'agency1@an.test', role: 'agency' })),
+}));
+
 const ORIGIN = 'http://localhost:3000';
 
 // Provide fake Google config for tests

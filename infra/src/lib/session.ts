@@ -2,24 +2,34 @@ import { APIGatewayProxyEventV2 } from 'aws-lambda';
 import { createHmac, timingSafeEqual } from 'crypto';
 import { SessionContext } from './models';
 
-const SECRET = process.env.SESSION_SECRET || 'dev-secret-change-me';
 const COOKIE_NAME = 'an_session';
+
+function getSessionSecret(): string | null {
+  const secret = process.env.SESSION_SECRET?.trim();
+  return secret || null;
+}
 
 function getCookieDomain(): string {
   return process.env.COOKIE_DOMAIN || '.myrecruiteragency.com';
 }
 
 function sign(payload: string) {
-  const sig = createHmac('sha256', SECRET).update(payload).digest('base64url');
+  const secret = getSessionSecret();
+  if (!secret) {
+    throw new Error('SESSION_SECRET is not configured');
+  }
+  const sig = createHmac('sha256', secret).update(payload).digest('base64url');
   return `${payload}.${sig}`;
 }
 
 function verify(token: string) {
+  const secret = getSessionSecret();
+  if (!secret) return null;
   const idx = token.lastIndexOf('.');
   if (idx < 0) return null;
   const payload = token.slice(0, idx);
   const sig = token.slice(idx + 1);
-  const expected = createHmac('sha256', SECRET).update(payload).digest('base64url');
+  const expected = createHmac('sha256', secret).update(payload).digest('base64url');
   const a = Buffer.from(sig);
   const b = Buffer.from(expected);
   if (a.length !== b.length || !timingSafeEqual(a, b)) return null;

@@ -1,6 +1,6 @@
 'use client';
 import React from 'react';
-import { getClients } from '@/services/clients';
+import { getClient } from '@/services/clients';
 import { Typography, CircularProgress, Stack, Button } from '@mui/material';
 import Link from 'next/link';
 import { ClientWizard } from '@/features/clients/ClientWizard';
@@ -30,17 +30,14 @@ export function ClientEditClient({ id }: { id: string }) {
     // 3. Fetch Client Data
     (async () => {
       try {
-        // Optimization: Ideally, you should have a getClientById(id) service 
-        // instead of fetching ALL clients, but this works for now.
-        const all = await getClients();
-        const hit = all.find((c: any) => c.id === id);
+        const hit = await getClient(id);
         
         if (mounted) {
-            if (hit) {
-                setClient(hit);
-            } else {
-                setError('Client not found.');
-            }
+          if (hit) {
+            setClient(hit);
+          } else {
+            setError('Client not found.');
+          }
         }
       } catch (err) {
         console.error('getClients failed', err);

@@ -3,7 +3,7 @@ import React from 'react';
 import { Stack, Typography, Box, Paper, Alert } from '@mui/material';
 import { LoadingState } from '@/components/LoadingState';
 import { CommitsTable } from './CommitsTable';
-import { Commit } from '@/services/commits';
+import { type Commit } from '@/services/commitsShared';
 import { useQuery } from '@tanstack/react-query';
 
 async function fetchCommits(sport: 'Football' | 'Basketball', list: 'recent' | 'top') {

@@ -1,4 +1,4 @@
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.API_BASE_URL;
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.API_BASE_URL || '/api';
 
 function requireApiBase() {
   if (!API_BASE_URL) throw new Error('API_BASE_URL is not configured');
@@ -28,4 +28,12 @@ export async function listUpdateForms(clientId?: string) {
   const qs = clientId ? `?clientId=${encodeURIComponent(clientId)}` : '';
   const data = await apiFetch(`/update-forms/submissions${qs}`);
   return data?.items ?? [];
+}
+
+export async function markUpdateFormsReviewed(ids: string[]) {
+  const data = await apiFetch('/update-forms/consume', {
+    method: 'POST',
+    body: JSON.stringify({ ids }),
+  });
+  return data as { ok: boolean };
 }

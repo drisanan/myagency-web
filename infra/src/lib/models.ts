@@ -89,8 +89,12 @@ export type ClientRecord = {
   agencyId: string;
   agencyEmail?: string;
   phone?: string;
+  division?: string;
   username?: string;        // Vanity URL slug (e.g., "drisanjames")
+  photoUrl?: string;
+  profileImageUrl?: string;
   galleryImages?: string[]; // Array of image URLs for profile gallery
+  highlightVideos?: Array<{ url: string; title?: string }>;
   radar?: Record<string, unknown>; // Extended profile data
   accessCodeHash?: string;
   authEnabled?: boolean;
