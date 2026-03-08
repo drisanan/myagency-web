@@ -940,7 +940,38 @@ export function RecruiterWizard() {
   const [scheduleEnabled, setScheduleEnabled] = React.useState(false);
   const [scheduledAt, setScheduledAt] = React.useState('');
   const [followupMessage, setFollowupMessage] = React.useState('');
+  const previewQuillContainerRef = React.useRef<HTMLDivElement>(null);
   const previewHtml = aiHtml ?? buildEmailPreview();
+
+  const resetComposeDraft = React.useCallback(() => {
+    setAiHtml(null);
+    setSubjectLine('');
+    setIsEditingPreview(false);
+    setSelectedPromptId('');
+    setSelectedTemplateId('');
+    setScheduleEnabled(false);
+    setScheduledAt('');
+    setFollowupMessage('');
+    setSendMessage(null);
+  }, []);
+
+  const persistPreviewEditorHtml = React.useCallback(() => {
+    if (!isEditingPreview || !previewQuillContainerRef.current || typeof QuillClass?.find !== 'function') return;
+    const qlContainer = previewQuillContainerRef.current.querySelector('.ql-container');
+    if (!qlContainer) return;
+    const quill = QuillClass.find(qlContainer as HTMLElement);
+    const html = quill?.root?.innerHTML;
+    if (typeof html === 'string') {
+      setAiHtml(html);
+    }
+  }, [isEditingPreview]);
+
+  const togglePreviewEditing = React.useCallback(() => {
+    if (isEditingPreview) {
+      persistPreviewEditorHtml();
+    }
+    setIsEditingPreview((prev) => !prev);
+  }, [isEditingPreview, persistPreviewEditorHtml]);
 
   // Delayed busy indicator to avoid flicker on sub-1s actions
   const useDelayedBusy = (flag: boolean, delayMs = 1000) => {
@@ -1170,19 +1201,6 @@ export function RecruiterWizard() {
   }, [selectedSchoolName, resolvedSport, division, state]);
   React.useEffect(() => { setError(null); }, [division, state, selectedSchoolName, clientId]);
 
-  // Reset email content when client or sender context changes to avoid wrong data carryover
-  React.useEffect(() => {
-    setAiHtml(null);
-    setSubjectLine('');
-    setIsEditingPreview(false);
-    setSelectedPromptId('');
-    setSelectedTemplateId('');
-    setScheduleEnabled(false);
-    setScheduledAt('');
-    setFollowupMessage('');
-    setSendMessage(null);
-  }, [clientId, senderType, selectedAgentId, selectedListId, selectedSchoolName, listMode]);
-
   // FIX: Use userEmail for templates
   React.useEffect(() => {
     if (!userEmail) return;
@@ -1343,6 +1361,7 @@ export function RecruiterWizard() {
                   setSelectedSchoolName('');
                   setSchoolDetails(null);
                   setSelectedCoachIds({});
+                  resetComposeDraft();
                 }}
                 sx={senderType === 'client' ? { bgcolor: '#0A0A0A', color: '#CCFF00' } : {}}
               >
@@ -1365,6 +1384,7 @@ export function RecruiterWizard() {
                     setSelectedSchoolName('');
                     setSchoolDetails(null);
                     setSelectedCoachIds({});
+                    resetComposeDraft();
                   }}
                   sx={senderType === 'agent' ? { bgcolor: '#0A0A0A', color: '#CCFF00' } : {}}
                   data-testid="agent-mode-btn"
@@ -1382,7 +1402,10 @@ export function RecruiterWizard() {
                   select
                   label="Client"
                   value={clientId}
-                  onChange={(e) => setClientId(e.target.value)}
+                  onChange={(e) => {
+                    setClientId(e.target.value);
+                    resetComposeDraft();
+                  }}
                   data-tour="client-selector"
                   inputProps={{ 'data-testid': 'recruiter-client-select' }}
                 >
@@ -1403,7 +1426,10 @@ export function RecruiterWizard() {
                   select
                   label="Agent"
                   value={selectedAgentId}
-                  onChange={(e) => setSelectedAgentId(e.target.value)}
+                  onChange={(e) => {
+                    setSelectedAgentId(e.target.value);
+                    resetComposeDraft();
+                  }}
                   inputProps={{ 'data-testid': 'recruiter-agent-select' }}
                   helperText={
                     visibleAgents.length === 0 
@@ -1438,7 +1464,10 @@ export function RecruiterWizard() {
                   select
                   label="Sport"
                   value={selectedSport}
-                  onChange={(e) => setSelectedSport(e.target.value)}
+                  onChange={(e) => {
+                    setSelectedSport(e.target.value);
+                    resetComposeDraft();
+                  }}
                   disabled={Boolean(selectedListId)}
                   inputProps={{ 'data-testid': 'recruiter-sport' }}
                 >
@@ -1462,6 +1491,7 @@ export function RecruiterWizard() {
                   setSelectedCoachIds({});
                   setSelectedSchoolName('');
                   setSchoolDetails(null);
+                  resetComposeDraft();
                 }}
                 disabled={Boolean(selectedListId)}
                 inputProps={{ 'data-testid': 'recruiter-division' }}
@@ -1482,6 +1512,7 @@ export function RecruiterWizard() {
                   setSelectedSchoolName('');
                   setSchoolDetails(null);
                   setSelectedCoachIds({});
+                  resetComposeDraft();
                 }}
                 disabled={!division || Boolean(selectedListId)}
                 inputProps={{ 'data-testid': 'recruiter-state' }}
@@ -1506,6 +1537,7 @@ export function RecruiterWizard() {
                   setSelectedListId(id);
                   const l = lists.find((x) => x.id === id) || null;
                   setSelectedList(l);
+                  resetComposeDraft();
                   if (l) {
                     setListMode(true);
                     setDivision('');
@@ -1572,6 +1604,7 @@ export function RecruiterWizard() {
                         setSelectedList(null);
                         setListMode(false);
                         setSelectedSchoolName(u.name);
+                        resetComposeDraft();
                       }}
                       sx={{
                         cursor: 'pointer',
@@ -2046,7 +2079,7 @@ export function RecruiterWizard() {
                     <Button
                       size="small"
                       variant={isEditingPreview ? 'contained' : 'outlined'}
-                      onClick={() => setIsEditingPreview(!isEditingPreview)}
+                      onClick={togglePreviewEditing}
                       sx={isEditingPreview ? { bgcolor: '#CCFF00', color: '#0A0A0A' } : {}}
                     >
                       {isEditingPreview ? 'Done Editing' : 'Edit'}
@@ -2061,7 +2094,7 @@ export function RecruiterWizard() {
                   </Stack>
                 </Box>
                 {isEditingPreview ? (
-                  <Box sx={{ 
+                  <Box ref={previewQuillContainerRef} sx={{ 
                     bgcolor: '#fff', 
                     borderRadius: 0,
                     clipPath: 'polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px))',

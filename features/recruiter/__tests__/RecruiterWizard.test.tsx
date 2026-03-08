@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, act, within } from '@testing-library/react';
+import { render, screen, act, fireEvent, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { RecruiterWizard } from '@/features/recruiter/RecruiterWizard';
@@ -10,6 +10,7 @@ import * as meta from '@/services/recruiterMeta';
 import * as recruiter from '@/services/recruiter';
 import * as aiRecruiter from '@/services/aiRecruiter';
 import * as mailStatus from '@/services/mailStatus';
+import * as prompts from '@/services/prompts';
 
 jest.setTimeout(20000);
 
@@ -50,6 +51,9 @@ describe('RecruiterWizard loading indicators', () => {
       coaches: [{ id: 'coach-1', firstName: 'Ada', lastName: 'Lovelace', title: 'HC', email: 'ada@u.test' }],
     } as any);
     jest.spyOn(mailStatus, 'hasMailed').mockReturnValue(false);
+    jest.spyOn(prompts, 'listPrompts').mockResolvedValue([
+      { id: 'prompt-1', name: 'Intro Prompt', text: 'Prompt intro body' } as any,
+    ]);
   });
 
   afterEach(() => {
@@ -240,5 +244,37 @@ describe('RecruiterWizard loading indicators', () => {
     // Verify edit button is back
     expect(screen.getByRole('button', { name: /^edit$/i })).toBeInTheDocument();
   });
+
+  test('keeps prompt-based WYSIWYG edits after leaving edit mode', async () => {
+    const user = userEvent.setup();
+    const fetchMock = jest.fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ connected: true }) } as any)
+      .mockResolvedValue({ ok: true, json: async () => ({ ok: true }) } as any);
+    (global as any).fetch = fetchMock;
+
+    render(wrapper(<RecruiterWizard />));
+
+    await user.click(await screen.findByLabelText(/client/i));
+    await user.click(await screen.findByText(/seed@example.com/i));
+    await user.click(screen.getByRole('button', { name: /next/i }));
+
+    await user.click(await screen.findByLabelText(/list/i));
+    await user.click(await screen.findByText(/Test List/i));
+    await user.click(screen.getByRole('button', { name: /next/i }));
+
+    await user.click(await screen.findByLabelText(/saved prompts/i));
+    await user.click(await screen.findByText(/intro prompt/i));
+    expect(await screen.findByText(/prompt intro body/i)).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /^edit$/i }));
+    const editor = await screen.findByTestId('quill-textarea');
+    fireEvent.change(editor, { target: { value: 'WYSIWYG persistence check 2026-03-07' } });
+
+    await user.click(screen.getByRole('button', { name: /done editing/i }));
+    expect(await screen.findByText(/WYSIWYG persistence check 2026-03-07/i)).toBeInTheDocument();
+
+    await user.click(screen.getByLabelText(/schedule this campaign/i));
+    expect(screen.getByText(/WYSIWYG persistence check 2026-03-07/i)).toBeInTheDocument();
+  }, 60000);
 });
 
