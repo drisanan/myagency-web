@@ -20,9 +20,10 @@ import { EmailTemplate, listTemplates, saveTemplate, toTemplateHtml, applyTempla
 import { listLists, CoachList } from '@/services/lists';
 import { hasMailed, markMailed } from '@/services/mailStatus';
 import { listPrompts, PromptRecord } from '@/services/prompts';
-import { wrapLinksWithTracking, recordEmailSends, createOpenPixelUrl } from '@/services/emailTracking';
+import { recordEmailSends } from '@/services/emailTracking';
 import { normalizeYouTubeUrl, normalizeHudlUrl, normalizeInstagramUrl, normalizeGenericUrl } from '@/services/urlNormalize';
 import { createCampaign, updateCampaign } from '@/services/campaigns';
+import { normalizeEmailHtml } from '@/utils/emailHtml';
 
 type ClientRow = { id: string; email: string; firstName?: string; lastName?: string; sport?: string };
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.API_BASE_URL || '';
@@ -694,7 +695,7 @@ export function RecruiterWizard() {
       const gradYear = String((currentClient as any)?.radar?.graduationYear || (currentClient as any)?.graduationYear || '').trim();
       const positionOrSport = String((currentClient as any)?.radar?.position || (currentClient as any)?.position || '').trim();
       const subjectBase = buildSubjectLine(athleteName, gradYear, positionOrSport, 0);
-      const html = aiHtml ?? buildEmailPreview();
+      const html = normalizeEmailHtml(aiHtml ?? buildEmailPreview());
       const savedTokens = getClientGmailTokens(id);
       const campaignName = resolvedCollegeName || selectedList?.name || universityName || 'Coach Outreach';
       const recipientMeta = selectedCoaches.map((c: any) => ({
@@ -748,30 +749,6 @@ export function RecruiterWizard() {
         let personalizedHtml = applyIntroTokens(html, coach, coachUniversity);
         personalizedHtml = personalizedHtmlForCoach(personalizedHtml, coach);
         const subject = subjectLine || buildSubjectLine(athleteName, gradYear, positionOrSport, sentRecipients.length);
-        
-        // Wrap links with tracking URLs for analytics
-        if (session?.agencyId) {
-          personalizedHtml = wrapLinksWithTracking(personalizedHtml, {
-            agencyId: session.agencyId,
-            clientId: id,
-            athleteEmail: contact.email || '',
-            recipientEmail: recipient,
-            university: coachUniversity,
-            campaignId,
-          });
-        }
-
-        if (session?.agencyId && campaignId) {
-          const pixel = createOpenPixelUrl({
-            agencyId: session.agencyId,
-            clientId: id,
-            athleteEmail: contact.email || '',
-            recipientEmail: recipient,
-            university: coachUniversity,
-            campaignId,
-          });
-          personalizedHtml = `${personalizedHtml}<img src="${pixel}" alt="" width="1" height="1" style="display:none;" />`;
-        }
         
         const sendUrl = API_BASE_URL ? `${API_BASE_URL}/gmail/send` : '/api/gmail/send';
         const res = await fetch(sendUrl, {
@@ -872,17 +849,7 @@ export function RecruiterWizard() {
       for (const recipient of to) {
         const coach = selectedCoaches.find((c: any) => (c.email || c.Email) === recipient) || {} as any;
         const coachUniversity = coach.school || coach.School || universityName || selectedList?.name || resolvedCollegeName || '';
-        let personalizedHtml = applyIntroTokens(aiHtml || agentEmailBody, coach, coachUniversity);
-
-        if (session?.agencyId) {
-          personalizedHtml = wrapLinksWithTracking(personalizedHtml, {
-            agencyId: session.agencyId,
-            clientId: selectedAgentId,
-            athleteEmail: currentAgent?.email || '',
-            recipientEmail: recipient,
-            university: coachUniversity,
-          });
-        }
+        let personalizedHtml = applyIntroTokens(normalizeEmailHtml(aiHtml || agentEmailBody), coach, coachUniversity);
 
         const sendUrl = API_BASE_URL ? `${API_BASE_URL}/gmail/send` : '/api/gmail/send';
         const res = await fetch(sendUrl, {
@@ -962,7 +929,7 @@ export function RecruiterWizard() {
     const quill = QuillClass.find(qlContainer as HTMLElement);
     const html = quill?.root?.innerHTML;
     if (typeof html === 'string') {
-      setAiHtml(html);
+      setAiHtml(normalizeEmailHtml(html));
     }
   }, [isEditingPreview]);
 

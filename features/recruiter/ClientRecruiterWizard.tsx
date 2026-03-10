@@ -31,6 +31,7 @@ import { CoachList } from '@/services/lists';
 import { listAssignments } from '@/services/listAssignments';
 import { hasMailed, markMailed } from '@/services/mailStatus';
 import { normalizeYouTubeUrl, normalizeHudlUrl, normalizeInstagramUrl } from '@/services/urlNormalize';
+import { normalizeEmailHtml } from '@/utils/emailHtml';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.API_BASE_URL || '';
 
@@ -425,7 +426,7 @@ export function ClientRecruiterWizard() {
       }
 
       const subject = `Intro: ${contact.firstName || ''} ${contact.lastName || ''} → ${selectedCoach.school || selectedList?.name || ''}`.trim();
-      const html = previewHtml;
+      const html = normalizeEmailHtml(previewHtml);
       const savedTokens = getClientGmailTokens(clientId);
 
       const sendUrl = API_BASE_URL ? `${API_BASE_URL}/gmail/send` : '/api/gmail/send';

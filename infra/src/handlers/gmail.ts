@@ -7,6 +7,7 @@ import { google } from 'googleapis';
 import { response } from './cors';
 import { withSentry } from '../lib/sentry';
 import { recordEmailSendsInternal } from '../lib/emailMetrics';
+import { normalizeEmailHtml } from '../../../utils/emailHtml';
 
 const gmailHandler: Handler = async (event: APIGatewayProxyEventV2) => {
   const origin = event.headers?.origin || event.headers?.Origin || event.headers?.['origin'] || '';
@@ -269,7 +270,8 @@ const gmailHandler: Handler = async (event: APIGatewayProxyEventV2) => {
   return response(405, { ok: false, error: `Unsupported method/action ${method} ${action}` }, origin);
 };
 
-function buildMime(subject: string, html: string, to: string, cc?: string[]) {
+export function buildMime(subject: string, html: string, to: string, cc?: string[]) {
+  const bodyBase64 = Buffer.from(normalizeEmailHtml(html)).toString('base64').replace(/(.{76})/g, '$1\r\n');
   const lines = [];
   lines.push('MIME-Version: 1.0');
   lines.push('From: me');
@@ -281,7 +283,7 @@ function buildMime(subject: string, html: string, to: string, cc?: string[]) {
   lines.push('Content-Type: text/html; charset="UTF-8"');
   lines.push('Content-Transfer-Encoding: base64');
   lines.push('');
-  lines.push(Buffer.from(html).toString('base64'));
+  lines.push(bodyBase64);
   const message = lines.join('\r\n');
   return Buffer.from(message).toString('base64url');
 }
@@ -358,13 +360,23 @@ function createOpenPixelUrl(params: { agencyId: string; clientId?: string; recip
   return url.toString();
 }
 
-function applyTracking(
+export function applyTracking(
   html: string,
   params: { agencyId: string; clientId?: string; recipientEmail: string; agencyEmail?: string; trackingId: string },
 ) {
   const pixel = `<img src="${createOpenPixelUrl(params)}" alt="" width="1" height="1" style="display:none;" />`;
-  let trackedHtml = /<\/body>/i.test(html) ? html.replace(/<\/body>/i, `${pixel}</body>`) : `${html}${pixel}`;
+  let trackedHtml = normalizeEmailHtml(html);
+
+  if (!/email-metrics\/open/i.test(trackedHtml)) {
+    trackedHtml = /<\/body>/i.test(trackedHtml)
+      ? trackedHtml.replace(/<\/body>/i, `${pixel}</body>`)
+      : `${trackedHtml}${pixel}`;
+  }
+
   trackedHtml = trackedHtml.replace(/href\s*=\s*"(https?:[^"\s]+)"/gi, (_match, url) => {
+    if (url.includes('/r?') || url.includes('/track/click') || url.includes('unsubscribe') || url.includes('preferences')) {
+      return `href="${url}"`;
+    }
     return `href="${createTrackingUrl(url, params)}"`;
   });
   return trackedHtml;

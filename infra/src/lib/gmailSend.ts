@@ -2,6 +2,7 @@ import { google } from 'googleapis';
 import { getItem, putItem } from './dynamo';
 import { GmailTokenRecord } from './models';
 import { buildOAuthClient } from './google';
+import { normalizeEmailHtml } from '../../../utils/emailHtml';
 
 type SendGmailInput = {
   agencyId: string;
@@ -11,7 +12,8 @@ type SendGmailInput = {
   html: string;
 };
 
-function buildMime(subject: string, html: string, to: string) {
+export function buildMime(subject: string, html: string, to: string) {
+  const bodyBase64 = Buffer.from(normalizeEmailHtml(html)).toString('base64').replace(/(.{76})/g, '$1\r\n');
   const lines = [];
   lines.push('MIME-Version: 1.0');
   lines.push('From: me');
@@ -20,7 +22,7 @@ function buildMime(subject: string, html: string, to: string) {
   lines.push('Content-Type: text/html; charset="UTF-8"');
   lines.push('Content-Transfer-Encoding: base64');
   lines.push('');
-  lines.push(Buffer.from(html).toString('base64'));
+  lines.push(bodyBase64);
   return Buffer.from(lines.join('\r\n')).toString('base64url');
 }
 

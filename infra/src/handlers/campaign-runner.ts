@@ -6,6 +6,7 @@ import { sendGmailMessage } from '../lib/gmailSend';
 import { recordEmailSendsInternal } from '../lib/emailMetrics';
 import { withSentry } from '../lib/sentry';
 import { newId } from '../lib/ids';
+import { normalizeEmailHtml } from '../../../utils/emailHtml';
 
 function personalizeHtml(html: string, name?: string) {
   if (!name) return html;
@@ -68,7 +69,7 @@ const runner = async () => {
         SK: `CLIENT#${campaign.clientId}`,
       }) as ClientRecord | undefined;
       for (const recipient of campaign.recipients || []) {
-        let html = personalizeHtml(campaign.html, recipient.name);
+        let html = normalizeEmailHtml(personalizeHtml(campaign.html, recipient.name));
         html = wrapLinksWithTracking(html, {
           agencyId: campaign.agencyId,
           clientId: campaign.clientId,
