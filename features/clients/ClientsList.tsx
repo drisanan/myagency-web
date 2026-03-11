@@ -2,11 +2,38 @@
 import React from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { listClientsByAgencyEmail, deleteClient, upsertClient, getGmailStatus, refreshGmailToken } from '@/services/clients';
-import { Button, Stack, Box, Typography, Avatar, Paper, Chip, CircularProgress, Table, TableHead, TableRow, TableCell, TableBody, TablePagination, useMediaQuery, useTheme, IconButton, Menu, MenuItem, TextField, InputAdornment } from '@mui/material';
+import { Button, Stack, Box, Typography, Avatar, Paper, Chip, CircularProgress, Table, TableHead, TableRow, TableCell, TableBody, TablePagination, useMediaQuery, useTheme, IconButton, Menu, MenuItem, TextField, InputAdornment, Tooltip } from '@mui/material';
 import { useSession } from '@/features/auth/session';
 import { useImpersonation } from '@/hooks/useImpersonation';
 import { dashboardTablePaperSx, dashboardTableSx, responsiveTableContainerSx, hideOnMobile, mobileCardSx } from '@/components/tableStyles';
-import { IoEllipsisVertical, IoSearchOutline, IoCloseCircleOutline } from 'react-icons/io5';
+import { IoEllipsisVertical, IoSearchOutline, IoCloseCircleOutline, IoLinkOutline, IoCopyOutline } from 'react-icons/io5';
+
+function getProfileUrl(username: string | undefined) {
+  if (!username) return null;
+  const origin = typeof window !== 'undefined' ? window.location.origin : '';
+  return `${origin}/athlete/${username}`;
+}
+
+function CopyProfileLink({ url }: { url: string }) {
+  const [copied, setCopied] = React.useState(false);
+  return (
+    <Tooltip title={copied ? 'Copied!' : 'Copy profile link'} arrow>
+      <IconButton
+        size="small"
+        onClick={async () => {
+          try {
+            await navigator.clipboard.writeText(url);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 1500);
+          } catch { /* ignore */ }
+        }}
+        sx={{ p: 0.5 }}
+      >
+        <IoCopyOutline size={14} />
+      </IconButton>
+    </Tooltip>
+  );
+}
 
 function GmailStatusCell({ clientId }: { clientId: string }) {
   const [refreshing, setRefreshing] = React.useState(false);
@@ -66,7 +93,9 @@ function MobileActionsMenu({ row, canImpersonate, impersonateClient, onDelete, o
   refetch: () => void;
 }) {
   const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
+  const [linkCopied, setLinkCopied] = React.useState(false);
   const open = Boolean(anchorEl);
+  const profileUrl = getProfileUrl(row.username);
 
   return (
     <>
@@ -81,6 +110,18 @@ function MobileActionsMenu({ row, canImpersonate, impersonateClient, onDelete, o
         )}
         <MenuItem component="a" href={`/clients/${row.id}`} onClick={() => setAnchorEl(null)}>View</MenuItem>
         <MenuItem component="a" href={`/clients/${row.id}/edit`} onClick={() => setAnchorEl(null)}>Edit</MenuItem>
+        {profileUrl && (
+          <MenuItem component="a" href={profileUrl} target="_blank" onClick={() => setAnchorEl(null)}>
+            View Profile
+          </MenuItem>
+        )}
+        {profileUrl && (
+          <MenuItem onClick={async () => {
+            try { await navigator.clipboard.writeText(profileUrl); setLinkCopied(true); setTimeout(() => setLinkCopied(false), 1500); } catch { /* ignore */ }
+          }}>
+            {linkCopied ? 'Link Copied!' : 'Copy Profile Link'}
+          </MenuItem>
+        )}
         {canImpersonate && (
           <MenuItem onClick={() => { impersonateClient({ id: row.id, email: row.email, firstName: row.firstName, lastName: row.lastName }); setAnchorEl(null); }}>
             Impersonate
@@ -309,6 +350,14 @@ export function ClientsList() {
                       )}
                       <Button size="small" href={`/clients/${row.id}`}>View</Button>
                       <Button size="small" href={`/clients/${row.id}/edit`}>Edit</Button>
+                      {row.username && (
+                        <Stack direction="row" alignItems="center" spacing={0}>
+                          <Button size="small" href={`/athlete/${row.username}`} target="_blank" startIcon={<IoLinkOutline size={14} />}>
+                            Profile
+                          </Button>
+                          <CopyProfileLink url={getProfileUrl(row.username)!} />
+                        </Stack>
+                      )}
                       <Button size="small" color="error" onClick={async () => { await deleteClient(row.id); refetch(); }}>Delete</Button>
                       {canImpersonate && (
                         <Button
