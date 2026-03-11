@@ -24,6 +24,11 @@ import { recordEmailSends } from '@/services/emailTracking';
 import { normalizeYouTubeUrl, normalizeHudlUrl, normalizeInstagramUrl, normalizeGenericUrl } from '@/services/urlNormalize';
 import { createCampaign, updateCampaign } from '@/services/campaigns';
 import { normalizeEmailHtml } from '@/utils/emailHtml';
+import { listDrafts, saveDraft, updateDraft, deleteDraft, type RecruiterDraft } from '@/services/recruiterDrafts';
+import SaveIcon from '@mui/icons-material/Save';
+import DraftsIcon from '@mui/icons-material/Drafts';
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
+import EditIcon from '@mui/icons-material/Edit';
 
 type ClientRow = { id: string; email: string; firstName?: string; lastName?: string; sport?: string };
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.API_BASE_URL || '';
@@ -68,6 +73,16 @@ export function RecruiterWizard() {
   const [sendMessage, setSendMessage] = React.useState<string | null>(null);
   const [confirmModalOpen, setConfirmModalOpen] = React.useState(false);
   const [confirmModalMessage, setConfirmModalMessage] = React.useState('');
+
+  // Drafts
+  const [drafts, setDrafts] = React.useState<RecruiterDraft[]>([]);
+  const [draftsLoading, setDraftsLoading] = React.useState(false);
+  const [activeDraftId, setActiveDraftId] = React.useState<string | null>(null);
+  const [saveDraftBusy, setSaveDraftBusy] = React.useState(false);
+  const [draftSavedMsg, setDraftSavedMsg] = React.useState<string | null>(null);
+  const [showDraftNameDialog, setShowDraftNameDialog] = React.useState(false);
+  const [draftNameInput, setDraftNameInput] = React.useState('');
+  const autoSaveTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Step 4 - sections and granular selections for email building
   const [enabledSections, setEnabledSections] = React.useState<Record<string, boolean>>({
@@ -932,8 +947,114 @@ export function RecruiterWizard() {
     setSchoolDetails(null);
     setSelectedSchoolName('');
     setError(null);
+    setActiveDraftId(null);
     setActiveStep(0);
   }, [resetComposeDraft]);
+
+  // ── Drafts ──
+
+  const loadDrafts = React.useCallback(async () => {
+    try {
+      setDraftsLoading(true);
+      const d = await listDrafts();
+      setDrafts(d);
+    } catch (e) {
+      console.error('[RecruiterWizard] Failed to load drafts', e);
+    } finally {
+      setDraftsLoading(false);
+    }
+  }, []);
+
+  React.useEffect(() => { loadDrafts(); }, [loadDrafts]);
+
+  const collectDraftPayload = React.useCallback(() => ({
+    senderType,
+    clientId: clientId || undefined,
+    agentId: selectedAgentId || undefined,
+    subject: subjectLine,
+    html: aiHtml || '',
+    division: division || undefined,
+    state: state || undefined,
+    schoolName: selectedSchoolName || undefined,
+    listId: selectedListId || undefined,
+    selectedCoachIds: Object.entries(selectedCoachIds).filter(([, v]) => v).map(([k]) => k),
+  }), [senderType, clientId, selectedAgentId, subjectLine, aiHtml, division, state, selectedSchoolName, selectedListId, selectedCoachIds]);
+
+  const handleSaveDraft = React.useCallback(async (name: string, autoSaved = false) => {
+    try {
+      setSaveDraftBusy(true);
+      const payload = collectDraftPayload();
+      let draft: RecruiterDraft;
+      if (activeDraftId) {
+        draft = await updateDraft(activeDraftId, { ...payload, name, autoSaved });
+      } else {
+        draft = await saveDraft({ ...payload, name, autoSaved });
+        setActiveDraftId(draft.id);
+      }
+      setDraftSavedMsg(autoSaved ? 'Auto-saved' : 'Draft saved');
+      setTimeout(() => setDraftSavedMsg(null), 3000);
+      await loadDrafts();
+      return draft;
+    } catch (e) {
+      console.error('[RecruiterWizard] Failed to save draft', e);
+      setError('Failed to save draft');
+    } finally {
+      setSaveDraftBusy(false);
+    }
+  }, [activeDraftId, collectDraftPayload, loadDrafts]);
+
+  const handleLoadDraft = React.useCallback((draft: RecruiterDraft) => {
+    setSenderType(draft.senderType || 'client');
+    if (draft.clientId) setClientId(draft.clientId);
+    if (draft.agentId) setSelectedAgentId(draft.agentId);
+    setSubjectLine(draft.subject || '');
+    if (draft.html) setAiHtml(draft.html);
+    if (draft.division) setDivision(draft.division);
+    if (draft.state) setState(draft.state);
+    if (draft.schoolName) setSelectedSchoolName(draft.schoolName);
+    if (draft.listId) {
+      setSelectedListId(draft.listId);
+      setListMode(true);
+    }
+    if (draft.selectedCoachIds?.length) {
+      const map: Record<string, boolean> = {};
+      draft.selectedCoachIds.forEach((id) => { map[id] = true; });
+      setSelectedCoachIds(map);
+    }
+    setActiveDraftId(draft.id);
+    setError(null);
+    setDraftSavedMsg(null);
+    if (draft.html) {
+      setActiveStep(3);
+    } else {
+      setActiveStep(0);
+    }
+  }, []);
+
+  const handleDeleteDraft = React.useCallback(async (id: string) => {
+    try {
+      await deleteDraft(id);
+      if (activeDraftId === id) setActiveDraftId(null);
+      await loadDrafts();
+    } catch (e) {
+      console.error('[RecruiterWizard] Failed to delete draft', e);
+    }
+  }, [activeDraftId, loadDrafts]);
+
+  // Auto-save every 30s when on the compose step with content
+  React.useEffect(() => {
+    if (activeStep !== 3 || !aiHtml) {
+      if (autoSaveTimerRef.current) clearInterval(autoSaveTimerRef.current);
+      return;
+    }
+    autoSaveTimerRef.current = setInterval(() => {
+      const name = activeDraftId
+        ? (drafts.find((d) => d.id === activeDraftId)?.name || 'Auto-save')
+        : 'Auto-save';
+      handleSaveDraft(name, true).catch(() => {});
+    }, 30_000);
+    return () => { if (autoSaveTimerRef.current) clearInterval(autoSaveTimerRef.current); };
+  }, [activeStep, aiHtml, activeDraftId, drafts, handleSaveDraft]);
 
   const readEditorHtml = React.useCallback((): string | null => {
     if (!previewQuillContainerRef.current || typeof QuillClass?.find !== 'function') return null;
@@ -1430,6 +1551,75 @@ export function RecruiterWizard() {
                   ))}
                 </TextField>
               </Box>
+            )}
+
+            {/* ── Saved Drafts ── */}
+            {drafts.length > 0 && (
+              <Accordion sx={{ bgcolor: 'background.paper' }}>
+                <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                  <Stack direction="row" spacing={1} alignItems="center">
+                    <DraftsIcon fontSize="small" />
+                    <Typography variant="subtitle2">Saved Drafts ({drafts.length})</Typography>
+                  </Stack>
+                </AccordionSummary>
+                <AccordionDetails sx={{ p: 0 }}>
+                  {draftsLoading ? (
+                    <Box sx={{ display: 'flex', justifyContent: 'center', p: 2 }}>
+                      <CircularProgress size={20} />
+                    </Box>
+                  ) : (
+                    <Stack spacing={0}>
+                      {drafts.map((d) => (
+                        <Box
+                          key={d.id}
+                          sx={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            px: 2,
+                            py: 1.2,
+                            borderBottom: '1px solid',
+                            borderColor: 'divider',
+                            '&:last-child': { borderBottom: 'none' },
+                            bgcolor: activeDraftId === d.id ? 'action.selected' : 'transparent',
+                          }}
+                        >
+                          <Box sx={{ minWidth: 0, flex: 1 }}>
+                            <Typography variant="body2" sx={{ fontWeight: 600 }} noWrap>
+                              {d.name}
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              {d.subject || 'No subject'} &middot; {new Date(d.updatedAt).toLocaleDateString()}
+                              {d.autoSaved && (
+                                <Chip label="auto" size="small" sx={{ ml: 0.5, height: 16, fontSize: '0.65rem' }} />
+                              )}
+                            </Typography>
+                          </Box>
+                          <Stack direction="row" spacing={0.5}>
+                            <Button
+                              size="small"
+                              startIcon={<EditIcon />}
+                              onClick={() => handleLoadDraft(d)}
+                              sx={{ minWidth: 'auto', textTransform: 'none' }}
+                            >
+                              Load
+                            </Button>
+                            <Button
+                              size="small"
+                              color="error"
+                              startIcon={<DeleteOutlineIcon />}
+                              onClick={() => handleDeleteDraft(d.id)}
+                              sx={{ minWidth: 'auto', textTransform: 'none' }}
+                            >
+                              Delete
+                            </Button>
+                          </Stack>
+                        </Box>
+                      ))}
+                    </Stack>
+                  )}
+                </AccordionDetails>
+              </Accordion>
             )}
           </Box>
         )}
@@ -2282,16 +2472,72 @@ export function RecruiterWizard() {
       {error && activeStep === 3 && (
         <Alert severity="error" sx={{ mb: 1 }}>{error}</Alert>
       )}
-      <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <Button disabled={activeStep === 0} onClick={handleBack}>
           Back
         </Button>
-        {!(isLast && senderType === 'agent') && (
-          <Button variant="contained" onClick={handleNext} disabled={!canNext || (isLast && isGenerating)}>
-            {isLast ? (isGenerating ? 'Generating…' : 'Generate') : 'Next'}
-          </Button>
-        )}
+        <Stack direction="row" spacing={1} alignItems="center">
+          {draftSavedMsg && (
+            <Typography variant="caption" color="success.main" sx={{ fontWeight: 600 }}>
+              {draftSavedMsg}
+            </Typography>
+          )}
+          {activeStep >= 1 && (
+            <Button
+              variant="outlined"
+              size="small"
+              startIcon={saveDraftBusy ? <CircularProgress size={14} /> : <SaveIcon />}
+              disabled={saveDraftBusy}
+              onClick={() => {
+                if (activeDraftId) {
+                  const existing = drafts.find((d) => d.id === activeDraftId);
+                  handleSaveDraft(existing?.name || 'Draft');
+                } else {
+                  setDraftNameInput('');
+                  setShowDraftNameDialog(true);
+                }
+              }}
+              sx={{ textTransform: 'none' }}
+            >
+              {activeDraftId ? 'Update Draft' : 'Save Draft'}
+            </Button>
+          )}
+          {!(isLast && senderType === 'agent') && (
+            <Button variant="contained" onClick={handleNext} disabled={!canNext || (isLast && isGenerating)}>
+              {isLast ? (isGenerating ? 'Generating…' : 'Generate') : 'Next'}
+            </Button>
+          )}
+        </Stack>
       </Box>
+
+      {/* ── Save Draft Name Dialog ── */}
+      <Dialog open={showDraftNameDialog} onClose={() => setShowDraftNameDialog(false)} maxWidth="xs" fullWidth>
+        <DialogTitle>Save Draft</DialogTitle>
+        <DialogContent>
+          <TextField
+            autoFocus
+            fullWidth
+            label="Draft name"
+            value={draftNameInput}
+            onChange={(e) => setDraftNameInput(e.target.value)}
+            placeholder="e.g. Spring Outreach — D1 Soccer"
+            sx={{ mt: 1 }}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setShowDraftNameDialog(false)}>Cancel</Button>
+          <Button
+            variant="contained"
+            disabled={!draftNameInput.trim() || saveDraftBusy}
+            onClick={async () => {
+              await handleSaveDraft(draftNameInput.trim());
+              setShowDraftNameDialog(false);
+            }}
+          >
+            Save
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* ── Email Sent Confirmation Modal ── */}
       <Dialog

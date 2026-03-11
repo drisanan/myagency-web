@@ -149,6 +149,15 @@ functions:
       - httpApi:
           path: /list-assignments
           method: any
+  recruiterDrafts:
+    handler: infra/src/handlers/recruiter-drafts.handler
+    events:
+      - httpApi:
+          path: /recruiter-drafts
+          method: any
+      - httpApi:
+          path: /recruiter-drafts/{id}
+          method: any
   campaigns:
     handler: infra/src/handlers/campaigns.handler
     events:

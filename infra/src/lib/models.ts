@@ -536,6 +536,31 @@ export type CampaignFollowupRecord = {
 };
 
 // ============================================
+// Recruiter Email Drafts
+// ============================================
+
+export type RecruiterDraftRecord = {
+  PK: string;                    // AGENCY#<agencyId>
+  SK: string;                    // RECRUITER_DRAFT#<draftId>
+  id: string;
+  agencyId: string;
+  name: string;
+  senderType: 'client' | 'agent';
+  clientId?: string;
+  agentId?: string;
+  subject: string;
+  html: string;
+  division?: string;
+  state?: string;
+  schoolName?: string;
+  listId?: string;
+  selectedCoachIds?: string[];
+  autoSaved?: boolean;
+  createdAt: number;
+  updatedAt: number;
+};
+
+// ============================================
 // Update Form Submissions
 // ============================================
 
