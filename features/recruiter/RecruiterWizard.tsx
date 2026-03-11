@@ -695,7 +695,8 @@ export function RecruiterWizard() {
       const gradYear = String((currentClient as any)?.radar?.graduationYear || (currentClient as any)?.graduationYear || '').trim();
       const positionOrSport = String((currentClient as any)?.radar?.position || (currentClient as any)?.position || '').trim();
       const subjectBase = buildSubjectLine(athleteName, gradYear, positionOrSport, 0);
-      const html = normalizeEmailHtml(aiHtml ?? buildEmailPreview());
+      const editorSnapshot = isEditingPreview ? readEditorHtml() : null;
+      const html = normalizeEmailHtml(editorSnapshot ?? aiHtml ?? buildEmailPreview());
       const savedTokens = getClientGmailTokens(id);
       const campaignName = resolvedCollegeName || selectedList?.name || universityName || 'Coach Outreach';
       const recipientMeta = selectedCoaches.map((c: any) => ({
@@ -845,11 +846,13 @@ export function RecruiterWizard() {
       const subject = subjectLine || `${agentName} — Athlete Recruiting`;
 
       const sentRecipients: Array<{ email: string; name?: string; university?: string }> = [];
+      const agentEditorSnapshot = isEditingPreview ? readEditorHtml() : null;
+      const baseAgentHtml = normalizeEmailHtml(agentEditorSnapshot ?? aiHtml ?? agentEmailBody);
 
       for (const recipient of to) {
         const coach = selectedCoaches.find((c: any) => (c.email || c.Email) === recipient) || {} as any;
         const coachUniversity = coach.school || coach.School || universityName || selectedList?.name || resolvedCollegeName || '';
-        let personalizedHtml = applyIntroTokens(normalizeEmailHtml(aiHtml || agentEmailBody), coach, coachUniversity);
+        let personalizedHtml = applyIntroTokens(baseAgentHtml, coach, coachUniversity);
 
         const sendUrl = API_BASE_URL ? `${API_BASE_URL}/gmail/send` : '/api/gmail/send';
         const res = await fetch(sendUrl, {
@@ -922,16 +925,20 @@ export function RecruiterWizard() {
     setSendMessage(null);
   }, []);
 
-  const persistPreviewEditorHtml = React.useCallback(() => {
-    if (!isEditingPreview || !previewQuillContainerRef.current || typeof QuillClass?.find !== 'function') return;
+  const readEditorHtml = React.useCallback((): string | null => {
+    if (!previewQuillContainerRef.current || typeof QuillClass?.find !== 'function') return null;
     const qlContainer = previewQuillContainerRef.current.querySelector('.ql-container');
-    if (!qlContainer) return;
+    if (!qlContainer) return null;
     const quill = QuillClass.find(qlContainer as HTMLElement);
-    const html = quill?.root?.innerHTML;
-    if (typeof html === 'string') {
-      setAiHtml(normalizeEmailHtml(html));
-    }
-  }, [isEditingPreview]);
+    const raw = quill?.root?.innerHTML;
+    return typeof raw === 'string' ? normalizeEmailHtml(raw) : null;
+  }, []);
+
+  const persistPreviewEditorHtml = React.useCallback(() => {
+    if (!isEditingPreview) return;
+    const html = readEditorHtml();
+    if (html !== null) setAiHtml(html);
+  }, [isEditingPreview, readEditorHtml]);
 
   const togglePreviewEditing = React.useCallback(() => {
     if (isEditingPreview) {
