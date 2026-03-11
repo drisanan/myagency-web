@@ -45,9 +45,29 @@ const SEED: RecruitingPeriod[] = [
   { id: 'wbb-contact-mar', sport: "Women's Basketball", label: 'Contact Period', type: 'contact', startDate: '2026-03-01', endDate: '2026-04-01' },
   { id: 'wbb-quiet-dec', sport: "Women's Basketball", label: 'Quiet Period', type: 'quiet', startDate: '2025-12-08', endDate: '2025-12-21' },
 
-  // Women's Volleyball quiet windows
+  // Women's Volleyball — NCAA D1 2025-26 official calendar
   { id: 'wvb-quiet-aug', sport: "Women's Volleyball", label: 'Quiet Period', type: 'quiet', startDate: '2025-08-01', endDate: '2025-08-31' },
-  { id: 'wvb-quiet-dec', sport: "Women's Volleyball", label: 'Quiet Period', type: 'quiet', startDate: '2025-12-08', endDate: '2025-12-21' },
+  { id: 'wvb-contact-sep-nov', sport: "Women's Volleyball", label: 'Contact Period', type: 'contact', startDate: '2025-09-01', endDate: '2025-11-09' },
+  { id: 'wvb-dead-nov', sport: "Women's Volleyball", label: 'Dead Period', type: 'dead', startDate: '2025-11-10', endDate: '2025-11-13' },
+  { id: 'wvb-contact-nov2', sport: "Women's Volleyball", label: 'Contact Period', type: 'contact', startDate: '2025-11-14', endDate: '2025-11-30' },
+  { id: 'wvb-dead-dec1', sport: "Women's Volleyball", label: 'Dead Period', type: 'dead', startDate: '2025-12-01', endDate: '2025-12-17' },
+  { id: 'wvb-quiet-dec', sport: "Women's Volleyball", label: 'Quiet Period', type: 'quiet', startDate: '2025-12-18', endDate: '2026-01-01' },
+  { id: 'wvb-dead-jan', sport: "Women's Volleyball", label: 'Dead Period', type: 'dead', startDate: '2026-01-02', endDate: '2026-01-15' },
+  { id: 'wvb-dead-jan2', sport: "Women's Volleyball", label: 'Dead Period', type: 'dead', startDate: '2026-01-16', endDate: '2026-03-01' },
+  { id: 'wvb-contact-mar1', sport: "Women's Volleyball", label: 'Contact Period', type: 'contact', startDate: '2026-03-02', endDate: '2026-03-05' },
+  { id: 'wvb-dead-mar1', sport: "Women's Volleyball", label: 'Dead Period', type: 'dead', startDate: '2026-03-06', endDate: '2026-03-08' },
+  { id: 'wvb-contact-mar2', sport: "Women's Volleyball", label: 'Contact Period', type: 'contact', startDate: '2026-03-09', endDate: '2026-03-12' },
+  { id: 'wvb-dead-mar2', sport: "Women's Volleyball", label: 'Dead Period', type: 'dead', startDate: '2026-03-13', endDate: '2026-03-15' },
+  { id: 'wvb-contact-mar3', sport: "Women's Volleyball", label: 'Contact Period', type: 'contact', startDate: '2026-03-16', endDate: '2026-03-19' },
+  { id: 'wvb-dead-mar3', sport: "Women's Volleyball", label: 'Dead Period', type: 'dead', startDate: '2026-03-20', endDate: '2026-03-22' },
+  { id: 'wvb-contact-mar4', sport: "Women's Volleyball", label: 'Contact Period', type: 'contact', startDate: '2026-03-23', endDate: '2026-03-26' },
+  { id: 'wvb-dead-mar4', sport: "Women's Volleyball", label: 'Dead Period', type: 'dead', startDate: '2026-03-27', endDate: '2026-03-29' },
+  { id: 'wvb-contact-mar5', sport: "Women's Volleyball", label: 'Contact Period', type: 'contact', startDate: '2026-03-30', endDate: '2026-04-02' },
+  { id: 'wvb-dead-apr1', sport: "Women's Volleyball", label: 'Dead Period', type: 'dead', startDate: '2026-04-03', endDate: '2026-04-05' },
+  { id: 'wvb-contact-apr2', sport: "Women's Volleyball", label: 'Contact Period', type: 'contact', startDate: '2026-04-06', endDate: '2026-04-09' },
+  { id: 'wvb-dead-apr3', sport: "Women's Volleyball", label: 'Dead Period', type: 'dead', startDate: '2026-04-10', endDate: '2026-04-30' },
+  { id: 'wvb-contact-may', sport: "Women's Volleyball", label: 'Contact Period', type: 'contact', startDate: '2026-05-01', endDate: '2026-05-28' },
+  { id: 'wvb-dead-jun', sport: "Women's Volleyball", label: 'Dead Period', type: 'dead', startDate: '2026-05-29', endDate: '2026-07-31' },
 
   // Softball quiet windows
   { id: 'soft-quiet-dec', sport: 'Softball', label: 'Quiet Period', type: 'quiet', startDate: '2025-12-08', endDate: '2025-12-21' },
