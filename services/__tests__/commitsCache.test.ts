@@ -15,7 +15,7 @@ describe('commitsCache', () => {
   });
 
   test('reuses cached data within TTL and refetches after expiry', async () => {
-    const spy = jest.spyOn(commits, 'listCommitsServer').mockReturnValue([
+    const spy = jest.spyOn(commits, 'listCommits').mockReturnValue([
       { id: 'c1', sport: 'Football', list: 'recent', name: 'A' } as any,
     ]);
 
@@ -32,7 +32,7 @@ describe('commitsCache', () => {
 
   test('rehydrates all sport/list combinations and refreshes cached values', async () => {
     let call = 0;
-    const spy = jest.spyOn(commits, 'listCommitsServer').mockImplementation((sport, list) => {
+    const spy = jest.spyOn(commits, 'listCommits').mockImplementation((sport: string, list: string) => {
       call += 1;
       return [{ id: `c-${call}`, sport, list, name: `N${call}` } as any];
     });
