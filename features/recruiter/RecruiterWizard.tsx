@@ -925,6 +925,16 @@ export function RecruiterWizard() {
     setSendMessage(null);
   }, []);
 
+  const handleConfirmDone = React.useCallback(() => {
+    setConfirmModalOpen(false);
+    resetComposeDraft();
+    setSelectedCoachIds({});
+    setSchoolDetails(null);
+    setSelectedSchoolName('');
+    setError(null);
+    setActiveStep(0);
+  }, [resetComposeDraft]);
+
   const readEditorHtml = React.useCallback((): string | null => {
     if (!previewQuillContainerRef.current || typeof QuillClass?.find !== 'function') return null;
     const qlContainer = previewQuillContainerRef.current.querySelector('.ql-container');
@@ -1923,9 +1933,9 @@ export function RecruiterWizard() {
               </Typography>
             )}
             {sendMessage && (
-              <Typography variant="body2" color="success.main" data-testid="send-confirmation">
+              <Alert severity="success" variant="filled" data-testid="send-confirmation" sx={{ fontWeight: 600 }}>
                 {sendMessage}
-              </Typography>
+              </Alert>
             )}
           </Box>
         )}
@@ -2213,9 +2223,9 @@ export function RecruiterWizard() {
                   </Typography>
                 )}
                 {sendMessage && (
-                  <Typography variant="body2" color="success.main" sx={{ ml: 1 }} data-testid="send-confirmation">
+                  <Alert severity="success" variant="filled" data-testid="send-confirmation" sx={{ fontWeight: 600 }}>
                     {sendMessage}
-                  </Typography>
+                  </Alert>
                 )}
               </Stack>
               </Box>
@@ -2286,39 +2296,41 @@ export function RecruiterWizard() {
       {/* ── Email Sent Confirmation Modal ── */}
       <Dialog
         open={confirmModalOpen}
-        onClose={() => setConfirmModalOpen(false)}
+        onClose={handleConfirmDone}
         maxWidth="xs"
         fullWidth
         PaperProps={{
           sx: {
-            borderRadius: 0,
+            borderRadius: 3,
             bgcolor: '#0A0A0A',
             color: '#fff',
             textAlign: 'center',
-            py: 2,
+            py: 3,
           },
         }}
       >
-        <DialogTitle sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1, pb: 0 }}>
-          <CheckCircleOutlineIcon sx={{ fontSize: 56, color: '#CCFF00' }} />
-          <Typography variant="h6" sx={{ fontWeight: 700, color: '#fff' }}>
+        <DialogTitle sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1.5, pb: 0 }}>
+          <CheckCircleOutlineIcon sx={{ fontSize: 64, color: '#CCFF00' }} />
+          <Typography variant="h5" sx={{ fontWeight: 700, color: '#fff' }}>
             Email{confirmModalMessage.includes('Scheduled') ? ' Scheduled' : 's Sent'}!
           </Typography>
         </DialogTitle>
-        <DialogContent sx={{ pt: 1 }}>
-          <Typography variant="body1" sx={{ color: 'rgba(255,255,255,0.8)' }}>
+        <DialogContent sx={{ pt: 1.5 }}>
+          <Typography variant="body1" sx={{ color: 'rgba(255,255,255,0.8)', fontSize: '1.05rem' }}>
             {confirmModalMessage}
           </Typography>
         </DialogContent>
-        <DialogActions sx={{ justifyContent: 'center', pb: 2 }}>
+        <DialogActions sx={{ justifyContent: 'center', pb: 2.5 }}>
           <Button
             variant="contained"
-            onClick={() => setConfirmModalOpen(false)}
+            onClick={handleConfirmDone}
             sx={{
               bgcolor: '#CCFF00',
               color: '#0A0A0A',
               fontWeight: 700,
-              px: 4,
+              px: 5,
+              py: 1.2,
+              fontSize: '0.95rem',
               '&:hover': { bgcolor: '#B8E600' },
             }}
           >
