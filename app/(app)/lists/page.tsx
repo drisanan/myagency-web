@@ -16,10 +16,14 @@ import { useSession } from '@/features/auth/session';
 import { getStates } from '@/services/recruiterMeta';
 import { getDivisions } from '@/services/recruiterMeta';
 import { getSports, formatSportLabel } from '@/features/recruiter/divisionMapping';
-import { listUniversities, getUniversityDetails, DIVISION_API_MAPPING } from '@/services/recruiter';
+import { listUniversities, getUniversityDetails, DIVISION_API_MAPPING, type University } from '@/services/recruiter';
 import { listLists, saveList, updateList, deleteList, CoachEntry, CoachList } from '@/services/lists';
 import { listClientsByAgencyEmail } from '@/services/clients';
 import { assignListToClient } from '@/services/listAssignments';
+
+function isSchoolOnlyEntry(entry: CoachEntry): boolean {
+  return !entry.email && !entry.firstName && !entry.lastName;
+}
 import { useTour } from '@/features/tour/TourProvider';
 import { listsSteps } from '@/features/tour/listsSteps';
 
@@ -149,6 +153,60 @@ export default function ListsPage() {
     return () => { cancelled = true; };
   }, [userEmail, loading]);
 
+  const [resolvingCoaches, setResolvingCoaches] = React.useState(false);
+
+  async function resolveSchoolOnlyItems(items: CoachEntry[]): Promise<CoachEntry[]> {
+    const schoolOnly = items.filter(isSchoolOnlyEntry);
+    const coachItems = items.filter((e) => !isSchoolOnlyEntry(e));
+    if (schoolOnly.length === 0) return items;
+
+    const uniqueSchools = new Map<string, CoachEntry>();
+    for (const entry of schoolOnly) {
+      if (entry.school && !uniqueSchools.has(entry.school)) {
+        uniqueSchools.set(entry.school, entry);
+      }
+    }
+
+    const resolvedCoaches: CoachEntry[] = [];
+    const entries = Array.from(uniqueSchools.entries());
+
+    const results = await Promise.allSettled(
+      entries.map(([schoolName, entry]) => {
+        const entrySport = entry.sport || sport;
+        const entryDivision = entry.division || division;
+        const entryState = entry.state || stateCode;
+        if (!entrySport || !entryDivision || !entryState) return Promise.resolve(null);
+        const divSlug = DIVISION_API_MAPPING[entryDivision] || entryDivision;
+        return getUniversityDetails({ sport: entrySport, division: divSlug, state: entryState, school: schoolName });
+      })
+    );
+
+    for (let i = 0; i < entries.length; i++) {
+      const [schoolName, entry] = entries[i];
+      const result = results[i];
+      if (result.status === 'fulfilled' && result.value && (result.value as University).coaches?.length) {
+        const uni = result.value as University;
+        for (const c of uni.coaches) {
+          resolvedCoaches.push({
+            id: c.id || undefined,
+            firstName: c.firstName || '',
+            lastName: c.lastName || '',
+            email: c.email || '',
+            title: c.title || '',
+            school: uni.schoolInfo?.School || uni.name || schoolName,
+            division: entry.division,
+            state: entry.state,
+            sport: entry.sport,
+          });
+        }
+      } else {
+        resolvedCoaches.push(entry);
+      }
+    }
+
+    return [...coachItems, ...resolvedCoaches];
+  }
+
   function addCoach(c: any, coachId: string) {
     const entry: CoachEntry = {
       id: coachId,
@@ -268,11 +326,29 @@ export default function ListsPage() {
     }
   }
 
-  function loadList(l: CoachList) {
+  async function loadList(l: CoachList) {
     setEditingId(l.id);
     setCurrentName(l.name);
-    setCurrentItems(l.items);
     setSelectedClientId('');
+
+    const hasSchoolOnly = l.items.some(isSchoolOnlyEntry);
+    if (hasSchoolOnly) {
+      setCurrentItems(l.items);
+      setResolvingCoaches(true);
+      setSnackbar({ open: true, message: 'Fetching coaches for universities in this list…', severity: 'success' });
+      try {
+        const resolved = await resolveSchoolOnlyItems(l.items);
+        setCurrentItems(resolved);
+        const coachCount = resolved.filter((e) => e.email).length;
+        setSnackbar({ open: true, message: `Loaded ${coachCount} coach${coachCount !== 1 ? 'es' : ''} from ${new Set(resolved.map((r) => r.school)).size} school${new Set(resolved.map((r) => r.school)).size !== 1 ? 's' : ''}.`, severity: 'success' });
+      } catch {
+        setSnackbar({ open: true, message: 'Some coaches could not be loaded. You can add them manually.', severity: 'error' });
+      } finally {
+        setResolvingCoaches(false);
+      }
+    } else {
+      setCurrentItems(l.items);
+    }
   }
 
   function handleDeleteClick(list: CoachList) {
@@ -530,16 +606,31 @@ export default function ListsPage() {
           <TextField fullWidth size="small" label="List name" value={currentName} onChange={(e) => setCurrentName(e.target.value)} sx={{ mb: 1 }} />
 
           <Paper variant="outlined" sx={{ p: 1, maxHeight: 360, overflow: 'auto', display: 'flex', flexDirection: 'column' }}>
+            {resolvingCoaches && (
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, p: 1 }}>
+                <CircularProgress size={18} />
+                <Typography variant="body2" color="text.secondary">Loading coaches for selected schools…</Typography>
+              </Box>
+            )}
             {currentItems.length > 0 && currentItems.map((c, i) => (
-              <Box key={`${c.email}-${i}`} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #eee', py: 1 }}>
+              <Box key={`${c.email || c.school}-${i}`} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #eee', py: 1 }}>
                 <Box>
-                  <Typography variant="body2">{[c.firstName, c.lastName].filter(Boolean).join(' ')} {c.title ? `— ${c.title}` : ''}</Typography>
-                  <Typography variant="caption" color="text.secondary">{c.email} · {c.school} · {c.division} · {c.state}</Typography>
+                  {isSchoolOnlyEntry(c) ? (
+                    <>
+                      <Typography variant="body2" sx={{ fontWeight: 600 }}>{c.school}</Typography>
+                      <Typography variant="caption" color="text.secondary">{c.division} · {c.state} — School entry (no coaches resolved)</Typography>
+                    </>
+                  ) : (
+                    <>
+                      <Typography variant="body2">{[c.firstName, c.lastName].filter(Boolean).join(' ')} {c.title ? `— ${c.title}` : ''}</Typography>
+                      <Typography variant="caption" color="text.secondary">{c.email} · {c.school} · {c.division} · {c.state}</Typography>
+                    </>
+                  )}
                 </Box>
                 <Button size="small" color="error" onClick={() => removeCoach(i)}>Remove</Button>
               </Box>
             ))}
-            {currentItems.length === 0 && (
+            {currentItems.length === 0 && !resolvingCoaches && (
               <Typography variant="body2" color="text.secondary" sx={{ mt: 'auto' }}>No coaches added yet.</Typography>
             )}
           </Paper>

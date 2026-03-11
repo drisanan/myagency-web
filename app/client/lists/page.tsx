@@ -1,8 +1,8 @@
 'use client';
 import React from 'react';
-import { listLists, saveList, deleteList } from '@/services/lists';
+import { listLists, saveList, deleteList, CoachEntry } from '@/services/lists';
 import { listAssignments } from '@/services/listAssignments';
-import { listUniversities, DIVISION_API_MAPPING } from '@/services/recruiter';
+import { listUniversities, getUniversityDetails, DIVISION_API_MAPPING } from '@/services/recruiter';
 import { UniversityLogo } from '@/components/UniversityLogo';
 import { useSession } from '@/features/auth/session';
 import { useTour } from '@/features/tour/TourProvider';
@@ -213,19 +213,49 @@ export default function ClientListsPage() {
     try {
       setError(null);
       setSaving(true);
-      const items = Object.entries(selected)
+      const selectedSchools = Object.entries(selected)
         .filter(([, v]) => v)
-        .map(([uniName]) => ({
-          email: '',
-          firstName: '',
-          lastName: '',
-          title: '',
-          school: uniName,
-          division,
-          state,
-        }));
+        .map(([uniName]) => uniName);
       if (!name.trim()) throw new Error('List name is required');
-      if (items.length === 0) throw new Error('Select at least one university');
+      if (selectedSchools.length === 0) throw new Error('Select at least one university');
+
+      const divisionSlug = DIVISION_API_MAPPING[division] || division;
+      const items: CoachEntry[] = [];
+
+      const results = await Promise.allSettled(
+        selectedSchools.map((school) =>
+          getUniversityDetails({ sport, division: divisionSlug, state, school })
+        )
+      );
+
+      for (let i = 0; i < selectedSchools.length; i++) {
+        const schoolName = selectedSchools[i];
+        const result = results[i];
+        if (result.status === 'fulfilled' && result.value?.coaches?.length) {
+          for (const c of result.value.coaches) {
+            items.push({
+              id: c.id || undefined,
+              firstName: c.firstName || '',
+              lastName: c.lastName || '',
+              email: c.email || '',
+              title: c.title || '',
+              school: result.value.schoolInfo?.School || result.value.name || schoolName,
+              division,
+              state,
+              sport,
+            });
+          }
+        } else {
+          items.push({
+            email: '',
+            school: schoolName,
+            division,
+            state,
+            sport,
+          });
+        }
+      }
+
       const saved = await saveList({ agencyEmail: session?.agencyEmail || '', name: name.trim(), items });
       qc.setQueryData<any[]>(['client-own-lists'], (old) => [...(old || []), saved]);
       setName('');
@@ -666,7 +696,15 @@ export default function ClientListsPage() {
                         {l.name}
                       </Typography>
                       <Chip
-                        label={`${(l.items || []).length} schools`}
+                        label={(() => {
+                          const itms = l.items || [];
+                          const hasCoaches = itms.some((it: any) => it.email);
+                          if (hasCoaches) {
+                            const schoolSet = new Set(itms.map((it: any) => it.school).filter(Boolean));
+                            return `${itms.length} coaches · ${schoolSet.size} schools`;
+                          }
+                          return `${itms.length} schools`;
+                        })()}
                         size="small"
                         sx={{
                           fontSize: 11,
@@ -686,10 +724,11 @@ export default function ClientListsPage() {
                     </Stack>
                     {(l.items || []).length > 0 && (
                       <Typography variant="body2" sx={{ mt: 0.5, color: '#0A0A0A80' }}>
-                        {(l.items || [])
-                          .map((it: any) => it.school || it.university || it.name || '')
-                          .filter(Boolean)
-                          .join(', ')}
+                        {Array.from(new Set(
+                          (l.items || [])
+                            .map((it: any) => it.school || it.university || it.name || '')
+                            .filter(Boolean)
+                        )).join(', ')}
                       </Typography>
                     )}
                   </Box>

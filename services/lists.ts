@@ -50,6 +50,7 @@ export type CoachEntry = {
   school: string;
   division: string;
   state: string;
+  sport?: string;
 };
 
 export type CoachList = {
