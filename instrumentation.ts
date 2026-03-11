@@ -1,7 +1,10 @@
-import { assertEnv } from '@/config/env';
+import { validateEnv } from '@/config/env';
 
 export async function register() {
-  assertEnv();
+  const { valid, errors } = validateEnv();
+  if (!valid) {
+    console.warn(`[env] Missing environment variables: ${errors.join('; ')}`);
+  }
   if (process.env.NEXT_RUNTIME === 'nodejs') {
     await import('./sentry.server.config');
   }
