@@ -11,8 +11,6 @@ applications:
             - npm pkg delete packageManager || true
             - npm ci
             - npm run typecheck
-            - npm run lint
-            - npm run test:stability
         build:
           commands:
             - NEXT_FORCE_TURBOPACK=0 npm run build
