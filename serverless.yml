@@ -40,6 +40,7 @@ provider:
         - Content-Type
         - Authorization
         - Cookie
+        - x-client-request-id
       allowedMethods:
         - GET
         - POST
