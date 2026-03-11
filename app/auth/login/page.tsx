@@ -49,8 +49,12 @@ export default function LoginPage() {
         } as any);
         router.push('/dashboard');
       } else {
-        await clientLogin({ email: creds.email, phone: creds.phone, accessCode: creds.accessCode });
-        setSession({ email: creds.email, role: 'client', clientId: undefined } as any);
+        const result = await clientLogin({ email: creds.email, phone: creds.phone, accessCode: creds.accessCode });
+        if (result.session) {
+          setSession(result.session as any);
+        } else {
+          setSession({ email: creds.email, role: 'client' } as any);
+        }
         router.push('/client/lists');
       }
     } catch (e: any) {

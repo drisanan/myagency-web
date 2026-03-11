@@ -111,8 +111,18 @@ const authClientLoginHandler: Handler = async (event: APIGatewayProxyEventV2) =>
   });
 
   const cookie = buildSessionCookie(token, secureCookie, isLocal);
-  // response() now handles both local (multiValueHeaders) and prod (cookies array)
-  const res = response(200, { ok: true }, origin, {}, [cookie]);
+  const sessionPayload = {
+    role: 'client' as const,
+    agencyId: client.agencyId,
+    agencyEmail: client.agencyEmail,
+    email: normalizedEmail,
+    clientId: client.id,
+    firstName: client.firstName,
+    lastName: client.lastName,
+    agencyLogo,
+    agencySettings,
+  };
+  const res = response(200, { ok: true, session: sessionPayload }, origin, {}, [cookie]);
   try {
     await logActivity({
       agencyId: client.agencyId,

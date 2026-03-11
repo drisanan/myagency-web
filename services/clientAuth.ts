@@ -5,7 +5,23 @@ function requireApiBase() {
   return API_BASE_URL;
 }
 
-export async function clientLogin(input: { email: string; phone: string; accessCode: string }) {
+export type ClientLoginResult = {
+  ok: boolean;
+  session?: {
+    role: 'client';
+    agencyId: string;
+    agencyEmail: string;
+    email: string;
+    clientId: string;
+    firstName: string;
+    lastName: string;
+    agencyLogo?: string;
+    agencySettings?: Record<string, string | undefined>;
+  };
+  error?: string;
+};
+
+export async function clientLogin(input: { email: string; phone: string; accessCode: string }): Promise<ClientLoginResult> {
   const base = requireApiBase();
   const res = await fetch(`${base}/auth/client-login`, {
     method: 'POST',
@@ -18,8 +34,8 @@ export async function clientLogin(input: { email: string; phone: string; accessC
     }),
   });
   if (!res.ok) {
-    const text = await res.text().catch(() => '');
-    throw new Error(text || `Login failed ${res.status}`);
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data?.error || `Login failed ${res.status}`);
   }
   
   // LOCAL DEV WORKAROUND: If API sent custom header, manually set cookie
