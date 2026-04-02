@@ -46,6 +46,10 @@ type MetricItem = { title: string; value: string };
 type ReferenceItem = { name: string; email?: string; phone?: string };
 type HighlightVideoItem = { url: string; title?: string };
 
+function isEmbeddableVideo(url: string): boolean {
+  return /\.(mp4|webm|ogg)(\?|$)/i.test(url);
+}
+
 interface ClientProfileViewProps {
   client: any;
   onEdit: () => void;
@@ -148,6 +152,7 @@ const LinkField = ({ label, value }: { label: string; value?: string | null }) =
    ClientProfileView — read-only summary of all client data
    ═══════════════════════════════════════════════════════════ */
 export function ClientProfileView({ client, onEdit }: ClientProfileViewProps) {
+  const [selectedImage, setSelectedImage] = React.useState<string | null>(null);
   const radar = client?.radar ?? {};
   const events: EventItem[] = radar.events ?? [];
   const metrics: MetricItem[] = radar.metrics ?? [];
@@ -495,22 +500,28 @@ export function ClientProfileView({ client, onEdit }: ClientProfileViewProps) {
         {galleryImages.length > 0 && (
           <Box sx={{ gridColumn: '1 / -1' }}>
             <Section icon={<FaLink />} title={`Gallery (${galleryImages.length})`}>
-              <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+              <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'repeat(2, 1fr)', sm: 'repeat(3, 1fr)', md: 'repeat(4, 1fr)' }, gap: 1.5 }}>
                 {galleryImages.map((img: string, i: number) => (
                   <Box
                     key={i}
-                    component="img"
-                    src={img}
-                    alt={`Gallery ${i + 1}`}
+                    onClick={() => setSelectedImage(img)}
                     sx={{
-                      width: 100,
-                      height: 100,
-                      objectFit: 'cover',
+                      aspectRatio: '1',
+                      overflow: 'hidden',
+                      cursor: 'pointer',
                       borderRadius: 0,
-                      clipPath:
-                        'polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 6px 100%, 0 calc(100% - 6px))',
+                      clipPath: 'polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 6px 100%, 0 calc(100% - 6px))',
+                      transition: 'transform 0.2s ease',
+                      '&:hover': { transform: 'scale(1.03)' },
                     }}
-                  />
+                  >
+                    <Box
+                      component="img"
+                      src={img}
+                      alt={`Gallery ${i + 1}`}
+                      sx={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                    />
+                  </Box>
                 ))}
               </Box>
             </Section>
@@ -521,31 +532,72 @@ export function ClientProfileView({ client, onEdit }: ClientProfileViewProps) {
         {highlightVideos.length > 0 && (
           <Box sx={{ gridColumn: '1 / -1' }}>
             <Section icon={<FaYoutube />} title={`Highlight Videos (${highlightVideos.length})`}>
-              <Stack spacing={1}>
+              <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(2, 1fr)' }, gap: 2 }}>
                 {highlightVideos.map((video: HighlightVideoItem, i: number) => (
-                  <Box key={i} sx={{ pl: 1.5, borderLeft: `2px solid ${colors.lime}40` }}>
-                    <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                      {video.title || `Video ${i + 1}`}
-                    </Typography>
-                    {video.url && (
-                      <Typography
-                        variant="caption"
-                        component="a"
-                        href={video.url.startsWith('http') ? video.url : `https://${video.url}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        sx={{ color: '#0A0A0A80', wordBreak: 'break-all', '&:hover': { color: colors.lime } }}
-                      >
-                        {video.url}
-                      </Typography>
+                  <Box
+                    key={i}
+                    sx={{
+                      overflow: 'hidden',
+                      borderRadius: 0,
+                      clipPath: 'polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px))',
+                      bgcolor: '#000',
+                    }}
+                  >
+                    {video.url && isEmbeddableVideo(video.url) ? (
+                      <Box component="video" controls preload="metadata" sx={{ width: '100%', maxHeight: 300, display: 'block' }}>
+                        <source src={video.url} type="video/mp4" />
+                        Your browser does not support the video tag.
+                      </Box>
+                    ) : video.url ? (
+                      <Box sx={{ p: 2, bgcolor: colors.white }}>
+                        <Typography
+                          variant="body2"
+                          component="a"
+                          href={video.url.startsWith('http') ? video.url : `https://${video.url}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          sx={{ color: colors.black, wordBreak: 'break-all', '&:hover': { color: colors.lime } }}
+                        >
+                          {video.title || `Video ${i + 1}`} — Open Link ↗
+                        </Typography>
+                      </Box>
+                    ) : null}
+                    {video.title && (
+                      <Box sx={{ px: 2, py: 1, bgcolor: colors.white }}>
+                        <Typography variant="body2" sx={{ fontWeight: 600 }}>{video.title}</Typography>
+                      </Box>
                     )}
                   </Box>
                 ))}
-              </Stack>
+              </Box>
             </Section>
           </Box>
         )}
       </Box>
+
+      {/* Lightbox */}
+      {selectedImage && (
+        <Box
+          onClick={() => setSelectedImage(null)}
+          sx={{
+            position: 'fixed',
+            inset: 0,
+            bgcolor: 'rgba(0,0,0,0.92)',
+            zIndex: 9999,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+          }}
+        >
+          <Box
+            component="img"
+            src={selectedImage}
+            alt="Gallery preview"
+            sx={{ maxWidth: '90vw', maxHeight: '90vh', objectFit: 'contain', borderRadius: 1 }}
+          />
+        </Box>
+      )}
     </Box>
   );
 }
