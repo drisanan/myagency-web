@@ -5,13 +5,13 @@ import { TourProvider } from '@/features/tour/TourProvider';
 import { DynamicThemeProvider } from '@/features/theme/DynamicThemeProvider';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { Box, AppBar, Toolbar, Typography, Drawer, List, ListItemButton, ListItemText, Stack, CssBaseline, Avatar, IconButton, Menu, MenuItem, Divider, Button, Alert, useMediaQuery, useTheme } from '@mui/material';
+import { Box, AppBar, Toolbar, Typography, Drawer, List, ListItemButton, ListItemText, Stack, CssBaseline, Avatar, IconButton, Menu, MenuItem, Divider, Button, useMediaQuery, useTheme } from '@mui/material';
 import { useQueryClient } from '@tanstack/react-query';
 import { FeatureErrorBoundary } from '@/components/FeatureErrorBoundary';
 import { SupportChatBot } from '@/components/SupportChatBot';
 import { colors, gradients } from '@/theme/colors';
 import { useImpersonation } from '@/hooks/useImpersonation';
-import { IoClipboardOutline, IoSchoolOutline, IoEyeOutline, IoCalendarOutline, IoChatbubblesOutline, IoMenuOutline, IoCloseOutline, IoPersonCircleOutline } from 'react-icons/io5';
+import { IoHomeOutline, IoClipboardOutline, IoSchoolOutline, IoEyeOutline, IoCalendarOutline, IoChatbubblesOutline, IoMenuOutline, IoCloseOutline, IoPersonCircleOutline } from 'react-icons/io5';
 
 const drawerWidth = 240;
 
@@ -36,6 +36,7 @@ function Guard({ children }: { children: React.ReactNode }) {
 }
 
 const navItems = [
+  { label: 'Dashboard', href: '/client/dashboard', icon: <IoHomeOutline /> },
   { label: 'Lists', href: '/client/lists', icon: <IoClipboardOutline /> },
   { label: 'Recruiter', href: '/client/recruiter', icon: <IoSchoolOutline /> },
   { label: 'Tasks', href: '/client/tasks', icon: <IoClipboardOutline /> },
@@ -227,18 +228,6 @@ function ClientShell({ children }: { children: React.ReactNode }) {
           </Typography>
         </Box>
         <Divider />
-        {isImpersonating && (
-          <MenuItem
-            onClick={() => {
-              handleUserClose();
-              stopImpersonation();
-            }}
-            sx={{ color: colors.lime, fontWeight: 600 }}
-          >
-            Back to Agency
-          </MenuItem>
-        )}
-        {isImpersonating && <Divider />}
         {!isImpersonating && (
           <MenuItem component={Link} href="/client/profile" onClick={handleUserClose}>
             Profile
@@ -362,40 +351,6 @@ function ClientShell({ children }: { children: React.ReactNode }) {
         }}
       >
         <Toolbar />
-        {/* Impersonation Banner */}
-        {isImpersonating && (
-          <Alert
-            severity="warning"
-            sx={{
-              mb: 2,
-              display: 'flex',
-              alignItems: 'center',
-              '& .MuiAlert-message': {
-                flexGrow: 1,
-              },
-              '& .MuiAlert-action': {
-                pt: 0,
-                alignItems: 'center',
-              },
-            }}
-            action={
-              <Button
-                color="inherit"
-                size="small"
-                variant="outlined"
-                onClick={stopImpersonation}
-                sx={{
-                  whiteSpace: 'nowrap',
-                  minWidth: 'auto',
-                }}
-              >
-                Stop Impersonating
-              </Button>
-            }
-          >
-            You are viewing as: {session?.firstName} {session?.lastName} ({session?.email})
-          </Alert>
-        )}
         <FeatureErrorBoundary name="client-portal">
           {children}
         </FeatureErrorBoundary>

@@ -55,7 +55,7 @@ export default function LoginPage() {
         } else {
           setSession({ email: creds.email, role: 'client' } as any);
         }
-        router.push('/client/lists');
+        router.push('/client/dashboard');
       }
     } catch (e: any) {
       setError(e?.message || 'Login failed');

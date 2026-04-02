@@ -1,6 +1,6 @@
 'use client';
 import React from 'react';
-import { Box, Typography, Chip, Stack, Avatar } from '@mui/material';
+import { Alert, Box, Button, Typography, Chip, Stack, Avatar } from '@mui/material';
 import { IoEyeOutline, IoSchoolOutline, IoPeopleOutline, IoMailOutline, IoMailOpenOutline, IoOpenOutline } from 'react-icons/io5';
 import { useQuery } from '@tanstack/react-query';
 import { useSession } from '@/features/auth/session';
@@ -92,6 +92,17 @@ export default function ClientActivityPage() {
       >
         Your Recruiting Activity
       </Typography>
+
+      {viewsQuery.isError && (
+        <Alert severity="error" sx={{ mb: 2 }} action={<Button color="inherit" size="small" onClick={() => viewsQuery.refetch()}>Retry</Button>}>
+          {(viewsQuery.error as any)?.message || 'Failed to load profile views'}
+        </Alert>
+      )}
+      {metricsQuery.isError && (
+        <Alert severity="error" sx={{ mb: 2 }} action={<Button color="inherit" size="small" onClick={() => metricsQuery.refetch()}>Retry</Button>}>
+          {(metricsQuery.error as any)?.message || 'Failed to load email metrics'}
+        </Alert>
+      )}
 
       {/* Profile View Stats */}
       {stats && (

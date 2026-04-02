@@ -489,6 +489,10 @@ export function MeetingsPanel({ clientId, isAthlete = false }: Props) {
         <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
           <CircularProgress />
         </Box>
+      ) : meetingsQuery.isError ? (
+        <Alert severity="error" action={<Button color="inherit" size="small" onClick={() => meetingsQuery.refetch()}>Retry</Button>}>
+          {(meetingsQuery.error as any)?.message || 'Failed to load meetings'}
+        </Alert>
       ) : viewMode === 'list' ? (
         /* List View */
         meetings.length === 0 ? (

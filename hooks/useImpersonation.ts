@@ -61,7 +61,7 @@ export function useImpersonation() {
     });
 
     // Navigate to client portal
-    router.push('/client/lists');
+    router.push('/client/dashboard');
   };
 
   /**

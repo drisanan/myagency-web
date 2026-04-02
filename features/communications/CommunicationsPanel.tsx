@@ -292,6 +292,12 @@ export function CommunicationsPanel({ athleteId, coachEmail, defaultType, isAthl
               <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
                 <CircularProgress size={24} />
               </Box>
+            ) : threadsQuery.isError ? (
+              <Box sx={{ p: 2 }}>
+                <Alert severity="error" action={<Button color="inherit" size="small" onClick={() => threadsQuery.refetch()}>Retry</Button>}>
+                  {(threadsQuery.error as any)?.message || 'Failed to load conversations'}
+                </Alert>
+              </Box>
             ) : threads.length === 0 ? (
               <Box sx={{ p: 2 }}>
                 <Typography color="text.secondary">No conversations yet.</Typography>

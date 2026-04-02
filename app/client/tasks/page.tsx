@@ -191,6 +191,9 @@ export default function ClientTasksPage() {
           {!fetching && tasks.length === 0 && (
             <Typography sx={{ color: '#0A0A0A60' }}>No tasks assigned to you yet.</Typography>
           )}
+          {!fetching && tasks.length > 0 && filtered.length === 0 && (
+            <Typography sx={{ color: '#0A0A0A60' }}>No tasks match your filters. Try adjusting your search or status filter.</Typography>
+          )}
           <Stack spacing={0}>
             {openTasks.map((t, i) => (
               <Box

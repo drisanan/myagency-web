@@ -11,6 +11,7 @@ import { getDivisions, getStates } from '@/services/recruiterMeta';
 import { getSports } from '@/features/recruiter/divisionMapping';
 import { getClient } from '@/services/clients';
 import {
+  Alert,
   Box,
   Button,
   Checkbox,
@@ -91,7 +92,7 @@ export default function ClientListsPage() {
   const [error, setError] = React.useState<string | null>(null);
 
   // React Query for own interest lists
-  const { data: lists = [], isLoading: loading } = useQuery({
+  const { data: lists = [], isLoading: loading, isError: listsError, error: listsErrorObj, refetch: refetchLists } = useQuery({
     queryKey: ['client-own-lists'],
     queryFn: () => listLists(''),
   });
@@ -107,6 +108,7 @@ export default function ClientListsPage() {
   const [selected, setSelected] = React.useState<Record<string, boolean>>({});
   const [schoolSearch, setSchoolSearch] = React.useState('');
   const [loadingUnis, setLoadingUnis] = React.useState(false);
+  const [unisLoaded, setUnisLoaded] = React.useState(false);
   const [saving, setSaving] = React.useState(false);
   const [clientProfile, setClientProfile] = React.useState<any>(null);
   const visibleUniversities = React.useMemo(() => {
@@ -199,7 +201,7 @@ export default function ClientListsPage() {
       const divisionSlug = DIVISION_API_MAPPING[division] || division;
       const data = await listUniversities({ sport, division: divisionSlug, state });
       setUniversities(data);
-      setSelected({});
+      setUnisLoaded(true);
     } catch (e: any) {
       setError(e?.message || 'Failed to load universities');
     } finally {
@@ -369,6 +371,11 @@ export default function ClientListsPage() {
                 {loadingUnis ? <CircularProgress size={18} /> : 'Load Universities'}
               </Button>
             </Box>
+            {unisLoaded && universities.length === 0 && !error && (
+              <Typography sx={{ color: '#0A0A0A60', mt: 2, fontSize: 13 }}>
+                No schools found for this division and state. Try a different combination.
+              </Typography>
+            )}
             {universities.length > 0 && (
               <Box sx={{ mt: 2 }}>
                 <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1.5 }}>
@@ -416,6 +423,11 @@ export default function ClientListsPage() {
                   }}
                 >
                   <Stack spacing={0.5}>
+                    {visibleUniversities.length === 0 && schoolSearch.trim() && (
+                      <Typography sx={{ color: '#0A0A0A60', p: 2, textAlign: 'center', fontSize: 13 }}>
+                        No schools match &ldquo;{schoolSearch.trim()}&rdquo;. Try a shorter name.
+                      </Typography>
+                    )}
                     {visibleUniversities.map((u) => (
                       <FormControlLabel
                         key={u.name}
@@ -670,6 +682,10 @@ export default function ClientListsPage() {
           <Box sx={{ px: 3, py: 2.5 }}>
             {loading ? (
               <LoadingState message="Loading lists..." />
+            ) : listsError ? (
+              <Alert severity="error" action={<Button color="inherit" size="small" onClick={() => refetchLists()}>Retry</Button>}>
+                {(listsErrorObj as any)?.message || 'Failed to load your lists'}
+              </Alert>
             ) : (
               <Stack spacing={1.5}>
                 {lists.map((l) => (
