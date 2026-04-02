@@ -39,7 +39,7 @@ const navItems = [
   { label: 'Lists', href: '/client/lists', icon: <IoClipboardOutline /> },
   { label: 'Recruiter', href: '/client/recruiter', icon: <IoSchoolOutline /> },
   { label: 'Tasks', href: '/client/tasks', icon: <IoClipboardOutline /> },
-  { label: 'Profile Views', href: '/client/views', icon: <IoEyeOutline /> },
+  { label: 'Activity', href: '/client/views', icon: <IoEyeOutline /> },
   { label: 'Meetings', href: '/client/meetings', icon: <IoCalendarOutline /> },
   { label: 'Messages', href: '/client/messages', icon: <IoChatbubblesOutline /> },
   { label: 'Profile', href: '/client/profile', icon: <IoPersonCircleOutline /> },

@@ -2,10 +2,15 @@
 
 import React from 'react';
 import { Box, Typography } from '@mui/material';
+import { useSearchParams } from 'next/navigation';
 import { ClientRecruiterWizard } from '@/features/recruiter/ClientRecruiterWizard';
-import { colors, gradients } from '@/theme/colors';
+import { colors } from '@/theme/colors';
 
 export default function ClientRecruiterPage() {
+  const searchParams = useSearchParams();
+  const initialListId = searchParams.get('listId') || undefined;
+  const initialCoachId = searchParams.get('coachId') || undefined;
+
   return (
     <Box sx={{ maxWidth: 1200, mx: 'auto', position: 'relative', zIndex: 1 }}>
       <Typography
@@ -48,7 +53,7 @@ export default function ClientRecruiterPage() {
           p: 3,
         }}
       >
-        <ClientRecruiterWizard />
+        <ClientRecruiterWizard initialListId={initialListId} initialCoachId={initialCoachId} />
       </Box>
     </Box>
   );

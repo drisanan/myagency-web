@@ -24,6 +24,8 @@ import { recordEmailSends } from '@/services/emailTracking';
 import { normalizeYouTubeUrl, normalizeHudlUrl, normalizeInstagramUrl, normalizeGenericUrl } from '@/services/urlNormalize';
 import { createCampaign, updateCampaign } from '@/services/campaigns';
 import { normalizeEmailHtml } from '@/utils/emailHtml';
+import { buildSubjectLine } from '@/utils/emailSubject';
+import { QUILL_MODULES, readEditorHtml as readEditorHtmlShared } from '@/utils/quillConfig';
 import { listDrafts, saveDraft, updateDraft, deleteDraft, type RecruiterDraft } from '@/services/recruiterDrafts';
 import SaveIcon from '@mui/icons-material/Save';
 import DraftsIcon from '@mui/icons-material/Drafts';
@@ -277,24 +279,7 @@ export function RecruiterWizard() {
       .trim();
   }
 
-  function buildSubjectLine(
-    athleteName: string,
-    gradYear: string,
-    positionOrSport: string,
-    index: number,
-  ) {
-    const safeAthlete = athleteName.trim() || 'Athlete';
-    const parts = [safeAthlete, gradYear, positionOrSport].filter(Boolean).join(' ').trim();
-    const base = parts || safeAthlete;
-    const variants = [
-      `${base} Introduction`,
-      `${base} Intro`,
-      `${base} Recruiting Intro`,
-      `${base} Profile`,
-      `${base} Highlights`,
-    ];
-    return variants[index % variants.length];
-  }
+  // buildSubjectLine imported from @/utils/emailSubject
 
   function toggleSection(k: string, v: boolean) {
     setEnabledSections((p) => ({ ...p, [k]: v }));
@@ -1057,12 +1042,7 @@ export function RecruiterWizard() {
   }, [activeStep, aiHtml, activeDraftId, drafts, handleSaveDraft]);
 
   const readEditorHtml = React.useCallback((): string | null => {
-    if (!previewQuillContainerRef.current || typeof QuillClass?.find !== 'function') return null;
-    const qlContainer = previewQuillContainerRef.current.querySelector('.ql-container');
-    if (!qlContainer) return null;
-    const quill = QuillClass.find(qlContainer as HTMLElement);
-    const raw = quill?.root?.innerHTML;
-    return typeof raw === 'string' ? normalizeEmailHtml(raw) : null;
+    return readEditorHtmlShared(previewQuillContainerRef, QuillClass);
   }, []);
 
   const persistPreviewEditorHtml = React.useCallback(() => {
@@ -2056,15 +2036,7 @@ export function RecruiterWizard() {
                   theme="snow"
                   value={agentEmailBody}
                   onChange={(content: string) => setAgentEmailBody(content)}
-                  modules={{
-                    toolbar: [
-                      [{ 'header': [1, 2, 3, false] }],
-                      ['bold', 'italic', 'underline'],
-                      [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-                      ['link'],
-                      ['clean']
-                    ]
-                  }}
+                  modules={QUILL_MODULES}
                   placeholder="Write your email to the university coaches..."
                 />
               </Box>
@@ -2289,15 +2261,7 @@ export function RecruiterWizard() {
                       theme="snow"
                       value={previewHtml}
                       onChange={(content: string) => setAiHtml(content)}
-                      modules={{
-                        toolbar: [
-                          [{ 'header': [1, 2, 3, false] }],
-                          ['bold', 'italic', 'underline'],
-                          [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-                          ['link'],
-                          ['clean']
-                        ]
-                      }}
+                      modules={QUILL_MODULES}
                       placeholder="Compose your email..."
                     />
                   </Box>

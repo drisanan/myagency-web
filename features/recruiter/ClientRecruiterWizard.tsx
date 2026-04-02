@@ -22,8 +22,18 @@ import {
   Alert,
   Radio,
   RadioGroup,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Chip,
+  IconButton,
 } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import SaveIcon from '@mui/icons-material/Save';
+import DraftsIcon from '@mui/icons-material/Drafts';
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
+import dynamic from 'next/dynamic';
 import { generateIntro } from '@/services/aiRecruiter';
 import { useSession } from '@/features/auth/session';
 import { getClient, setClientGmailTokens, getClientGmailTokens, refreshGmailToken } from '@/services/clients';
@@ -33,12 +43,25 @@ import { listAssignments } from '@/services/listAssignments';
 import { hasMailed, markMailed } from '@/services/mailStatus';
 import { normalizeYouTubeUrl, normalizeHudlUrl, normalizeInstagramUrl } from '@/services/urlNormalize';
 import { normalizeEmailHtml } from '@/utils/emailHtml';
+import { buildSubjectLine } from '@/utils/emailSubject';
+import { QUILL_MODULES, readEditorHtml } from '@/utils/quillConfig';
+import { listDrafts, saveDraft, updateDraft, deleteDraft, type RecruiterDraft } from '@/services/recruiterDrafts';
+import { recordEmailSends } from '@/services/emailTracking';
+
+let QuillClass: any = null;
+const ReactQuill = dynamic(() => import('react-quill-new').then(mod => { QuillClass = mod.Quill; return mod; }), { ssr: false });
+import 'react-quill-new/dist/quill.snow.css';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.API_BASE_URL || '';
 
 const STEPS = ['Select List', 'Select Coach', 'Compose & Send'];
 
-export function ClientRecruiterWizard() {
+type ClientRecruiterWizardProps = {
+  initialListId?: string;
+  initialCoachId?: string;
+};
+
+export function ClientRecruiterWizard({ initialListId, initialCoachId }: ClientRecruiterWizardProps = {}) {
   const { session, loading } = useSession();
   const clientId = session?.clientId || '';
   const agencyEmail = session?.agencyEmail || session?.email || '';
@@ -90,6 +113,17 @@ export function ClientRecruiterWizard() {
   // Email content (editable)
   const [emailHtml, setEmailHtml] = React.useState<string | null>(null);
   const [isEditing, setIsEditing] = React.useState(false);
+  const previewQuillContainerRef = React.useRef<HTMLDivElement>(null);
+
+  // Subject line
+  const [subjectLine, setSubjectLine] = React.useState('');
+
+  // Drafts
+  const [drafts, setDrafts] = React.useState<RecruiterDraft[]>([]);
+  const [activeDraftId, setActiveDraftId] = React.useState<string | null>(null);
+  const [showDraftDialog, setShowDraftDialog] = React.useState(false);
+  const [draftName, setDraftName] = React.useState('');
+  const autoSaveTimerRef = React.useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Email sections
   const [enabledSections, setEnabledSections] = React.useState<Record<string, boolean>>({
@@ -116,7 +150,7 @@ export function ClientRecruiterWizard() {
 
   // Loading states
   const [aiLoading, setAiLoading] = React.useState(false);
-  const [isCreatingDraft, setIsCreatingDraft] = React.useState(false);
+  const [isSending, setIsSending] = React.useState(false);
 
   // Contact info derived from client profile via canonical adapters
   const contact = React.useMemo(() => {
@@ -170,6 +204,26 @@ export function ClientRecruiterWizard() {
       .catch((e) => setError(e?.message || 'Failed to load data'))
       .finally(() => setLoadingProfile(false));
   }, [clientId]);
+
+  // Apply initial list/coach from URL params
+  const appliedInitialRef = React.useRef(false);
+  React.useEffect(() => {
+    if (appliedInitialRef.current || lists.length === 0) return;
+    if (initialListId) {
+      const list = lists.find((l) => l.id === initialListId);
+      if (list) {
+        setSelectedListId(initialListId);
+        setSelectedList(list);
+        if (initialCoachId) {
+          setSelectedCoachId(initialCoachId);
+          setActiveStep(2);
+        } else {
+          setActiveStep(1);
+        }
+        appliedInitialRef.current = true;
+      }
+    }
+  }, [lists, initialListId, initialCoachId]);
 
   // Check Gmail connection status
   React.useEffect(() => {
@@ -226,6 +280,88 @@ export function ClientRecruiterWizard() {
     window.addEventListener('message', onMessage);
     return () => window.removeEventListener('message', onMessage);
   }, [clientId]);
+
+  // Load drafts
+  React.useEffect(() => {
+    listDrafts()
+      .then((all) => setDrafts(all.filter((d) => d.senderType === 'client' && (!d.clientId || d.clientId === clientId))))
+      .catch(() => {});
+  }, [clientId]);
+
+  function collectDraftPayload() {
+    const html = readEditorHtml(previewQuillContainerRef, QuillClass) ?? emailHtml ?? '';
+    return {
+      senderType: 'client' as const,
+      clientId,
+      subject: subjectLine,
+      html,
+      listId: selectedListId || undefined,
+      selectedCoachIds: selectedCoachId ? [selectedCoachId] : undefined,
+    };
+  }
+
+  const handleSaveDraft = React.useCallback(async (name: string, auto = false) => {
+    try {
+      const payload = {
+        senderType: 'client' as const,
+        clientId,
+        subject: subjectLine,
+        html: readEditorHtml(previewQuillContainerRef, QuillClass) ?? emailHtml ?? '',
+        listId: selectedListId || undefined,
+        selectedCoachIds: selectedCoachId ? [selectedCoachId] : undefined,
+        autoSaved: auto,
+      };
+      let draft: RecruiterDraft;
+      if (activeDraftId) {
+        draft = await updateDraft(activeDraftId, { ...payload, name });
+      } else {
+        draft = await saveDraft({ ...payload, name });
+        setActiveDraftId(draft.id);
+      }
+      setDrafts((prev) => {
+        const idx = prev.findIndex((d) => d.id === draft.id);
+        if (idx >= 0) { const next = [...prev]; next[idx] = draft; return next; }
+        return [draft, ...prev];
+      });
+      if (!auto) setSendMessage('Draft saved!');
+    } catch (e: any) {
+      if (!auto) setError(e?.message || 'Failed to save draft');
+    }
+  }, [clientId, subjectLine, emailHtml, selectedListId, selectedCoachId, activeDraftId]);
+
+  function handleLoadDraft(draft: RecruiterDraft) {
+    setActiveDraftId(draft.id);
+    if (draft.subject) setSubjectLine(draft.subject);
+    if (draft.html) setEmailHtml(draft.html);
+    if (draft.listId) {
+      setSelectedListId(draft.listId);
+      const list = lists.find((l) => l.id === draft.listId) || null;
+      setSelectedList(list);
+    }
+    if (draft.selectedCoachIds?.[0]) setSelectedCoachId(draft.selectedCoachIds[0]);
+    if (draft.html) setActiveStep(2);
+  }
+
+  async function handleDeleteDraft(id: string) {
+    try {
+      await deleteDraft(id);
+      setDrafts((prev) => prev.filter((d) => d.id !== id));
+      if (activeDraftId === id) setActiveDraftId(null);
+    } catch {}
+  }
+
+  // Autosave every 30 seconds when composing
+  React.useEffect(() => {
+    if (autoSaveTimerRef.current) clearInterval(autoSaveTimerRef.current);
+    if (activeStep !== 2 || !emailHtml) return;
+    autoSaveTimerRef.current = setInterval(() => {
+      const name = activeDraftId
+        ? (drafts.find((d) => d.id === activeDraftId)?.name || 'Auto-save')
+        : 'Auto-save';
+      handleSaveDraft(name, true).catch(() => {});
+    }, 30_000);
+    return () => { if (autoSaveTimerRef.current) clearInterval(autoSaveTimerRef.current); };
+  }, [activeStep, emailHtml, activeDraftId, drafts, handleSaveDraft]);
 
   function toggleSection(k: string, v: boolean) {
     setEnabledSections((p) => ({ ...p, [k]: v }));
@@ -338,6 +474,9 @@ export function ClientRecruiterWizard() {
       const introClean = sanitizeAiIntro(String(intro).replace(/\[StudentName\]/gi, fullName));
       const improved = `${buildGreeting()}<p>${introClean}</p>${buildEmailBody()}`;
       setEmailHtml(improved);
+      if (!subjectLine) {
+        setSubjectLine(buildSubjectLine(fullName, '', sport, 0));
+      }
     } catch (e: any) {
       setError(e?.message || 'AI generation failed');
     } finally {
@@ -405,12 +544,12 @@ export function ClientRecruiterWizard() {
     }
   }
 
-  async function handleCreateDraft() {
+  async function handleSendEmail() {
     try {
       if (!window.confirm('Send this email now?')) {
         return;
       }
-      setIsCreatingDraft(true);
+      setIsSending(true);
       setSendMessage(null);
       setError(null);
 
@@ -419,8 +558,10 @@ export function ClientRecruiterWizard() {
         return;
       }
 
-      const subject = `Intro: ${contact.firstName || ''} ${contact.lastName || ''} → ${selectedCoach.school || selectedList?.name || ''}`.trim();
-      const html = normalizeEmailHtml(previewHtml);
+      const fullName = `${contact.firstName || ''} ${contact.lastName || ''}`.trim();
+      const effectiveSubject = subjectLine || buildSubjectLine(fullName, '', contact.sport || '', 0);
+      const editorHtml = readEditorHtml(previewQuillContainerRef, QuillClass);
+      const html = normalizeEmailHtml(editorHtml ?? previewHtml);
       const savedTokens = getClientGmailTokens(clientId);
 
       const sendUrl = API_BASE_URL ? `${API_BASE_URL}/gmail/send` : '/api/gmail/send';
@@ -431,7 +572,7 @@ export function ClientRecruiterWizard() {
         body: JSON.stringify({
           clientId,
           recipients: [selectedCoach.email],
-          subject,
+          subject: effectiveSubject,
           html,
           tokens: savedTokens || undefined,
           agencyEmail: agencyEmail || '',
@@ -441,8 +582,14 @@ export function ClientRecruiterWizard() {
       if (!res.ok || !data?.ok) {
         throw new Error(data?.error || 'Send failed');
       }
+      try { markMailed(clientId, [selectedCoach.email]); } catch {}
       try {
-        markMailed(clientId, [selectedCoach.email]);
+        recordEmailSends({
+          clientId,
+          clientEmail: contact.email,
+          recipients: [{ email: selectedCoach.email, name: `${selectedCoach.firstName || ''} ${selectedCoach.lastName || ''}`.trim(), university: selectedCoach.school }],
+          subject: effectiveSubject,
+        });
       } catch {}
       setSendMessage('Email sent successfully!');
     } catch (e: any) {
@@ -461,7 +608,7 @@ export function ClientRecruiterWizard() {
         setError(e?.message || 'Failed to send email');
       }
     } finally {
-      setIsCreatingDraft(false);
+      setIsSending(false);
     }
   }
 
@@ -482,6 +629,8 @@ export function ClientRecruiterWizard() {
   React.useEffect(() => {
     setEmailHtml(null);
     setIsEditing(false);
+    setSubjectLine('');
+    setActiveDraftId(null);
   }, [selectedListId, selectedCoachId]);
 
   if (loading || loadingProfile) {
@@ -533,7 +682,7 @@ export function ClientRecruiterWizard() {
       )}
 
       <Box sx={{ mb: 3 }}>
-        {/* Step 0: Select List */}
+        {/* Step 0: Select List + Drafts */}
         {activeStep === 0 && (
           <Box sx={{ maxWidth: 600 }}>
             <Typography variant="h6" gutterBottom>
@@ -579,6 +728,39 @@ export function ClientRecruiterWizard() {
                   {(selectedList.items || []).length > 5 && ` and ${(selectedList.items || []).length - 5} more...`}
                 </Typography>
               </Box>
+            )}
+
+            {/* Saved Drafts */}
+            {drafts.length > 0 && (
+              <Accordion sx={{ mt: 3 }}>
+                <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                  <Stack direction="row" spacing={1} alignItems="center">
+                    <DraftsIcon fontSize="small" />
+                    <Typography variant="subtitle2">Saved Drafts ({drafts.length})</Typography>
+                  </Stack>
+                </AccordionSummary>
+                <AccordionDetails>
+                  <Stack spacing={1}>
+                    {drafts.map((d) => (
+                      <Box key={d.id} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', p: 1, border: '1px solid #E0E0E0', borderRadius: 0 }}>
+                        <Box
+                          sx={{ cursor: 'pointer', flex: 1 }}
+                          onClick={() => handleLoadDraft(d)}
+                        >
+                          <Typography variant="body2" sx={{ fontWeight: 600 }}>{d.name}</Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            {d.subject || 'No subject'} — {new Date(d.updatedAt).toLocaleDateString()}
+                            {d.autoSaved ? ' (auto-saved)' : ''}
+                          </Typography>
+                        </Box>
+                        <IconButton size="small" onClick={() => handleDeleteDraft(d.id)}>
+                          <DeleteOutlineIcon fontSize="small" />
+                        </IconButton>
+                      </Box>
+                    ))}
+                  </Stack>
+                </AccordionDetails>
+              </Accordion>
             )}
           </Box>
         )}
@@ -654,38 +836,48 @@ export function ClientRecruiterWizard() {
                 </Card>
               )}
 
-              {/* Email Preview/Editor */}
+              {/* Subject Line */}
+              <TextField
+                size="small"
+                label="Subject Line"
+                fullWidth
+                value={subjectLine}
+                onChange={(e) => setSubjectLine(e.target.value)}
+                placeholder="e.g., John Smith 2027 WR Introduction"
+                helperText={subjectLine ? '' : 'Auto-generated when you click Generate, or type your own'}
+              />
+
+              {/* Email Composer */}
               <Box sx={{ border: '1px solid #E0E0E0', borderRadius: 0, clipPath: 'polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px))', p: 2, bgcolor: '#F5F5F5' }}>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                  <Typography variant="h6">Email Preview</Typography>
+                  <Typography variant="h6">{isEditing ? 'Edit Email' : 'Email Preview'}</Typography>
                   <Stack direction="row" spacing={1}>
                     <Button
                       size="small"
                       variant={isEditing ? 'contained' : 'outlined'}
-                      onClick={() => setIsEditing(!isEditing)}
+                      onClick={() => {
+                        if (isEditing) {
+                          const html = readEditorHtml(previewQuillContainerRef, QuillClass);
+                          if (html !== null) setEmailHtml(html);
+                        }
+                        setIsEditing(!isEditing);
+                      }}
                     >
                       {isEditing ? 'Done Editing' : 'Edit'}
-                    </Button>
-                    <Button
-                      size="small"
-                      onClick={() => navigator.clipboard.writeText(previewHtml)}
-                    >
-                      Copy
                     </Button>
                   </Stack>
                 </Box>
                 
                 {isEditing ? (
-                  <TextField
-                    multiline
-                    fullWidth
-                    minRows={10}
-                    maxRows={20}
-                    value={previewHtml}
-                    onChange={(e) => setEmailHtml(e.target.value)}
-                    sx={{ bgcolor: '#fff' }}
-                    helperText="Edit the HTML content directly. Use <p>, <ul>, <li>, <a>, etc."
-                  />
+                  <Box ref={previewQuillContainerRef} sx={{ bgcolor: '#fff', minHeight: 200, '.ql-editor': { minHeight: 200 } }}>
+                    <ReactQuill
+                      theme="snow"
+                      value={previewHtml}
+                      onChange={(content: string) => setEmailHtml(content)}
+                      modules={QUILL_MODULES}
+                      placeholder="Compose your email..."
+                    />
+                  </Box>
                 ) : (
                   <Box
                     sx={{ bgcolor: '#fff', p: 2, borderRadius: 0, clipPath: 'polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px))', minHeight: 200 }}
@@ -749,15 +941,26 @@ export function ClientRecruiterWizard() {
                   </Typography>
                 )}
                 {gmailConnected && !gmailExpired && (
-                  <Button
-                    variant="contained"
-                    onClick={handleCreateDraft}
-                    disabled={profileIncomplete || !selectedCoach?.email || isCreatingDraft}
-                    startIcon={isCreatingDraft ? <CircularProgress size={16} color="inherit" /> : null}
-                    sx={{ bgcolor: '#CCFF00', color: '#0A0A0A', '&:hover': { bgcolor: '#B8E600' } }}
-                  >
-                    {isCreatingDraft ? 'Sending…' : 'Send Email'}
-                  </Button>
+                  <>
+                    <Button
+                      variant="outlined"
+                      onClick={() => { setDraftName(activeDraftId ? (drafts.find((d) => d.id === activeDraftId)?.name || '') : ''); setShowDraftDialog(true); }}
+                      disabled={profileIncomplete}
+                      startIcon={<SaveIcon />}
+                      sx={{ color: '#0A0A0A', borderColor: '#0A0A0A30' }}
+                    >
+                      Save Draft
+                    </Button>
+                    <Button
+                      variant="contained"
+                      onClick={handleSendEmail}
+                      disabled={profileIncomplete || !selectedCoach?.email || isSending}
+                      startIcon={isSending ? <CircularProgress size={16} color="inherit" /> : null}
+                      sx={{ bgcolor: '#CCFF00', color: '#0A0A0A', '&:hover': { bgcolor: '#B8E600' } }}
+                    >
+                      {isSending ? 'Sending…' : 'Send Email'}
+                    </Button>
+                  </>
                 )}
               </Stack>
             </Box>
@@ -800,6 +1003,34 @@ export function ClientRecruiterWizard() {
           </Button>
         )}
       </Box>
+
+      {/* Save Draft Dialog */}
+      <Dialog open={showDraftDialog} onClose={() => setShowDraftDialog(false)} maxWidth="xs" fullWidth>
+        <DialogTitle>Save Draft</DialogTitle>
+        <DialogContent>
+          <TextField
+            autoFocus
+            fullWidth
+            size="small"
+            label="Draft name"
+            value={draftName}
+            onChange={(e) => setDraftName(e.target.value)}
+            sx={{ mt: 1 }}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setShowDraftDialog(false)}>Cancel</Button>
+          <Button
+            variant="contained"
+            onClick={async () => {
+              await handleSaveDraft(draftName || 'Untitled Draft');
+              setShowDraftDialog(false);
+            }}
+          >
+            Save
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

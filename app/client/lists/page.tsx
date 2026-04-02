@@ -23,7 +23,9 @@ import {
   MenuItem,
   Chip,
 } from '@mui/material';
-import { IoSchoolOutline, IoTrashOutline } from 'react-icons/io5';
+import { IoSchoolOutline, IoTrashOutline, IoMailOutline } from 'react-icons/io5';
+import Link from 'next/link';
+import { hasMailed } from '@/services/mailStatus';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { colors, gradients } from '@/theme/colors';
 import { LoadingState } from '@/components/LoadingState';
@@ -532,11 +534,12 @@ export default function ClientListsPage() {
               <Stack spacing={1.5}>
                 {assignedLists.map((l: any) => {
                   const coaches = (l.items || []) as any[];
-                  const schools = new Set(
-                    coaches
-                      .map((c: any) => c.school || c.university || '')
-                      .filter(Boolean)
-                  );
+                  const schoolMap = new Map<string, any[]>();
+                  coaches.forEach((c: any) => {
+                    const school = c.school || c.university || 'Unknown School';
+                    if (!schoolMap.has(school)) schoolMap.set(school, []);
+                    schoolMap.get(school)!.push(c);
+                  });
                   return (
                     <Box
                       key={l.id}
@@ -557,74 +560,64 @@ export default function ClientListsPage() {
                         <Chip
                           label={`${coaches.length} coaches`}
                           size="small"
-                          sx={{
-                            fontSize: 11,
-                            fontWeight: 600,
-                            height: 20,
-                            bgcolor: '#F0F0F0',
-                          }}
+                          sx={{ fontSize: 11, fontWeight: 600, height: 20, bgcolor: '#F0F0F0' }}
                         />
                         <Chip
-                          label={`${schools.size} schools`}
+                          label={`${schoolMap.size} schools`}
                           size="small"
-                          sx={{
-                            fontSize: 11,
-                            fontWeight: 600,
-                            height: 20,
-                            bgcolor: `${colors.lime}15`,
-                          }}
+                          sx={{ fontSize: 11, fontWeight: 600, height: 20, bgcolor: `${colors.lime}15` }}
                         />
                       </Stack>
-                      {/* Coach details */}
-                      {coaches.length > 0 && (
-                        <Stack spacing={0.5} sx={{ mt: 1 }}>
-                          {coaches.slice(0, 8).map((c: any, idx: number) => {
-                            const fullName = [c.firstName, c.lastName]
-                              .filter(Boolean)
-                              .join(' ');
-                            return (
-                              <Box
-                                key={c.id || c.email || idx}
-                                sx={{
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  gap: 1,
-                                  fontSize: 13,
-                                  color: '#0A0A0A99',
-                                }}
-                              >
-                                <Typography
-                                  variant="body2"
-                                  sx={{ fontWeight: 600, color: colors.black }}
-                                >
-                                  {fullName || c.email || 'Unknown'}
-                                </Typography>
-                                {c.title && (
-                                  <Typography variant="caption" sx={{ color: '#0A0A0A60' }}>
-                                    — {c.title}
-                                  </Typography>
-                                )}
-                                {c.school && (
-                                  <Chip
-                                    label={c.school}
-                                    size="small"
-                                    sx={{
-                                      height: 18,
-                                      fontSize: 10,
-                                      fontWeight: 600,
-                                      bgcolor: '#F0F0F0',
-                                      ml: 'auto',
-                                    }}
-                                  />
-                                )}
-                              </Box>
-                            );
-                          })}
-                          {coaches.length > 8 && (
-                            <Typography variant="caption" sx={{ color: '#0A0A0A50', mt: 0.5 }}>
-                              + {coaches.length - 8} more coaches
-                            </Typography>
-                          )}
+                      {schoolMap.size > 0 && (
+                        <Stack spacing={1.5} sx={{ mt: 1.5 }}>
+                          {Array.from(schoolMap.entries()).map(([school, schoolCoaches]) => (
+                            <Box key={school}>
+                              <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 0.5 }}>
+                                <IoSchoolOutline size={14} />
+                                <Typography variant="body2" sx={{ fontWeight: 700 }}>{school}</Typography>
+                                <Chip label={`${schoolCoaches.length}`} size="small" sx={{ height: 18, fontSize: 10, fontWeight: 700, bgcolor: '#F0F0F0' }} />
+                              </Stack>
+                              <Stack spacing={0.25} sx={{ pl: 3 }}>
+                                {schoolCoaches.map((c: any, idx: number) => {
+                                  const fullName = [c.firstName, c.lastName].filter(Boolean).join(' ');
+                                  const mailed = hasMailed(session?.clientId || '', c.email || '');
+                                  const coachId = c.id || `List::${c.school || ''}::${c.email || ''}::${(c.firstName || '')}-${(c.lastName || '')}::${c.title || ''}::${idx}`;
+                                  return (
+                                    <Box
+                                      key={c.id || c.email || idx}
+                                      sx={{ display: 'flex', alignItems: 'center', gap: 1, fontSize: 13, color: '#0A0A0A99' }}
+                                    >
+                                      <Typography variant="body2" sx={{ fontWeight: 600, color: colors.black }}>
+                                        {fullName || c.email || 'Unknown'}
+                                      </Typography>
+                                      {c.title && (
+                                        <Typography variant="caption" sx={{ color: '#0A0A0A60' }}>— {c.title}</Typography>
+                                      )}
+                                      {mailed && (
+                                        <Chip label="Contacted" size="small" sx={{ height: 18, fontSize: 10, fontWeight: 600, bgcolor: `${colors.lime}20`, color: '#333' }} />
+                                      )}
+                                      <Box sx={{ ml: 'auto', display: 'flex', gap: 0.5 }}>
+                                        {c.email && (
+                                          <Link
+                                            href={`/client/recruiter?listId=${encodeURIComponent(l.id)}&coachId=${encodeURIComponent(coachId)}`}
+                                            style={{ textDecoration: 'none' }}
+                                          >
+                                            <Chip
+                                              icon={<IoMailOutline size={12} />}
+                                              label="Send Email"
+                                              size="small"
+                                              clickable
+                                              sx={{ height: 22, fontSize: 10, fontWeight: 700, bgcolor: '#0A0A0A', color: colors.lime, '& .MuiChip-icon': { color: colors.lime } }}
+                                            />
+                                          </Link>
+                                        )}
+                                      </Box>
+                                    </Box>
+                                  );
+                                })}
+                              </Stack>
+                            </Box>
+                          ))}
                         </Stack>
                       )}
                     </Box>
