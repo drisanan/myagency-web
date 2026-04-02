@@ -6,6 +6,7 @@ import { FaInstagram, FaTiktok, FaTwitter, FaFacebook, FaYoutube, FaEnvelope, Fa
 import { getPublicProfile, PublicProfile } from '@/services/profilePublic';
 import { formatSportLabel } from '@/features/recruiter/divisionMapping';
 import { normalizeYouTubeUrl, normalizeHudlUrl, normalizeInstagramUrl } from '@/services/urlNormalize';
+import { getCanonicalProfileImage, getCanonicalMetrics } from '@/utils/clientProfile';
 
 // Sporty color palette
 const colors = {
@@ -179,12 +180,12 @@ export function AthleteProfileClient({ username }: { username: string }) {
 
   const { radar } = profile;
   const fullName = `${profile.firstName} ${profile.lastName}`.trim();
-  // Check multiple possible profile image sources
-  const profileImage = radar.profileImage || profile.photoUrl || profile.profileImageUrl || profile.galleryImages?.[0];
+  const profileImage = getCanonicalProfileImage(profile) || profile.galleryImages?.[0];
+  const canonicalMetrics = getCanonicalMetrics(profile);
   const hasUploadedVideos = (profile.highlightVideos?.length ?? 0) > 0;
   const hasHighlights = radar.youtubeHighlightUrl || radar.hudlLink || hasUploadedVideos;
   const hasSocials = radar.instagramProfileUrl || radar.tiktokProfileUrl || radar.twitterUrl || radar.facebookUrl;
-  const hasMetrics = (radar.metrics?.length ?? 0) > 0;
+  const hasMetrics = canonicalMetrics.length > 0;
   const hasGallery = (profile.galleryImages?.length ?? 0) > 0;
 
   return (
@@ -435,7 +436,7 @@ export function AthleteProfileClient({ username }: { username: string }) {
                 gap: 3,
               }}
             >
-              {radar.metrics?.map((m, i) => (
+              {canonicalMetrics.map((m, i) => (
                 <StatCard key={i} label={m.title} value={m.value} />
               ))}
             </Box>

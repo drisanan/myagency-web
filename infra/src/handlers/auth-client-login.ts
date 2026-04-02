@@ -6,20 +6,10 @@ import { encodeSession, buildSessionCookie } from '../lib/session';
 import { verifyAccessCode } from '../lib/auth';
 import { withSentry } from '../lib/sentry';
 import { logActivity } from '../lib/activity';
-
-function mask(value?: string) {
-  if (!value) return '';
-  const s = String(value);
-  if (s.length <= 4) return '****';
-  return `${'*'.repeat(Math.max(0, s.length - 4))}${s.slice(-4)}`;
-}
+import { normalizePhoneDigits } from '../lib/phone';
 
 function normalizeEmail(email: string) {
   return String(email || '').trim().toLowerCase();
-}
-
-function normalizePhone(phone: string) {
-  return String(phone || '').trim();
 }
 
 const authClientLoginHandler: Handler = async (event: APIGatewayProxyEventV2) => {
@@ -49,7 +39,7 @@ const authClientLoginHandler: Handler = async (event: APIGatewayProxyEventV2) =>
 
   const normalizedEmail = normalizeEmail(email);
   const accessString = String(accessCode).trim();
-  const phoneString = normalizePhone(phone);
+  const phoneString = normalizePhoneDigits(phone);
 
   // Query by email via GSI1 (GSI1PK = EMAIL#email)
   const matches = await queryGSI1(`EMAIL#${normalizedEmail}`, 'CLIENT#');
@@ -60,7 +50,7 @@ const authClientLoginHandler: Handler = async (event: APIGatewayProxyEventV2) =>
     return response(401, { ok: false, error: 'Invalid credentials' }, origin);
   }
 
-  const phoneMatch = normalizePhone(client.phone) === phoneString;
+  const phoneMatch = normalizePhoneDigits(client.phone) === phoneString;
   let codeOk = false;
   if ((client as any).accessCodeHash) {
     codeOk = await verifyAccessCode(accessString, (client as any).accessCodeHash);

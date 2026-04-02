@@ -154,7 +154,7 @@ export function ClientProfileView({ client, onEdit }: ClientProfileViewProps) {
   const references: ReferenceItem[] = radar.references ?? [];
   const galleryImages: string[] = client?.galleryImages ?? [];
   const highlightVideos: HighlightVideoItem[] = client?.highlightVideos ?? [];
-  const photoUrl = client?.photoUrl || client?.profileImageUrl || radar?.profileImageUrl || radar?.photoUrl || '';
+  const photoUrl = client?.photoUrl || client?.profileImageUrl || radar?.profileImage || radar?.profileImageUrl || radar?.photoUrl || '';
   const fullName = [client?.firstName, client?.lastName].filter(Boolean).join(' ') || 'Athlete';
   const sport = client?.sport ? formatSportLabel(client.sport) : null;
 

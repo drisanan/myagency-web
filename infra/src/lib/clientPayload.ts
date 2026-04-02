@@ -1,4 +1,5 @@
 import { AccountStatus, ClientRecord, ProgramLevel } from './models';
+import { normalizePhoneDigits } from './phone';
 
 export const MAX_CLIENT_GALLERY_IMAGES = 10;
 export const MAX_CLIENT_HIGHLIGHT_VIDEOS = 4;
@@ -128,7 +129,8 @@ export function normalizeClientPayload(
   const firstName = has('firstName') ? normalizeString(payload.firstName, 120) : normalizeString(existing.firstName, 120);
   const lastName = has('lastName') ? normalizeString(payload.lastName, 120) : normalizeString(existing.lastName, 120);
   const sport = has('sport') ? normalizeString(payload.sport, 120) : normalizeString(existing.sport, 120);
-  const phone = has('phone') ? normalizeString(payload.phone, 32) : normalizeString(existing.phone, 32);
+  const rawPhone = has('phone') ? normalizeString(payload.phone, 32) : normalizeString(existing.phone, 32);
+  const phone = rawPhone ? normalizePhoneDigits(rawPhone) || rawPhone : rawPhone;
   const username = has('username') ? normalizeUsername(payload.username) : normalizeUsername(existing.username);
   const division = has('division')
     ? normalizeString(payload.division, 120)

@@ -27,17 +27,16 @@ export function LoginForm({ onSubmit, darkMode }: Props) {
     const nextErrors: { email?: string; phone?: string; accessCode?: string } = {};
     if (!email) nextErrors.email = 'Required';
     else if (!validateEmail(email)) nextErrors.email = 'Invalid email';
-    const phoneTrim = phone.trim();
+    const phoneDigits = phone.replace(/\D/g, '');
     const accessTrim = accessCode.trim();
-    if (!phoneTrim) nextErrors.phone = 'Required';
-    else if (!/^\+?\d+$/.test(phoneTrim)) nextErrors.phone = 'Phone must be digits only';
+    if (!phoneDigits) nextErrors.phone = 'Required';
     if (!accessTrim) nextErrors.accessCode = 'Required';
     else if (!/^\d+$/.test(accessTrim)) nextErrors.accessCode = 'Access code must be digits only';
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0) return;
     try {
       setSubmitting(true);
-      await onSubmit({ email: email.trim(), phone: phoneTrim, accessCode: accessTrim });
+      await onSubmit({ email: email.trim(), phone: phoneDigits, accessCode: accessTrim });
     } finally {
       setSubmitting(false);
     }

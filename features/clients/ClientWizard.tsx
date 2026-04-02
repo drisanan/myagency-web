@@ -667,18 +667,7 @@ function BasicInfoStep({
         setUploadingPhoto(false);
       }
     } else {
-      // Fallback for when no clientId (shouldn't happen in edit mode)
-      const reader = new FileReader();
-      reader.onload = () => {
-        onChange({
-          ...value,
-          photoUrl: reader.result as string,
-          profileImageUrl: reader.result as string,
-          photoFileName: file.name,
-        });
-        setPhotoError(null);
-      };
-      reader.readAsDataURL(file);
+      setPhotoError('Please save the profile first before uploading a photo.');
     }
   };
   const triggerFile = () => fileInputRef.current?.click();
@@ -727,7 +716,7 @@ function BasicInfoStep({
         size="small"
         label="Phone"
         value={formatPhone(value.phone ?? '')}
-        onChange={(e)=>onChange({ ...value, phone: formatPhone(e.target.value) })}
+        onChange={(e)=>onChange({ ...value, phone: e.target.value.replace(/\D/g, '').slice(0, 11) })}
         placeholder="1-(234)-567-8901"
         inputProps={{ inputMode: 'tel', 'data-testid': 'athlete-phone' }}
         error={Boolean(errors?.phone)}

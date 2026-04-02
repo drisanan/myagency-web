@@ -128,7 +128,14 @@ const communicationsHandler: Handler = async (event: APIGatewayProxyEventV2) => 
     const now = Date.now();
     
     // Determine from email based on role
-    const fromEmail = session.agentEmail || session.agencyEmail || (session as any).email;
+    let fromEmail: string;
+    if (session.role === 'client') {
+      fromEmail = (session as any).email || session.agencyEmail || '';
+    } else if (session.role === 'agent') {
+      fromEmail = session.agentEmail || session.agencyEmail || (session as any).email || '';
+    } else {
+      fromEmail = session.agencyEmail || (session as any).email || '';
+    }
     
     const rec: CommunicationRecord = {
       PK: `AGENCY#${agencyId}`,
@@ -139,10 +146,14 @@ const communicationsHandler: Handler = async (event: APIGatewayProxyEventV2) => 
       GSI3SK: payload.athleteId ? `COMM#${now}` : undefined,
       id,
       agencyId,
-      threadId: payload.threadId || id, // Use id as threadId if not replying
+      threadId: payload.threadId || id,
       type: payload.type as CommunicationType,
       fromEmail,
-      fromName: payload.fromName || session.firstName ? `${session.firstName} ${session.lastName || ''}`.trim() : undefined,
+      fromName: payload.fromName
+        ? String(payload.fromName)
+        : session.firstName
+          ? `${session.firstName} ${session.lastName || ''}`.trim()
+          : undefined,
       toEmail: payload.toEmail,
       toName: payload.toName,
       athleteId: payload.athleteId,

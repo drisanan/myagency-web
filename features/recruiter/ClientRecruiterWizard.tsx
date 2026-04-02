@@ -27,6 +27,7 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { generateIntro } from '@/services/aiRecruiter';
 import { useSession } from '@/features/auth/session';
 import { getClient, setClientGmailTokens, getClientGmailTokens, refreshGmailToken } from '@/services/clients';
+import { getCanonicalProfileImage, getCanonicalMetrics, getCanonicalReferences, getCanonicalHeadCoach } from '@/utils/clientProfile';
 import { CoachList } from '@/services/lists';
 import { listAssignments } from '@/services/listAssignments';
 import { hasMailed, markMailed } from '@/services/mailStatus';
@@ -117,19 +118,12 @@ export function ClientRecruiterWizard() {
   const [aiLoading, setAiLoading] = React.useState(false);
   const [isCreatingDraft, setIsCreatingDraft] = React.useState(false);
 
-  // Contact info derived from client profile
+  // Contact info derived from client profile via canonical adapters
   const contact = React.useMemo(() => {
     const radar = clientProfile?.radar ?? {};
-    const metricsFromArray = Array.isArray(radar.metrics)
-      ? radar.metrics.filter((m: any) => m?.title && m?.value)
-      : [];
-    const metricsFromFlat = [
-      { title: radar.athleteMetricsTitleOne, value: radar.athleteMetricsValueOne },
-      { title: radar.athleteMetricsTitleTwo, value: radar.athleteMetricsValueTwo },
-      { title: radar.athleteMetricsTitleThree, value: radar.athleteMetricsValueThree },
-      { title: radar.athleteMetricsTitleFour, value: radar.athleteMetricsValueFour },
-    ].filter(m => m.title && m.value);
-    const athleteMetrics = metricsFromArray.length ? metricsFromArray : metricsFromFlat;
+    const athleteMetrics = getCanonicalMetrics(clientProfile);
+    const refs = getCanonicalReferences(clientProfile);
+    const headCoach = getCanonicalHeadCoach(clientProfile);
     return {
       email: clientProfile?.email ?? '',
       phone: clientProfile?.phone ?? '',
@@ -147,16 +141,16 @@ export function ClientRecruiterWizard() {
       hudlLink: radar.hudlLink ?? '',
       instagramProfileUrl: radar.instagramProfileUrl ?? '',
       newsArticleLinks: radar.newsArticleLinks ?? [],
-      headCoachName: radar.headCoachName ?? '',
-      headCoachEmail: radar.headCoachEmail ?? '',
-      headCoachPhone: radar.headCoachPhone ?? '',
-      referenceOneName: radar.referenceOneName ?? '',
-      referenceOneEmail: radar.referenceOneEmail ?? '',
-      referenceOnePhone: radar.referenceOnePhone ?? '',
-      referenceTwoName: radar.referenceTwoName ?? '',
-      referenceTwoEmail: radar.referenceTwoEmail ?? '',
-      referenceTwoPhone: radar.referenceTwoPhone ?? '',
-      profileImage: radar.profileImage ?? '',
+      headCoachName: headCoach?.name ?? '',
+      headCoachEmail: headCoach?.email ?? '',
+      headCoachPhone: headCoach?.phone ?? '',
+      referenceOneName: refs[0]?.name ?? '',
+      referenceOneEmail: refs[0]?.email ?? '',
+      referenceOnePhone: refs[0]?.phone ?? '',
+      referenceTwoName: refs[1]?.name ?? '',
+      referenceTwoEmail: refs[1]?.email ?? '',
+      referenceTwoPhone: refs[1]?.phone ?? '',
+      profileImage: getCanonicalProfileImage(clientProfile),
     };
   }, [clientProfile]);
 

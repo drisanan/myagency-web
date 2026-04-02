@@ -7,6 +7,7 @@ import { useSession } from '@/features/auth/session';
 import { useImpersonation } from '@/hooks/useImpersonation';
 import { dashboardTablePaperSx, dashboardTableSx, responsiveTableContainerSx, hideOnMobile, mobileCardSx } from '@/components/tableStyles';
 import { IoEllipsisVertical, IoSearchOutline, IoCloseCircleOutline, IoLinkOutline, IoCopyOutline } from 'react-icons/io5';
+import { getCanonicalProfileImage } from '@/utils/clientProfile';
 
 function getProfileUrl(username: string | undefined) {
   if (!username) return null;
@@ -228,7 +229,7 @@ export function ClientsList() {
         <Box sx={{ maxHeight: 520, overflow: 'auto', p: 1.5 }}>
           {pagedRows.map((row) => {
             const name = `${row.firstName ?? ''} ${row.lastName ?? ''}`.trim() || 'Unknown';
-            const photo = row?.photoUrl || row?.profileImageUrl || '/marketing/an-logo.png';
+            const photo = getCanonicalProfileImage(row) || '/marketing/an-logo.png';
             return (
               <Box key={row.id} sx={mobileCardSx}>
                 <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
@@ -311,7 +312,7 @@ export function ClientsList() {
             {pagedRows.map((row) => {
               const name = `${row.firstName ?? ''} ${row.lastName ?? ''}`.trim() || 'Unknown';
               const description = row?.description || row?.radar?.description || 'No description provided';
-              const photo = row?.photoUrl || row?.profileImageUrl || '/marketing/an-logo.png';
+              const photo = getCanonicalProfileImage(row) || '/marketing/an-logo.png';
               return (
                 <TableRow key={row.id}>
                   <TableCell>
