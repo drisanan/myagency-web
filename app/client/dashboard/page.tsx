@@ -1,6 +1,6 @@
 'use client';
 import React from 'react';
-import { Box, Typography, Stack, LinearProgress, Alert, Chip, Avatar } from '@mui/material';
+import { Box, Typography, Stack, LinearProgress, Alert, Button, Chip } from '@mui/material';
 import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -26,6 +26,18 @@ import { getClient } from '@/services/clients';
 import { MetricCard } from '@/app/(app)/dashboard/MetricCard';
 import { colors, gradients } from '@/theme/colors';
 import { LoadingState } from '@/components/LoadingState';
+
+function QueryError({ label, onRetry }: { label: string; onRetry: () => void }) {
+  return (
+    <Alert
+      severity="error"
+      sx={{ m: 0, borderRadius: 0 }}
+      action={<Button color="inherit" size="small" onClick={(e) => { e.preventDefault(); onRetry(); }}>Retry</Button>}
+    >
+      Could not load {label}.
+    </Alert>
+  );
+}
 
 const cardSx = {
   borderRadius: 0,
@@ -155,7 +167,7 @@ export default function ClientDashboardPage() {
         variant="h4"
         sx={{ fontWeight: 800, letterSpacing: '-0.02em', color: colors.black, mb: 1 }}
       >
-        Welcome back{session?.firstName ? `, ${session.firstName}` : ''}
+        {`Welcome back${session?.firstName ? `, ${session.firstName}` : ''}`}
       </Typography>
       <Typography variant="body1" sx={{ color: '#0A0A0A80', mb: 3 }}>
         Here's what's happening with your recruiting.
@@ -198,28 +210,34 @@ export default function ClientDashboardPage() {
               <Chip label={`${profilePct}%`} size="small" sx={{ ml: 'auto', bgcolor: `${colors.lime}20`, color: colors.lime, fontWeight: 700, fontSize: 11, height: 22 }} />
             </Box>
             <Box sx={{ px: 3, py: 2 }}>
-              <LinearProgress
-                variant="determinate"
-                value={profilePct}
-                sx={{
-                  height: 8,
-                  borderRadius: 0,
-                  bgcolor: '#E0E0E0',
-                  mb: 1.5,
-                  '& .MuiLinearProgress-bar': {
-                    bgcolor: profilePct === 100 ? colors.lime : colors.black,
-                    borderRadius: 0,
-                  },
-                }}
-              />
-              {missingFields.length > 0 ? (
-                <Typography variant="body2" sx={{ color: '#0A0A0A80' }}>
-                  Missing: {missingFields.join(', ')}
-                </Typography>
+              {profileQuery.isError ? (
+                <QueryError label="profile" onRetry={() => profileQuery.refetch()} />
               ) : (
-                <Typography variant="body2" sx={{ color: colors.black, fontWeight: 600 }}>
-                  Your profile is complete!
-                </Typography>
+                <>
+                  <LinearProgress
+                    variant="determinate"
+                    value={profilePct}
+                    sx={{
+                      height: 8,
+                      borderRadius: 0,
+                      bgcolor: '#E0E0E0',
+                      mb: 1.5,
+                      '& .MuiLinearProgress-bar': {
+                        bgcolor: profilePct === 100 ? colors.lime : colors.black,
+                        borderRadius: 0,
+                      },
+                    }}
+                  />
+                  {missingFields.length > 0 ? (
+                    <Typography variant="body2" sx={{ color: '#0A0A0A80' }}>
+                      Missing: {missingFields.join(', ')}
+                    </Typography>
+                  ) : (
+                    <Typography variant="body2" sx={{ color: colors.black, fontWeight: 600 }}>
+                      Your profile is complete!
+                    </Typography>
+                  )}
+                </>
               )}
             </Box>
           </Box>
@@ -236,7 +254,9 @@ export default function ClientDashboardPage() {
               )}
             </Box>
             <Box sx={{ px: 3, py: 2 }}>
-              {openTasks.length === 0 ? (
+              {tasksQuery.isError ? (
+                <QueryError label="tasks" onRetry={() => tasksQuery.refetch()} />
+              ) : openTasks.length === 0 ? (
                 <Typography variant="body2" sx={{ color: '#0A0A0A60' }}>
                   No tasks yet -- your agency will assign them.
                 </Typography>
@@ -273,7 +293,9 @@ export default function ClientDashboardPage() {
               )}
             </Box>
             <Box sx={{ px: 3, py: 2 }}>
-              {(threadsQuery.data || []).length === 0 ? (
+              {threadsQuery.isError ? (
+                <QueryError label="messages" onRetry={() => threadsQuery.refetch()} />
+              ) : (threadsQuery.data || []).length === 0 ? (
                 <Typography variant="body2" sx={{ color: '#0A0A0A60' }}>
                   No conversations yet. Send a message to your agent from the Messages page.
                 </Typography>
@@ -306,7 +328,9 @@ export default function ClientDashboardPage() {
               <Typography variant="h6" sx={sectionTitleSx}>Meetings</Typography>
             </Box>
             <Box sx={{ px: 3, py: 2 }}>
-              {upcomingMeetings.length === 0 ? (
+              {meetingsQuery.isError ? (
+                <QueryError label="meetings" onRetry={() => meetingsQuery.refetch()} />
+              ) : upcomingMeetings.length === 0 ? (
                 <Typography variant="body2" sx={{ color: '#0A0A0A60' }}>
                   No upcoming meetings. Your agent can schedule one for you.
                 </Typography>
@@ -340,7 +364,9 @@ export default function ClientDashboardPage() {
               )}
             </Box>
             <Box sx={{ px: 3, py: 2 }}>
-              {assignedLists.length === 0 ? (
+              {listsQuery.isError ? (
+                <QueryError label="coach lists" onRetry={() => listsQuery.refetch()} />
+              ) : assignedLists.length === 0 ? (
                 <Typography variant="body2" sx={{ color: '#0A0A0A60' }}>
                   No coach lists assigned yet. Your agency will assign lists for you to work through.
                 </Typography>
@@ -369,7 +395,9 @@ export default function ClientDashboardPage() {
               <Typography variant="h6" sx={sectionTitleSx}>Email Activity</Typography>
             </Box>
             <Box sx={{ px: 3, py: 2 }}>
-              {!emailStats || emailStats.sentCount === 0 ? (
+              {metricsQuery.isError ? (
+                <QueryError label="email activity" onRetry={() => metricsQuery.refetch()} />
+              ) : !emailStats || emailStats.sentCount === 0 ? (
                 <Typography variant="body2" sx={{ color: '#0A0A0A60' }}>
                   No email activity yet. Send your first recruiting email from the Recruiter page.
                 </Typography>
