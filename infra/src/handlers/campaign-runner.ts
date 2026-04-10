@@ -1,4 +1,3 @@
-import { APIGatewayProxyEventV2 } from 'aws-lambda';
 import { response } from './cors';
 import { CampaignRecord, CampaignFollowupRecord, ClientRecord } from '../lib/models';
 import { getItem, listAgencyIds, putItem, queryByPK } from '../lib/dynamo';
@@ -63,6 +62,15 @@ const runner = async () => {
   const results: Array<{ id: string; status: string; sent?: number; error?: string }> = [];
   for (const campaign of due) {
     try {
+      const fresh = await getItem({
+        PK: `AGENCY#${campaign.agencyId}`,
+        SK: `CAMPAIGN#${campaign.id}`,
+      }) as CampaignRecord | undefined;
+      if (!fresh || fresh.status !== 'scheduled') {
+        results.push({ id: campaign.id, status: 'skipped', error: `status is '${fresh?.status || 'missing'}'` });
+        continue;
+      }
+
       const sentRecipients: Array<{ email: string; name?: string; university?: string }> = [];
       const client = await getItem({
         PK: `AGENCY#${campaign.agencyId}`,
@@ -145,9 +153,14 @@ const runner = async () => {
   return results;
 };
 
-const handlerImpl = async (event: APIGatewayProxyEventV2) => {
+const handlerImpl = async (event: any) => {
+  if (event?.source === 'aws.events' || event?.['detail-type'] === 'Scheduled Event') {
+    const results = await runner();
+    return { statusCode: 200, body: JSON.stringify({ ok: true, results }) };
+  }
+
   const origin = event.headers?.origin || event.headers?.Origin || '';
-  const method = (event.requestContext.http?.method || '').toUpperCase();
+  const method = (event.requestContext?.http?.method || '').toUpperCase();
   if (method === 'OPTIONS') return response(200, { ok: true }, origin);
   if (method !== 'POST' && method !== 'GET') return response(405, { ok: false, error: 'Method not allowed' }, origin);
 

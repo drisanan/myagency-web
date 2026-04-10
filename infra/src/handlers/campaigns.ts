@@ -126,7 +126,24 @@ const campaignsHandler: Handler = async (event: APIGatewayProxyEventV2) => {
     if (!id) return response(400, { ok: false, error: 'Missing campaign id' }, origin);
     const existing = await getItem({ PK: `AGENCY#${session.agencyId}`, SK: `CAMPAIGN#${id}` }) as CampaignRecord | undefined;
     if (!existing) return response(404, { ok: false, error: 'Campaign not found' }, origin);
+
     const now = Date.now();
+    const newStatus = payload?.status as CampaignRecord['status'] | undefined;
+
+    if (newStatus === 'cancelled') {
+      if (existing.status !== 'draft' && existing.status !== 'scheduled') {
+        return response(400, { ok: false, error: `Cannot cancel a campaign with status '${existing.status}'` }, origin);
+      }
+      const cancelled: CampaignRecord = { ...existing, status: 'cancelled', updatedAt: now };
+      await putItem(cancelled);
+      return response(200, { ok: true, campaign: cancelled }, origin);
+    }
+
+    const terminalStatuses: CampaignRecord['status'][] = ['sent', 'failed', 'cancelled'];
+    if (terminalStatuses.includes(existing.status)) {
+      return response(400, { ok: false, error: `Cannot update a campaign with status '${existing.status}'` }, origin);
+    }
+
     const merged = { ...existing, ...payload, updatedAt: now };
     await putItem(merged);
     if (existing.status !== 'sent' && merged.status === 'sent' && !merged.sentAt) {

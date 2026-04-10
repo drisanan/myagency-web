@@ -5,6 +5,7 @@ import { DynamoDBDocumentClient, PutCommand } from '@aws-sdk/lib-dynamodb';
 import { fromIni } from '@aws-sdk/credential-provider-ini';
 import { randomUUID } from 'crypto';
 import { withSentry } from '../lib/sentry';
+import { queryGSI1 } from '../lib/dynamo';
 import { ALLOWED_ORIGINS } from './cors';
 
 // --- Configuration ---
@@ -123,56 +124,60 @@ const ghlLoginHandler = async (event: APIGatewayProxyEventV2): Promise<APIGatewa
     const rawSubscriptionLevel = (customFields.find((f: any) => f.id === subscriptionLevelFieldId)?.value || '').toString().trim().toLowerCase();
     const subscriptionLevel = rawSubscriptionLevel === 'unlimited' ? 'unlimited' : 'starter';
     
-    // Treat empty agencyId with a name as needing provisioning (same as READY)
-    const isNew = agencyId === 'READY' || (!agencyId && agencyName);
+    const isNew = !agencyId || agencyId === 'READY';
     let resolvedAgencyId = agencyId;
 
-    // --- Create Agency if READY or if agencyId is empty with agency name present ---
+    // --- Provision new agency if agencyId is blank or legacy "READY" ---
     if (isNew) {
-      console.log(`Agency needs provisioning (agencyId=${JSON.stringify(agencyId)}, name=${agencyName}). Initializing new agency record...`);
+      console.log(`Agency needs provisioning (agencyId=${JSON.stringify(agencyId)}, name=${agencyName}). Checking for existing agency...`);
       
-      // A. Generate new ID
-      const newAgencyId = `agency-${randomUUID()}`;
-      
-      // B. Save to DynamoDB (PK/SK schema with GSI1 for email lookup)
-      try {
-        await docClient.send(new PutCommand({
-          TableName: TABLE_NAME,
-          Item: {
-            PK: `AGENCY#${newAgencyId}`,
-            SK: 'PROFILE',
-            GSI1PK: `EMAIL#${contact.email}`,
-            GSI1SK: `AGENCY#${newAgencyId}`,
-            id: newAgencyId,
-            name: agencyName || 'New Agency',
-            email: contact.email,
-            contactId: contact.id,
-            ...(agencyColor ? { color: agencyColor } : {}),
-            ...(agencyLogo ? { logoUrl: agencyLogo } : {}),
-            subscriptionLevel, // 'starter' or 'unlimited'
-            settings: {
-              ...(agencyColor ? { primaryColor: agencyColor } : {}),
-              ...(agencyLogo ? { logoDataUrl: agencyLogo } : {}),
-            },
-            createdAt: Date.now(),
-          }
-        }));
-        console.log(`Created agency ${newAgencyId} with subscriptionLevel=${subscriptionLevel}`);
+      // A. Check if agency already exists for this email (prevents duplicates on re-login when GHL patch previously failed)
+      const normalizedEmail = String(contact.email || '').trim().toLowerCase();
+      const existingAgencies = await queryGSI1(`EMAIL#${normalizedEmail}`, 'AGENCY#');
+
+      if (existingAgencies.length > 0) {
+        resolvedAgencyId = (existingAgencies[0] as any).id;
+        console.log(`Found existing agency ${resolvedAgencyId} by email, skipping creation`);
+      } else {
+        // B. Generate new ID and create in DynamoDB
+        const newAgencyId = `agency-${randomUUID()}`;
         
-        resolvedAgencyId = newAgencyId;
-      } catch (dbError: any) {
-        console.error('Failed to create agency in DynamoDB', dbError);
-        // Fail hard here? Or continue? Usually safer to fail so we don't end up in inconsistent state.
-        return { statusCode: 500, headers, body: JSON.stringify({ ok: false, error: 'Failed to initialize agency database record' }) };
+        try {
+          await docClient.send(new PutCommand({
+            TableName: TABLE_NAME,
+            Item: {
+              PK: `AGENCY#${newAgencyId}`,
+              SK: 'PROFILE',
+              GSI1PK: `EMAIL#${normalizedEmail}`,
+              GSI1SK: `AGENCY#${newAgencyId}`,
+              id: newAgencyId,
+              name: agencyName || 'New Agency',
+              email: contact.email,
+              contactId: contact.id,
+              ...(agencyColor ? { color: agencyColor } : {}),
+              ...(agencyLogo ? { logoUrl: agencyLogo } : {}),
+              subscriptionLevel,
+              settings: {
+                ...(agencyColor ? { primaryColor: agencyColor } : {}),
+                ...(agencyLogo ? { logoDataUrl: agencyLogo } : {}),
+              },
+              createdAt: Date.now(),
+            }
+          }));
+          console.log(`Created agency ${newAgencyId} with subscriptionLevel=${subscriptionLevel}`);
+          
+          resolvedAgencyId = newAgencyId;
+        } catch (dbError: any) {
+          console.error('Failed to create agency in DynamoDB', dbError);
+          return { statusCode: 500, headers, body: JSON.stringify({ ok: false, error: 'Failed to initialize agency database record' }) };
+        }
       }
 
-      // C. Update GHL with the new ID
+      // C. Update GHL contact with the resolved agency ID
       if (contact.id) {
         try {
           const updateBody = {
-            customField: customFields.map((f: any) =>
-              f.id === agencyIdFieldId ? { ...f, value: resolvedAgencyId } : f
-            ),
+            customField: [{ id: agencyIdFieldId, value: resolvedAgencyId }],
           };
           const updateRes = await fetch(`https://rest.gohighlevel.com/v1/contacts/${contact.id}`, {
             method: 'PUT',
@@ -185,17 +190,15 @@ const ghlLoginHandler = async (event: APIGatewayProxyEventV2): Promise<APIGatewa
 
           if (!updateRes.ok) {
             const updateJson = await updateRes.json().catch(() => ({}));
-            console.error('Failed to update GHL contact with new agency id', {
+            console.error('Failed to update GHL contact with agency id', {
               status: updateRes.status,
               body: updateJson,
             });
-            // We logged it, but we can still proceed since the local DB is correct. 
-            // Next login might trigger "isNew" logic again or manual fix needed if GHL fails.
           } else {
-            console.log(`Updated GHL contact ${contact.id} with new Agency ID ${resolvedAgencyId}`);
+            console.log(`Updated GHL contact ${contact.id} with Agency ID ${resolvedAgencyId}`);
           }
         } catch (err: any) {
-          console.error('Error updating GHL contact with new agency id', { error: err?.message });
+          console.error('Error updating GHL contact with agency id', { error: err?.message });
         }
       }
     } else if (resolvedAgencyId && resolvedAgencyId !== 'READY') {

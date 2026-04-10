@@ -26,11 +26,12 @@ jest.mock('../../lib/dynamo', () => {
     getItem: jest.fn(),
     putItem: jest.fn(),
     queryByPK: jest.fn(),
+    queryByPKPaginated: jest.fn(),
     queryGSI3: jest.fn(),
   };
 });
 
-const { putItem, queryByPK } = jest.requireMock('../../lib/dynamo');
+const { getItem, putItem, queryByPK } = jest.requireMock('../../lib/dynamo');
 const ORIGIN = 'http://localhost:3000';
 
 function makeEvent(method: string, body?: any, query?: Record<string, string>) {
@@ -68,5 +69,114 @@ describe('campaigns handler', () => {
     const body = JSON.parse(res.body || '{}');
     expect(res.statusCode).toBe(200);
     expect(body.campaigns).toHaveLength(1);
+  });
+
+  describe('cancellation', () => {
+    it('cancels a scheduled campaign', async () => {
+      getItem.mockResolvedValue({
+        PK: 'AGENCY#agency-001',
+        SK: 'CAMPAIGN#camp-1',
+        id: 'camp-1',
+        agencyId: 'agency-001',
+        status: 'scheduled',
+        scheduledAt: Date.now() + 3600_000,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      });
+
+      const res = (await handler(makeEvent('PATCH', { id: 'camp-1', status: 'cancelled' }))) as any;
+      const body = JSON.parse(res.body || '{}');
+      expect(res.statusCode).toBe(200);
+      expect(body.campaign.status).toBe('cancelled');
+      expect(putItem).toHaveBeenCalledWith(expect.objectContaining({ status: 'cancelled' }));
+    });
+
+    it('cancels a draft campaign', async () => {
+      getItem.mockResolvedValue({
+        PK: 'AGENCY#agency-001',
+        SK: 'CAMPAIGN#camp-2',
+        id: 'camp-2',
+        agencyId: 'agency-001',
+        status: 'draft',
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      });
+
+      const res = (await handler(makeEvent('PATCH', { id: 'camp-2', status: 'cancelled' }))) as any;
+      const body = JSON.parse(res.body || '{}');
+      expect(res.statusCode).toBe(200);
+      expect(body.campaign.status).toBe('cancelled');
+    });
+
+    it('rejects cancelling a sent campaign', async () => {
+      getItem.mockResolvedValue({
+        PK: 'AGENCY#agency-001',
+        SK: 'CAMPAIGN#camp-3',
+        id: 'camp-3',
+        agencyId: 'agency-001',
+        status: 'sent',
+        sentAt: Date.now(),
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      });
+
+      const res = (await handler(makeEvent('PATCH', { id: 'camp-3', status: 'cancelled' }))) as any;
+      const body = JSON.parse(res.body || '{}');
+      expect(res.statusCode).toBe(400);
+      expect(body.error).toContain("Cannot cancel");
+      expect(putItem).not.toHaveBeenCalled();
+    });
+
+    it('rejects cancelling a failed campaign', async () => {
+      getItem.mockResolvedValue({
+        PK: 'AGENCY#agency-001',
+        SK: 'CAMPAIGN#camp-4',
+        id: 'camp-4',
+        agencyId: 'agency-001',
+        status: 'failed',
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      });
+
+      const res = (await handler(makeEvent('PATCH', { id: 'camp-4', status: 'cancelled' }))) as any;
+      const body = JSON.parse(res.body || '{}');
+      expect(res.statusCode).toBe(400);
+      expect(body.error).toContain("Cannot cancel");
+    });
+
+    it('rejects updating a cancelled campaign', async () => {
+      getItem.mockResolvedValue({
+        PK: 'AGENCY#agency-001',
+        SK: 'CAMPAIGN#camp-5',
+        id: 'camp-5',
+        agencyId: 'agency-001',
+        status: 'cancelled',
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      });
+
+      const res = (await handler(makeEvent('PATCH', { id: 'camp-5', subject: 'New Subject' }))) as any;
+      const body = JSON.parse(res.body || '{}');
+      expect(res.statusCode).toBe(400);
+      expect(body.error).toContain("Cannot update");
+    });
+
+    it('rejects updating a sent campaign', async () => {
+      getItem.mockResolvedValue({
+        PK: 'AGENCY#agency-001',
+        SK: 'CAMPAIGN#camp-6',
+        id: 'camp-6',
+        agencyId: 'agency-001',
+        status: 'sent',
+        sentAt: Date.now(),
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      });
+
+      const res = (await handler(makeEvent('PATCH', { id: 'camp-6', subject: 'Oops' }))) as any;
+      const body = JSON.parse(res.body || '{}');
+      expect(res.statusCode).toBe(400);
+      expect(body.error).toContain("Cannot update");
+    });
   });
 });

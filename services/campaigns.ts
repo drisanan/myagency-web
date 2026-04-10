@@ -26,7 +26,7 @@ export type Campaign = {
   campaignName?: string;
   scheduledAt?: number;
   sentAt?: number;
-  status: 'draft' | 'scheduled' | 'sent' | 'failed';
+  status: 'draft' | 'scheduled' | 'sent' | 'failed' | 'cancelled';
 };
 
 export async function createCampaign(input: {
@@ -38,7 +38,7 @@ export async function createCampaign(input: {
   campaignName?: string;
   scheduledAt?: number;
   personalizedMessage?: string;
-  status?: 'draft' | 'scheduled' | 'sent' | 'failed';
+  status?: 'draft' | 'scheduled' | 'sent' | 'failed' | 'cancelled';
 }) {
   const data = await apiFetch('/campaigns', {
     method: 'POST',
@@ -53,6 +53,10 @@ export async function updateCampaign(id: string, patch: Partial<Campaign>) {
     body: JSON.stringify({ id, ...patch }),
   });
   return data?.campaign as Campaign;
+}
+
+export async function cancelCampaign(id: string) {
+  return updateCampaign(id, { status: 'cancelled' });
 }
 
 export async function listCampaigns(clientId?: string) {

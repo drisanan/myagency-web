@@ -509,7 +509,7 @@ export type CampaignRecord = {
   personalizedMessage?: string;
   scheduledAt?: number;
   sentAt?: number;
-  status: 'draft' | 'scheduled' | 'sent' | 'failed';
+  status: 'draft' | 'scheduled' | 'sent' | 'failed' | 'cancelled';
   createdAt: number;
   updatedAt: number;
 };

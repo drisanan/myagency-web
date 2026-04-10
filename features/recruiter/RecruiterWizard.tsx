@@ -2015,6 +2015,17 @@ export function RecruiterWizard() {
               ))}
             </Box>
 
+            {/* Subject Line */}
+            <TextField
+              size="small"
+              label="Subject Line"
+              fullWidth
+              value={subjectLine}
+              onChange={(e) => setSubjectLine(e.target.value)}
+              placeholder="e.g., Coach Outreach — Athlete Name"
+              helperText={subjectLine ? '' : 'Leave blank to auto-generate: "AgentName — Athlete Recruiting"'}
+            />
+
             {/* Freeform Email Composer for Agent */}
             <Box sx={{ border: '1px solid #E0E0E0', borderRadius: 0, clipPath: 'polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px))', p: 2, bgcolor: '#F5F5F5' }}>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>

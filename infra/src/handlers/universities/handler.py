@@ -148,7 +148,7 @@ def _get_db():
         except Exception:
             pass
 
-    s3 = boto3.client("s3", region_name="us-west-2")
+    s3 = boto3.client("s3")
     s3.download_file(DB_BUCKET, DB_KEY, DB_PATH)
 
     _db_conn = sqlite3.connect(DB_PATH)
@@ -170,6 +170,26 @@ def _row_to_dict(row, field_map):
 # ---------------------------------------------------------------------------
 # Parameter validation & normalization
 # ---------------------------------------------------------------------------
+
+
+ABBR_TO_STATE = {
+    "AL": "Alabama", "AK": "Alaska", "AZ": "Arizona", "AR": "Arkansas",
+    "CA": "California", "CO": "Colorado", "CT": "Connecticut", "DE": "Delaware",
+    "FL": "Florida", "GA": "Georgia", "HI": "Hawaii", "ID": "Idaho",
+    "IL": "Illinois", "IN": "Indiana", "IA": "Iowa", "KS": "Kansas",
+    "KY": "Kentucky", "LA": "Louisiana", "ME": "Maine", "MD": "Maryland",
+    "MA": "Massachusetts", "MI": "Michigan", "MN": "Minnesota", "MS": "Mississippi",
+    "MO": "Missouri", "MT": "Montana", "NE": "Nebraska", "NV": "Nevada",
+    "NH": "New Hampshire", "NJ": "New Jersey", "NM": "New Mexico", "NY": "New York",
+    "NC": "North Carolina", "ND": "North Dakota", "OH": "Ohio", "OK": "Oklahoma",
+    "OR": "Oregon", "PA": "Pennsylvania", "RI": "Rhode Island", "SC": "South Carolina",
+    "SD": "South Dakota", "TN": "Tennessee", "TX": "Texas", "UT": "Utah",
+    "VT": "Vermont", "VA": "Virginia", "WA": "Washington", "WV": "West Virginia",
+    "WI": "Wisconsin", "WY": "Wyoming", "DC": "District of Columbia",
+    "PR": "Puerto Rico", "VI": "Virgin Islands", "GU": "Guam",
+    "AB": "Alberta", "BC": "British Columbia", "MB": "Manitoba",
+    "ON": "Ontario", "QC": "Quebec", "SK": "Saskatchewan",
+}
 
 
 def _normalize_params(params):
@@ -215,6 +235,16 @@ def _sport_filter(sport):
 # ---------------------------------------------------------------------------
 
 
+def _build_state_clause(state):
+    """Build a state filter clause that tries state2 (abbr) first, then falls back to full state name."""
+    if not state:
+        return "", []
+    full_name = ABBR_TO_STATE.get(state, "")
+    if full_name:
+        return " AND (u.state2 = ? OR u.state = ?)", [state, full_name]
+    return " AND u.state2 = ?", [state]
+
+
 def _query_school_list(db, sports, division, state):
     """Mode A: return unique schools (no school param)."""
 
@@ -226,17 +256,15 @@ def _query_school_list(db, sports, division, state):
     )
     params = list(sports) + [division]
 
-    if state:
-        sql += " AND u.state2 = ?"
-        params.append(state)
+    state_clause, state_params = _build_state_clause(state)
+    sql += state_clause
+    params.extend(state_params)
 
     sql += " ORDER BY u.school"
 
     cur = db.execute(sql, params)
     rows = cur.fetchall()
 
-    # Deduplicate by school name (a school may appear for multiple sports
-    # when Cheerleading + Dance are combined)
     seen = {}
     for row in rows:
         name = row["school"]
@@ -262,9 +290,9 @@ def _query_school_detail(db, sports, division, state, school):
     )
     params = list(sports) + [division, f"%{school}%"]
 
-    if state:
-        sql += " AND u.state2 = ?"
-        params.append(state)
+    state_clause, state_params = _build_state_clause(state)
+    sql += state_clause
+    params.extend(state_params)
 
     sql += " ORDER BY u.school, c.last_name, c.first_name"
 

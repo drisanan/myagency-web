@@ -165,6 +165,20 @@ functions:
       - httpApi:
           path: /campaigns
           method: any
+  campaignRunner:
+    handler: infra/src/handlers/campaign-runner.handler
+    timeout: 120
+    events:
+      - schedule:
+          rate: rate(1 minute)
+          enabled: true
+  campaignFollowupRunner:
+    handler: infra/src/handlers/campaign-followup-runner.handler
+    timeout: 120
+    events:
+      - schedule:
+          rate: rate(15 minutes)
+          enabled: true
   formsPublic:
     handler: infra/src/handlers/forms-public.handler
     events:

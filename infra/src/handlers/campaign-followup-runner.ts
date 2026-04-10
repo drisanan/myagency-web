@@ -1,4 +1,3 @@
-import { APIGatewayProxyEventV2 } from 'aws-lambda';
 import { response } from './cors';
 import { CampaignFollowupRecord, CampaignRecord, ClientRecord, ProfileViewRecord } from '../lib/models';
 import { getItem, listAgencyIds, putItem, queryByPK, queryGSI3 } from '../lib/dynamo';
@@ -50,9 +49,9 @@ const runner = async () => {
         SK: `CAMPAIGN#${followup.SK.replace('CAMPAIGN_FOLLOWUP#', '')}`,
       }) as CampaignRecord | undefined;
 
-      if (!campaign?.sentAt) {
+      if (!campaign?.sentAt || campaign.status === 'cancelled') {
         await putItem({ ...followup, status: 'failed', sentAt: now });
-        results.push({ id: followup.id, status: 'failed', error: 'Campaign not found or not sent' });
+        results.push({ id: followup.id, status: 'failed', error: campaign?.status === 'cancelled' ? 'Campaign was cancelled' : 'Campaign not found or not sent' });
         continue;
       }
 
@@ -126,9 +125,14 @@ const runner = async () => {
   return results;
 };
 
-const handlerImpl = async (event: APIGatewayProxyEventV2) => {
+const handlerImpl = async (event: any) => {
+  if (event?.source === 'aws.events' || event?.['detail-type'] === 'Scheduled Event') {
+    const results = await runner();
+    return { statusCode: 200, body: JSON.stringify({ ok: true, results }) };
+  }
+
   const origin = event.headers?.origin || event.headers?.Origin || '';
-  const method = (event.requestContext.http?.method || '').toUpperCase();
+  const method = (event.requestContext?.http?.method || '').toUpperCase();
   if (method === 'OPTIONS') return response(200, { ok: true }, origin);
   if (method !== 'POST' && method !== 'GET') return response(405, { ok: false, error: 'Method not allowed' }, origin);
 

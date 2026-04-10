@@ -138,8 +138,7 @@ export async function login(input: { email: string; phone: string; accessCode: s
   let agencyColor = result.agency?.color;
   let agencyLogo = result.agency?.logoUrl;
 
-  if (agencyId === 'READY') {
-    // Create new agency instance using GHL metadata
+  if (!agencyId || agencyId === 'READY') {
     const created = await createAgencyFromGHL({
       name: agencyName,
       email: result.contact.email,
