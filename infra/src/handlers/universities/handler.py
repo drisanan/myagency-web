@@ -193,7 +193,7 @@ ABBR_TO_STATE = {
 
 
 def _normalize_params(params):
-    """Validate and normalize query parameters. Returns (sport, division, state, school)."""
+    """Validate and normalize query parameters. Returns (sport, division, state, school, search)."""
     if not params:
         raise ValueError("Sport and division are required parameters")
 
@@ -201,6 +201,7 @@ def _normalize_params(params):
     division = (params.get("division") or "").strip().lower()
     state = (params.get("state") or "").strip().upper() or None
     school = (params.get("school") or "").strip() or None
+    search = (params.get("search") or "").strip() or None
 
     if not sport or not division:
         raise ValueError("Sport and division are required parameters")
@@ -215,7 +216,7 @@ def _normalize_params(params):
             f"Unsupported division: {division}. Supported divisions are: {', '.join(SUPPORTED_DIVISIONS)}"
         )
 
-    return sport, division, state, school
+    return sport, division, state, school, search
 
 
 def _sport_filter(sport):
@@ -245,8 +246,8 @@ def _build_state_clause(state):
     return " AND u.state2 = ?", [state]
 
 
-def _query_school_list(db, sports, division, state):
-    """Mode A: return unique schools (no school param)."""
+def _query_school_list(db, sports, division, state, search=None):
+    """Mode A: return unique schools. Optional state and/or free-text school name filter."""
 
     placeholders = ",".join(["?"] * len(sports))
     sql = (
@@ -259,6 +260,10 @@ def _query_school_list(db, sports, division, state):
     state_clause, state_params = _build_state_clause(state)
     sql += state_clause
     params.extend(state_params)
+
+    if search:
+        sql += " AND u.school LIKE ?"
+        params.append(f"%{search}%")
 
     sql += " ORDER BY u.school"
 
@@ -324,7 +329,7 @@ def lambda_handler(event, context):
     """AWS Lambda handler -- Function URL compatible."""
     try:
         params = event.get("queryStringParameters") or {}
-        sport, division, state, school = _normalize_params(params)
+        sport, division, state, school, search = _normalize_params(params)
 
         db = _get_db()
         sports = _sport_filter(sport)
@@ -332,7 +337,7 @@ def lambda_handler(event, context):
         if school:
             data = _query_school_detail(db, sports, division, state, school)
         else:
-            data = _query_school_list(db, sports, division, state)
+            data = _query_school_list(db, sports, division, state, search=search)
 
         return {
             "statusCode": 200,

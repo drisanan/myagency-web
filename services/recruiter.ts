@@ -74,8 +74,8 @@ function toLogo(item: any): string | undefined {
   return candidates.find((value) => typeof value === 'string' && value.trim());
 }
 
-export async function listUniversities(params: { sport: string; division: string; state: string }): Promise<Array<{ name: string; logo?: string }>> {
-  const cacheKey = `${params.sport}|${params.division}|${params.state}`;
+export async function listUniversities(params: { sport: string; division: string; state?: string; search?: string }): Promise<Array<{ name: string; logo?: string }>> {
+  const cacheKey = `${params.sport}|${params.division}|${params.state || ''}|${params.search || ''}`;
   const cached = universityCache.get(cacheKey);
   if (cached && cached.expiresAt > Date.now()) {
     return cached.data;
@@ -84,8 +84,9 @@ export async function listUniversities(params: { sport: string; division: string
   const qs = new URLSearchParams({
     sport: params.sport,
     division: params.division,
-    state: params.state,
   });
+  if (params.state) qs.set('state', params.state);
+  if (params.search) qs.set('search', params.search);
   const url = `${BASE_URL}?${qs.toString()}`;
   // eslint-disable-next-line no-console
   console.log('[Recruiter:listUniversities] GET', url);

@@ -121,6 +121,8 @@ export function RecruiterWizard() {
   const [agentGmailRefreshing, setAgentGmailRefreshing] = React.useState(false);
   const [agentGmailAccountEmail, setAgentGmailAccountEmail] = React.useState<string>('');
   const agentQuillContainerRef = React.useRef<HTMLDivElement>(null);
+  const manualComposeQuillRef = React.useRef<HTMLDivElement>(null);
+  const [composeMode, setComposeMode] = React.useState<'ai' | 'manual'>('ai');
   const [cleanupLoading, setCleanupLoading] = React.useState(false);
 
   const currentClient = React.useMemo(() => clients.find(c => c.id === clientId) || null, [clients, clientId]);
@@ -923,6 +925,7 @@ export function RecruiterWizard() {
     setScheduledAt('');
     setFollowupMessage('');
     setSendMessage(null);
+    setComposeMode('ai');
   }, []);
 
   const handleConfirmDone = React.useCallback(() => {
@@ -1095,8 +1098,8 @@ export function RecruiterWizard() {
     { label: 'University Name', tag: '{{university_name}}' },
   ];
 
-  function insertTagAtCursor(tag: string) {
-    const container = agentQuillContainerRef.current;
+  function insertTagIntoQuill(tag: string, containerRef: React.RefObject<HTMLDivElement | null>) {
+    const container = containerRef.current;
     if (!container || !QuillClass) return;
     const qlContainer = container.querySelector('.ql-container');
     if (!qlContainer) return;
@@ -1112,6 +1115,10 @@ export function RecruiterWizard() {
       quill.insertText(len - 1, tag, 'user');
       quill.setSelection(len - 1 + tag.length, 0);
     }
+  }
+
+  function insertTagAtCursor(tag: string) {
+    insertTagIntoQuill(tag, agentQuillContainerRef);
   }
 
   async function handleImproveWithAI() {
@@ -1327,6 +1334,14 @@ export function RecruiterWizard() {
           setError(e?.message || 'Failed to generate email');
         } finally {
           setIsGenerating(false);
+        }
+        return;
+      }
+
+      if (composeMode === 'manual') {
+        if (!aiHtml || aiHtml.replace(/<[^>]*>/g, '').trim().length < 10) {
+          setError('Write your email content before proceeding.');
+          return;
         }
         return;
       }
@@ -2113,6 +2128,203 @@ export function RecruiterWizard() {
           </Box>
         )}
         {activeStep === 3 && senderType === 'client' && (
+          <Box>
+            <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
+              <Button
+                size="small"
+                variant={composeMode === 'ai' ? 'contained' : 'outlined'}
+                onClick={() => setComposeMode('ai')}
+                sx={composeMode === 'ai' ? { bgcolor: '#0A0A0A', color: '#CCFF00', '&:hover': { bgcolor: '#1A1A1A' } } : {}}
+              >
+                AI Compose
+              </Button>
+              <Button
+                size="small"
+                variant={composeMode === 'manual' ? 'contained' : 'outlined'}
+                onClick={() => setComposeMode('manual')}
+                sx={composeMode === 'manual' ? { bgcolor: '#0A0A0A', color: '#CCFF00', '&:hover': { bgcolor: '#1A1A1A' } } : {}}
+              >
+                Manual Compose
+              </Button>
+            </Box>
+
+            {composeMode === 'manual' && (
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, maxWidth: 900 }}>
+                {listMode && selectedCoaches.length > 0 && (
+                  <Box>
+                    <Typography variant="h6" gutterBottom>Recipients ({selectedCoaches.length})</Typography>
+                    <Box sx={{ display: 'flex', gap: 1, overflowX: 'auto', pb: 1 }}>
+                      {selectedCoaches.map((c: any, i: number) => (
+                        <Card key={`${c.id || i}`} sx={{ minWidth: 200, flexShrink: 0 }}>
+                          <CardContent sx={{ p: 1.5 }}>
+                            <Typography variant="subtitle2">
+                              {`${c.firstName || c.FirstName || ''} ${c.lastName || c.LastName || ''}`.trim() || (c.email || '')}
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary">{c.title || ''}</Typography>
+                            <Typography variant="body2" color="text.secondary">{c.email || ''}</Typography>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </Box>
+                  </Box>
+                )}
+
+                {ccableAgents.length > 0 && (
+                  <Box sx={{ border: '1px solid #e0e0e0', borderRadius: 0, clipPath: 'polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px))', p: 2, bgcolor: '#F5F5F5' }}>
+                    <Typography variant="subtitle2" sx={{ mb: 1 }}>CC Team Members (optional)</Typography>
+                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                      {ccableAgents.map((agent) => (
+                        <FormControlLabel
+                          key={agent.id}
+                          control={
+                            <Checkbox
+                              size="small"
+                              checked={Boolean(ccAgentIds[agent.id])}
+                              onChange={() => setCcAgentIds(prev => ({ ...prev, [agent.id]: !prev[agent.id] }))}
+                            />
+                          }
+                          label={`${agent.firstName || ''} ${agent.lastName || ''} (${agent.email})`}
+                          sx={{ '& .MuiFormControlLabel-label': { fontSize: '0.875rem' } }}
+                        />
+                      ))}
+                    </Box>
+                    {ccEmails.length > 0 && (
+                      <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+                        Will CC: {ccEmails.join(', ')}
+                      </Typography>
+                    )}
+                  </Box>
+                )}
+
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, alignItems: 'center' }}>
+                  <Typography variant="caption" color="text.secondary" sx={{ mr: 0.5 }}>Insert tag:</Typography>
+                  {DYNAMIC_TAGS.map((dt) => (
+                    <Chip
+                      key={dt.tag}
+                      label={dt.label}
+                      size="small"
+                      onClick={() => insertTagIntoQuill(dt.tag, manualComposeQuillRef)}
+                      sx={{ cursor: 'pointer', bgcolor: '#0A0A0A', color: '#CCFF00', '&:hover': { bgcolor: '#1A1A1A' }, fontFamily: 'monospace', fontSize: '0.75rem' }}
+                    />
+                  ))}
+                </Box>
+
+                <TextField
+                  size="small"
+                  label="Subject Line"
+                  fullWidth
+                  value={subjectLine}
+                  onChange={(e) => setSubjectLine(e.target.value)}
+                  placeholder="e.g., John Smith 2027 WR Introduction"
+                />
+
+                <Box sx={{ border: '1px solid #E0E0E0', borderRadius: 0, clipPath: 'polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px))', p: 2, bgcolor: '#F5F5F5' }}>
+                  <Typography variant="h6" sx={{ mb: 1 }}>Compose Email</Typography>
+                  <Box
+                    ref={manualComposeQuillRef}
+                    sx={{
+                      bgcolor: '#fff',
+                      borderRadius: 0,
+                      clipPath: 'polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px))',
+                      '& .ql-container': { minHeight: 300, fontSize: '14px', fontFamily: 'inherit' },
+                      '& .ql-editor': { minHeight: 300 },
+                      '& .ql-toolbar': { borderTopLeftRadius: 0, borderTopRightRadius: 0 },
+                    }}
+                  >
+                    <ReactQuill
+                      theme="snow"
+                      value={aiHtml || ''}
+                      onChange={(content: string) => setAiHtml(content)}
+                      modules={QUILL_MODULES}
+                      placeholder="Write your email to the coaches..."
+                    />
+                  </Box>
+                </Box>
+
+                <Box sx={{ mb: 2 }}>
+                  <FormControlLabel
+                    control={<Switch checked={scheduleEnabled} onChange={(e) => setScheduleEnabled(e.target.checked)} />}
+                    label="Schedule this campaign"
+                  />
+                  {scheduleEnabled && (
+                    <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 2fr' }, gap: 2, mt: 1 }}>
+                      <TextField
+                        label="Send at"
+                        type="datetime-local"
+                        value={scheduledAt}
+                        onChange={(e) => setScheduledAt(e.target.value)}
+                        InputLabelProps={{ shrink: true }}
+                        size="small"
+                      />
+                      <TextField
+                        label="Agent message for 48-hour follow-up"
+                        value={followupMessage}
+                        onChange={(e) => setFollowupMessage(e.target.value)}
+                        size="small"
+                        placeholder="Add a short personalized note to the athlete"
+                      />
+                    </Box>
+                  )}
+                </Box>
+
+                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} alignItems="flex-start">
+                  {gmailExpired && gmailCanRefresh && (
+                    <Button
+                      variant="contained"
+                      onClick={handleRefreshGmail}
+                      disabled={gmailRefreshing}
+                      startIcon={gmailRefreshing ? <CircularProgress size={16} color="inherit" /> : null}
+                      sx={{ bgcolor: '#FFB800', color: '#0A0A0A', '&:hover': { bgcolor: '#E6A600' } }}
+                    >
+                      {gmailRefreshing ? 'Refreshing...' : 'Refresh Gmail'}
+                    </Button>
+                  )}
+                  {((!gmailConnected && !gmailExpired) || (gmailExpired && !gmailCanRefresh)) && (
+                    <Button
+                      variant="contained"
+                      onClick={handleConnectGmail}
+                      sx={{ bgcolor: '#CCFF00', color: '#0A0A0A', '&:hover': { bgcolor: '#B8E600' } }}
+                      disabled={gmailConnecting}
+                      startIcon={gmailConnectingBusy ? <CircularProgress size={16} color="inherit" /> : null}
+                    >
+                      {gmailConnectingBusy ? 'Connecting...' : 'Connect Gmail'}
+                    </Button>
+                  )}
+                  {gmailConnected && !gmailExpired && (
+                    <Typography variant="body2" sx={{ bgcolor: '#CCFF0020', px: 1.5, py: 0.75, borderRadius: 0, clipPath: 'polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 6px 100%, 0 calc(100% - 6px))' }}>
+                      Mailing from: {gmailAccountEmail || currentClient?.email || 'Connected Gmail'}
+                    </Typography>
+                  )}
+                  {gmailConnected && !gmailExpired && (
+                    <Button
+                      variant="contained"
+                      onClick={handleSendEmails}
+                      disabled={!selectedRecipients.length || isSendingEmails || !aiHtml?.trim() || scheduleEnabled}
+                      startIcon={sendingBusy ? <CircularProgress size={16} color="inherit" /> : null}
+                      sx={{
+                        ml: { sm: 'auto' },
+                        bgcolor: '#CCFF00',
+                        color: '#0A0A0A',
+                        fontWeight: 700,
+                        '&:hover': { bgcolor: '#B8E600' },
+                        '&.Mui-disabled': { bgcolor: '#CCFF00', color: '#0A0A0A', opacity: 0.6 },
+                      }}
+                    >
+                      {sendingBusy
+                        ? `Sending to ${selectedRecipients.length}...`
+                        : `Send Email${selectedRecipients.length > 1 ? 's' : ''} (${selectedRecipients.length})`}
+                    </Button>
+                  )}
+                  {sendMessage && (
+                    <Alert severity="success" variant="filled" data-testid="send-confirmation" sx={{ fontWeight: 600 }}>
+                      {sendMessage}
+                    </Alert>
+                  )}
+                </Stack>
+              </Box>
+            )}
+
+            {composeMode === 'ai' && (
           <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '2fr 1fr' }, gap: 2 }}>
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
               {prompts.length > 0 && (
@@ -2442,6 +2654,8 @@ export function RecruiterWizard() {
               </AccordionDetails>
             </Accordion>
           </Box>
+            )}
+          </Box>
         )}
       </Box>
       {error && activeStep === 3 && (
@@ -2477,7 +2691,7 @@ export function RecruiterWizard() {
               {activeDraftId ? 'Update Draft' : 'Save Draft'}
             </Button>
           )}
-          {!(isLast && senderType === 'agent') && (
+          {!(isLast && senderType === 'agent') && !(isLast && senderType === 'client' && composeMode === 'manual') && (
             <Button variant="contained" onClick={handleNext} disabled={!canNext || (isLast && isGenerating)}>
               {isLast ? (isGenerating ? 'Generating…' : 'Generate') : 'Next'}
             </Button>

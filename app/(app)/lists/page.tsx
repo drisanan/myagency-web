@@ -4,11 +4,11 @@ import React from 'react';
 import { 
   Box, Button, Card, CardContent, Divider, FormControlLabel, Checkbox, MenuItem, 
   Paper, Stack, TextField, Typography, Snackbar, Alert, Dialog, DialogTitle, 
-  DialogContent, DialogActions, CircularProgress, Skeleton
+  DialogContent, DialogActions, CircularProgress, Skeleton, InputAdornment
 } from '@mui/material';
 import { MetricCard } from '@/app/(app)/dashboard/MetricCard';
 import { FeatureErrorBoundary } from '@/components/FeatureErrorBoundary';
-import { IoListOutline, IoSchoolOutline, IoPieChartOutline } from 'react-icons/io5';
+import { IoListOutline, IoSchoolOutline, IoPieChartOutline, IoSearchOutline } from 'react-icons/io5';
 
 // Shared university logo component
 import { UniversityLogo } from '@/components/UniversityLogo';
@@ -46,6 +46,12 @@ export default function ListsPage() {
   const [schools, setSchools] = React.useState<Array<{ name: string; logo?: string }>>([]);
   const [selectedSchool, setSelectedSchool] = React.useState<string>('');
   const [schoolDetails, setSchoolDetails] = React.useState<any>(null);
+  const [schoolSearch, setSchoolSearch] = React.useState('');
+  const [debouncedSearch, setDebouncedSearch] = React.useState('');
+  React.useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(schoolSearch.trim()), 400);
+    return () => clearTimeout(timer);
+  }, [schoolSearch]);
   const [loadingSchools, setLoadingSchools] = React.useState(false);
   const [loadingSchoolDetails, setLoadingSchoolDetails] = React.useState(false);
 
@@ -94,7 +100,7 @@ export default function ListsPage() {
   }, [division]);
 
   React.useEffect(() => {
-    if (!sport || !division || !stateCode) {
+    if (!sport || !division || (!stateCode && !debouncedSearch)) {
       setSchools([]);
       setSelectedSchool('');
       setSchoolDetails(null);
@@ -103,12 +109,12 @@ export default function ListsPage() {
     let cancelled = false;
     const divisionSlug = DIVISION_API_MAPPING[division] || division;
     setLoadingSchools(true);
-    listUniversities({ sport, division: divisionSlug, state: stateCode })
+    listUniversities({ sport, division: divisionSlug, state: stateCode || undefined, search: debouncedSearch || undefined })
       .then((s) => { if (!cancelled) setSchools(s); })
       .catch((e) => { if (!cancelled) { setError(e?.message || 'Failed to load universities'); setSchools([]); } })
       .finally(() => { if (!cancelled) setLoadingSchools(false); });
     return () => { cancelled = true; };
-  }, [sport, division, stateCode]);
+  }, [sport, division, stateCode, debouncedSearch]);
 
   React.useEffect(() => {
     if (!userEmail) {
@@ -454,17 +460,43 @@ export default function ListsPage() {
                 Select a sport and division then you can either search by state or use the search box.
               </Typography>
             </Box>
-            <Box data-tour="list-filters" sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(3, 1fr)' }, gap: 2 }}>
+            <Box data-tour="list-filters" sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(2, 1fr)' }, gap: 2 }}>
             <TextField size="small" select label="Sport" value={sport} onChange={(e) => setSport(e.target.value)}>
               {sports.map(s => <MenuItem key={s} value={s}>{formatSportLabel(s)}</MenuItem>)}
             </TextField>
             <TextField size="small" select label="Division" value={division} onChange={(e) => setDivision(e.target.value)}>
               {divisions.map((d) => <MenuItem key={d} value={d}>{d}</MenuItem>)}
             </TextField>
-            <TextField size="small" select label="State" value={stateCode} onChange={(e) => setStateCode(e.target.value)}>
-              {states.map(s => <MenuItem key={s.code} value={s.code}>{s.name}</MenuItem>)}
-            </TextField>
           </Box>
+          {sport && division && (
+            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 2, alignItems: 'start' }}>
+              <TextField
+                size="small"
+                select
+                label="Filter by State (optional)"
+                value={stateCode}
+                onChange={(e) => { setStateCode(e.target.value); if (e.target.value) setSchoolSearch(''); }}
+              >
+                <MenuItem value="">All States</MenuItem>
+                {states.map(s => <MenuItem key={s.code} value={s.code}>{s.name}</MenuItem>)}
+              </TextField>
+              <TextField
+                size="small"
+                label="Search by University Name"
+                placeholder="e.g. Ohio State"
+                value={schoolSearch}
+                onChange={(e) => setSchoolSearch(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Escape') setSchoolSearch(''); }}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <IoSearchOutline size={16} />
+                    </InputAdornment>
+                  ),
+                }}
+              />
+            </Box>
+          )}
 
           <Typography variant="subtitle2" color="text.secondary">Universities</Typography>
           <Box data-tour="school-selector" sx={{ display: 'grid', gridTemplateColumns: { xs: 'repeat(1, 1fr)', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)' }, gap: 1 }}>

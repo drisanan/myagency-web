@@ -234,9 +234,11 @@ function ClientShell({ children }: { children: React.ReactNode }) {
           </MenuItem>
         )}
         {!isImpersonating && <Divider />}
-        <MenuItem onClick={handleLogout} sx={{ color: 'error.main' }}>
-          Logout
-        </MenuItem>
+        {!isImpersonating && (
+          <MenuItem onClick={handleLogout} sx={{ color: 'error.main' }}>
+            Logout
+          </MenuItem>
+        )}
       </Menu>
 
       {/* Mobile Drawer - temporary */}
