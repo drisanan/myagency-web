@@ -40,6 +40,10 @@ export type DomainRecord = {
   trafficTarget?: string; // e.g. the CloudFront distribution alias
   lastError?: string;
   lastCheckedAt?: number;
+  // True when the attach flow ran with ACM_ENABLED disabled. Operators
+  // must issue the certificate out-of-band (e.g. via Amplify wildcard
+  // or the edge stack) and the check/remove paths skip ACM calls.
+  manualCertRequired?: boolean;
   attachedAt?: number;
   activatedAt?: number;
   removedAt?: number;

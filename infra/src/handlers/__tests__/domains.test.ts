@@ -3,6 +3,7 @@ import type { APIGatewayProxyEventV2 } from 'aws-lambda';
 process.env.SESSION_SECRET = 'test-secret-domains';
 process.env.EDGE_DISTRIBUTION_ID = 'DIST123';
 process.env.EDGE_TRAFFIC_TARGET = 'd123.cloudfront.net';
+process.env.ACM_ENABLED = 'true';
 
 jest.mock('../../lib/sentry', () => ({
   withSentry: (fn: unknown) => fn,
@@ -297,6 +298,82 @@ describe('domains handler — remove', () => {
 
     const res = await (handler as any)(event('DELETE', '/domains/app.acme.com'));
     expect(res.statusCode).toBe(200);
+    expect(updateStatusMock).toHaveBeenCalledWith(
+      expect.objectContaining({ status: 'REMOVED' }),
+    );
+  });
+});
+
+describe('domains handler — ACM disabled (pilot mode)', () => {
+  const originalAcm = process.env.ACM_ENABLED;
+  beforeEach(() => {
+    jest.clearAllMocks();
+    resetRateLimit();
+    process.env.ACM_ENABLED = 'false';
+  });
+  afterAll(() => {
+    process.env.ACM_ENABLED = originalAcm;
+  });
+
+  it('attach skips ACM and persists manualCertRequired', async () => {
+    parseSessionMock.mockReturnValue({ agencyId: 'a1', role: 'agency' } as any);
+    findDomainMock.mockResolvedValueOnce(null);
+    createDomainMock.mockImplementationOnce(async (p: any) => ({
+      agencyId: p.agencyId,
+      hostname: p.hostname,
+      status: 'PENDING_DNS',
+      trafficTarget: p.trafficTarget,
+      manualCertRequired: p.manualCertRequired,
+    }) as any);
+
+    const res = await (handler as any)(
+      event('POST', '/domains', { hostname: 'app.acme.com' }),
+    );
+    expect(res.statusCode).toBe(201);
+    expect(requestCertMock).not.toHaveBeenCalled();
+    expect(createDomainMock).toHaveBeenCalledWith(
+      expect.objectContaining({ manualCertRequired: true }),
+    );
+    // Certificate update path should NOT have fired.
+    expect(updateStatusMock).not.toHaveBeenCalled();
+    const body = JSON.parse(res.body);
+    expect(body.domain.manualCertRequired).toBe(true);
+    expect(body.domain.certArn).toBeUndefined();
+  });
+
+  it('check skips ACM describe for manualCertRequired records', async () => {
+    parseSessionMock.mockReturnValue({ agencyId: 'a1', role: 'agency' } as any);
+    getDomainMock.mockResolvedValueOnce({
+      agencyId: 'a1',
+      hostname: 'app.acme.com',
+      status: 'PENDING_DNS',
+      manualCertRequired: true,
+      trafficTarget: 'd123.cloudfront.net',
+    } as any);
+
+    const res = await (handler as any)(event('GET', '/domains/app.acme.com'));
+    expect(res.statusCode).toBe(200);
+    expect(describeCertMock).not.toHaveBeenCalled();
+    expect(attachMock).not.toHaveBeenCalled();
+    const body = JSON.parse(res.body);
+    expect(body.domain.status).toBe('PENDING_DNS');
+    // DNS probe is still surfaced so the wizard can show progress.
+    expect(body.dnsCheck).toBeTruthy();
+  });
+
+  it('remove skips edge detach and ACM delete when manualCertRequired', async () => {
+    parseSessionMock.mockReturnValue({ agencyId: 'a1', role: 'agency' } as any);
+    getDomainMock.mockResolvedValueOnce({
+      agencyId: 'a1',
+      hostname: 'app.acme.com',
+      status: 'PENDING_DNS',
+      manualCertRequired: true,
+    } as any);
+
+    const res = await (handler as any)(event('DELETE', '/domains/app.acme.com'));
+    expect(res.statusCode).toBe(200);
+    expect(detachMock).not.toHaveBeenCalled();
+    expect(deleteCertMock).not.toHaveBeenCalled();
     expect(updateStatusMock).toHaveBeenCalledWith(
       expect.objectContaining({ status: 'REMOVED' }),
     );

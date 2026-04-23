@@ -47,6 +47,16 @@ const ATTACH_RATE_WINDOW_MS = Number(process.env.DOMAIN_ATTACH_RATE_WINDOW_MS ||
 const DISTRIBUTION_ID = process.env.EDGE_DISTRIBUTION_ID || '';
 const TRAFFIC_TARGET = process.env.EDGE_TRAFFIC_TARGET || '';
 
+// ACM is gated by an explicit flag so that pilot deploys without the
+// acm:* IAM permission attached to this Lambda can still walk the
+// attach -> DNS -> check flow. When disabled we persist a DOMAIN#
+// record with manualCertRequired=true and skip every ACM SDK call; an
+// operator issues the certificate out-of-band (Amplify wildcard or the
+// edge stack).
+function isAcmEnabled(): boolean {
+  return process.env.ACM_ENABLED === 'true';
+}
+
 type Action =
   | 'domain_attached'
   | 'domain_attach_denied'
@@ -175,31 +185,34 @@ async function handleAttach(event: APIGatewayProxyEventV2, origin: string) {
     );
   }
 
-  let certArn: string;
-  try {
-    const cert = await requestCertificateForHost({
-      hostname,
-      agencyId: session.agencyId,
-    });
-    certArn = cert.certArn;
-  } catch (err) {
-    captureError(err, {
-      scope: 'domains.attach',
-      agencyId: session.agencyId,
-      hostname,
-      stage: 'acm_request',
-    });
-    await audit({
-      action: 'domain_attach_denied',
-      agencyId: session.agencyId,
-      hostname,
-      errorCode: 'ERR_ACM_REQUEST',
-    });
-    return response(
-      502,
-      { ok: false, error: 'certificate request failed', code: 'ERR_ACM_REQUEST' },
-      origin,
-    );
+  const acmEnabled = isAcmEnabled();
+  let certArn: string | undefined;
+  if (acmEnabled) {
+    try {
+      const cert = await requestCertificateForHost({
+        hostname,
+        agencyId: session.agencyId,
+      });
+      certArn = cert.certArn;
+    } catch (err) {
+      captureError(err, {
+        scope: 'domains.attach',
+        agencyId: session.agencyId,
+        hostname,
+        stage: 'acm_request',
+      });
+      await audit({
+        action: 'domain_attach_denied',
+        agencyId: session.agencyId,
+        hostname,
+        errorCode: 'ERR_ACM_REQUEST',
+      });
+      return response(
+        502,
+        { ok: false, error: 'certificate request failed', code: 'ERR_ACM_REQUEST' },
+        origin,
+      );
+    }
   }
 
   const record = await createDomainRecord({
@@ -207,13 +220,16 @@ async function handleAttach(event: APIGatewayProxyEventV2, origin: string) {
     hostname,
     status: 'PENDING_DNS',
     trafficTarget: TRAFFIC_TARGET || undefined,
+    manualCertRequired: !acmEnabled,
   });
-  await updateDomainStatus({
-    agencyId: session.agencyId,
-    hostname,
-    status: 'PENDING_DNS',
-    certArn,
-  });
+  if (certArn) {
+    await updateDomainStatus({
+      agencyId: session.agencyId,
+      hostname,
+      status: 'PENDING_DNS',
+      certArn,
+    });
+  }
 
   await audit({
     action: 'domain_attached',
@@ -226,7 +242,11 @@ async function handleAttach(event: APIGatewayProxyEventV2, origin: string) {
     201,
     {
       ok: true,
-      domain: { ...record, certArn, status: 'PENDING_DNS' as const },
+      domain: {
+        ...record,
+        ...(certArn ? { certArn } : {}),
+        status: 'PENDING_DNS' as const,
+      },
       next: 'poll GET /domains/{hostname} until status=ACTIVE',
     },
     origin,
@@ -251,8 +271,24 @@ async function handleCheck(event: APIGatewayProxyEventV2, origin: string, hostna
 
   const domain = await getDomainByAgency(session.agencyId, hostname);
   if (!domain) return response(404, { ok: false, error: 'not found' }, origin);
-  if (!domain.certArn) {
-    return response(200, { ok: true, domain }, origin);
+
+  // ACM-disabled (manualCertRequired) or ACM-pending (no certArn yet) paths
+  // skip the AWS describe call entirely. We still run a DNS probe so the
+  // wizard + status board can show whether the customer's CNAME is in place.
+  if (!isAcmEnabled() || domain.manualCertRequired || !domain.certArn) {
+    const dnsCheck = domain.trafficTarget
+      ? await checkCnameMatches({
+          hostname,
+          expected: domain.trafficTarget,
+        }).catch(() => null)
+      : null;
+    await audit({
+      action: 'domain_checked',
+      agencyId: session.agencyId,
+      hostname,
+      status: domain.status,
+    });
+    return response(200, { ok: true, domain, dnsCheck }, origin);
   }
 
   const certView = await describeCertificateValidation(domain.certArn);
@@ -367,7 +403,12 @@ async function handleRemove(
   const domain = await getDomainByAgency(session.agencyId, hostname);
   if (!domain) return response(404, { ok: false, error: 'not found' }, origin);
 
-  if (DISTRIBUTION_ID) {
+  // Skip the CloudFront detach when the record was created in ACM-off mode:
+  // no alias was ever attached, and calling UpdateDistribution without the
+  // corresponding acm:* / cloudfront:* IAM grants would just 502.
+  const canTouchEdge =
+    DISTRIBUTION_ID && !domain.manualCertRequired && isAcmEnabled();
+  if (canTouchEdge) {
     try {
       await detachAliasFromDistribution({ distributionId: DISTRIBUTION_ID, hostname });
     } catch (err) {
@@ -400,7 +441,7 @@ async function handleRemove(
     }
   }
 
-  if (domain.certArn) {
+  if (domain.certArn && isAcmEnabled()) {
     try {
       await deleteCertificateArn(domain.certArn);
     } catch (err) {

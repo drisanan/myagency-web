@@ -77,6 +77,7 @@ export async function createDomainRecord(params: {
   hostname: string; // raw user input; will be normalized
   status?: DomainStatus;
   trafficTarget?: string;
+  manualCertRequired?: boolean;
 }): Promise<DomainRecord> {
   const hostname = normalizeHostname(params.hostname);
   const now = Date.now();
@@ -88,6 +89,7 @@ export async function createDomainRecord(params: {
     hostname,
     status: params.status || 'PENDING_DNS',
     trafficTarget: params.trafficTarget,
+    manualCertRequired: params.manualCertRequired || undefined,
     createdAt: now,
     updatedAt: now,
     attachedAt: now,
@@ -118,6 +120,7 @@ export async function updateDomainStatus(params: {
   validationRecord?: DomainRecord['validationRecord'];
   lastError?: string;
   trafficTarget?: string;
+  manualCertRequired?: boolean;
 }): Promise<void> {
   const hostname = normalizeHostname(params.hostname);
   const now = Date.now();
@@ -143,6 +146,10 @@ export async function updateDomainStatus(params: {
   if (params.trafficTarget !== undefined) {
     set.push('trafficTarget = :trafficTarget');
     values[':trafficTarget'] = params.trafficTarget;
+  }
+  if (params.manualCertRequired !== undefined) {
+    set.push('manualCertRequired = :manualCertRequired');
+    values[':manualCertRequired'] = params.manualCertRequired;
   }
   if (params.status === 'ACTIVE') {
     set.push('activatedAt = :activatedAt');

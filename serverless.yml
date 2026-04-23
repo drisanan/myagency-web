@@ -42,6 +42,12 @@ provider:
     # Rate limit on POST /domains per agency (per Lambda container).
     DOMAIN_ATTACH_RATE_LIMIT: ${env:DOMAIN_ATTACH_RATE_LIMIT, '10'}
     DOMAIN_ATTACH_RATE_WINDOW_MS: ${env:DOMAIN_ATTACH_RATE_WINDOW_MS, '3600000'}
+    # Gate ACM cert requests behind an explicit flag. When unset/false the
+    # /domains handlers skip every acm:* / cloudfront:* SDK call and persist
+    # DOMAIN# records with manualCertRequired=true so operators can issue
+    # certificates out-of-band (Amplify wildcard / edge stack) while the
+    # Lambda still has no acm:* IAM grants.
+    ACM_ENABLED: ${env:ACM_ENABLED, ''}
   httpApi:
     cors:
       allowedOrigins:

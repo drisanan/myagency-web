@@ -43,6 +43,37 @@ import type { DomainRecord } from '@/services/domains';
 
 const STEPS = ['Template', 'Domain', 'DNS setup', 'Verify', 'Live'] as const;
 
+// Codes emitted by `infra/src/handlers/domains.ts`. Keep these in sync with
+// the `code` strings in that handler so customers always see the same
+// message regardless of the underlying API error wording.
+const ATTACH_ERROR_MESSAGES: Record<string, string> = {
+  ERR_ACM_REQUEST:
+    'We could not request an SSL certificate for this domain. Our team has been notified — try again shortly, or contact support if it persists.',
+  ERR_HOST_CLAIMED:
+    'This hostname is already attached to another agency. Choose a different subdomain.',
+  ERR_PILOT_RESERVED:
+    'That hostname is reserved for our pilot program and cannot be attached from here.',
+  ERR_HOSTNAME:
+    'That hostname does not look valid. Use a subdomain like app.youragency.com.',
+  ERR_RATE_LIMITED:
+    'You have attached a lot of domains recently. Please wait a few minutes before trying again.',
+  ERR_EDGE_ATTACH:
+    'We could not attach your domain to our content delivery network. Try checking again in a minute.',
+  ERR_EDGE_DETACH:
+    'We could not detach your domain from our content delivery network. Try again shortly.',
+};
+
+type ApiErrorShape = Error & { code?: string; status?: number };
+
+function messageForAttachError(err: unknown): string {
+  const apiErr = err as ApiErrorShape | undefined;
+  if (apiErr?.code && ATTACH_ERROR_MESSAGES[apiErr.code]) {
+    return ATTACH_ERROR_MESSAGES[apiErr.code];
+  }
+  if (apiErr instanceof Error && apiErr.message) return apiErr.message;
+  return 'Attach failed. Please try again.';
+}
+
 type WizardState = {
   step: number;
   templateId: TemplateId | null;
@@ -91,7 +122,7 @@ export function DomainWizard() {
       }
       update({
         busy: false,
-        error: err instanceof Error ? err.message : 'Attach failed',
+        error: messageForAttachError(err),
       });
     }
   }
@@ -113,7 +144,7 @@ export function DomainWizard() {
         }
       } catch (err) {
         if (!cancelled) {
-          update({ error: err instanceof Error ? err.message : 'Check failed' });
+          update({ error: messageForAttachError(err) });
         }
       }
     }
@@ -136,7 +167,7 @@ export function DomainWizard() {
     } catch (err) {
       update({
         busy: false,
-        error: err instanceof Error ? err.message : 'Check failed',
+        error: messageForAttachError(err),
       });
     }
   }
@@ -243,7 +274,12 @@ export function DomainWizard() {
               type: 'CNAME',
             }}
           />
-          {state.check?.cert?.validationRecord ? (
+          {state.domain.manualCertRequired ? (
+            <Alert severity="info">
+              SSL certificate will be provisioned for you by our team once your DNS records
+              propagate. No validation record is required on your side.
+            </Alert>
+          ) : state.check?.cert?.validationRecord ? (
             <DnsRecordBlock
               label="Certificate validation CNAME"
               record={{
