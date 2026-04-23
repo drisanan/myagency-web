@@ -1,5 +1,90 @@
 # Progress Log
 
+## 2026-04-23 — Whitelabel hotfix (DEF-001: ACM gating + wizard error UX)
+
+### Defect
+
+Production verification found that `POST /domains` returned **502 Bad
+Gateway** whenever an agency tried to attach a custom domain. Root cause:
+the `athlete-narrative-api-prod-domains` Lambda has no `acm:*`,
+`cloudfront:*`, or `route53:*` IAM grants, so `requestCertificateForHost`
+inside `handleAttach` threw `AccessDenied` and the handler returned the
+generic `ERR_ACM_REQUEST` 502. The wizard compounded the failure by
+showing the catch-all string "An unknown error occurred" rather than the
+backend's `error`/`code`.
+
+### Fix
+
+Shipped in commit `1caa2f7` (_fix(whitelabel): gate ACM behind
+ACM_ENABLED + friendly wizard errors_).
+
+1. **ACM gating.** New `ACM_ENABLED` env flag, defaulted empty in
+   `serverless.yml`. `infra/src/handlers/domains.ts` now treats
+   `process.env.ACM_ENABLED === 'true'` as the single switch for every
+   `acm:*` / `cloudfront:*` SDK call across attach / check / remove:
+   - attach: when disabled, skip `requestCertificateForHost`, persist
+     `manualCertRequired: true` on the `DOMAIN#` record, still return 201
+     with status `PENDING_DNS`;
+   - check: when `manualCertRequired` or ACM disabled, skip
+     `describeCertificateValidation` + alias attach, still probe DNS via
+     `checkCnameMatches` so the wizard and status board can render
+     progress;
+   - remove: when `manualCertRequired` or ACM disabled, skip the
+     CloudFront detach and `deleteCertificateArn` calls.
+   The flag lets us ship the domain wizard end-to-end in pilot mode
+   without widening the Lambda's IAM surface; operators issue the
+   certificate out-of-band (Amplify wildcard or the edge stack) and can
+   flip the flag to `true` once the edge distribution + IAM grants land.
+2. **DomainRecord schema.** `services/domains.ts` gained
+   `manualCertRequired?: boolean`. `infra/src/lib/domains.ts` plumbs it
+   through `createDomainRecord` and `updateDomainStatus` so the DDB
+   `DOMAIN#` item carries the flag.
+3. **Wizard error mapping.**
+   `features/whitelabel/DomainWizard.tsx` maps `ERR_ACM_REQUEST`,
+   `ERR_HOST_CLAIMED`, `ERR_PILOT_RESERVED`, `ERR_HOSTNAME`,
+   `ERR_RATE_LIMITED`, `ERR_EDGE_ATTACH`, `ERR_EDGE_DETACH` to
+   customer-facing copy, and falls back to the server-provided
+   `response.error` before using the generic "Attach failed" string. The
+   DNS-setup step now shows a "manual cert" info Alert when the record
+   has `manualCertRequired: true`.
+4. **Test coverage.**
+   `infra/src/handlers/__tests__/domains.test.ts` has three new tests
+   for the ACM-off paths (attach skips ACM + persists
+   `manualCertRequired`; check skips describe; remove skips detach +
+   delete). All 13 tests pass.
+
+### Deploy
+
+- Serverless backend: `npm run infra:deploy` (profile `myagency`,
+  region `us-west-1`) — stack `athlete-narrative-api-prod` updated, the
+  `domains` Lambda redeployed with `ACM_ENABLED=''`.
+- Frontend: Amplify app `d2yp6hyv6u0efd` (region `us-east-2`, branch
+  `master`) auto-built commit `1caa2f7` as job **274** — **SUCCEED**
+  (2 min, 14:47 → 14:52 MDT).
+- Edge stack: unchanged (still scaffolding only).
+
+### Verification (production)
+
+Walked the wizard on `https://www.myrecruiteragency.com/settings/domains`
+via the `drisanjames@gmail.com` agency session:
+
+- ✅ Attach `test-def001-verify.example.com` → `POST /domains` returned
+  **201**, wizard advanced to DNS setup, the "SSL certificate will be
+  provisioned for you by our team once your DNS records propagate." info
+  Alert rendered (manualCertRequired path live).
+- ✅ Attach `pilotx.myrecruiteragency.com` → backend returned
+  `ERR_PILOT_RESERVED` and the wizard rendered the new friendly copy
+  ("reserved for our pilot program and cannot be attached from here.").
+- ✅ Status board lists the attached host with a `PENDING_DNS` badge
+  (DOMAIN# record persisted, no 502).
+- ✅ No console errors, no regressions on adjacent settings pages.
+
+DEF-001 closed. The known edge limitation still stands — flipping
+`ACM_ENABLED=true` remains blocked on (a) provisioning the shared
+CloudFront distribution + wiring `EDGE_DISTRIBUTION_ID` /
+`EDGE_TRAFFIC_TARGET`, and (b) attaching `acm:*`, `cloudfront:*`, and
+`route53:*` grants to the `domains` Lambda role.
+
 ## 2026-04-23 — Whitelabel production deploy
 
 ### Summary
