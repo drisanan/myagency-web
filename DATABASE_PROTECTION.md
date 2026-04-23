@@ -120,6 +120,21 @@ AWS_PROFILE=myagency aws dynamodb update-table \
 
 ---
 
+## Auditable Lifecycle Operations
+
+Every auth/session and domain-lifecycle operation writes an audit row to this
+same table so the trail lives with the data it describes. Do not change the
+write shape without updating the consumers.
+
+| PK | SK | Written by |
+|----|----|------------|
+| `AGENCY#<id>` (or `AGENCY#UNKNOWN` for pre-auth failures) | `AUDIT#<ts>#<id>` | `infra/src/handlers/auth.ts` (Phase 1) |
+| `AGENCY#<id>` | `AUDIT#<ts>#<id>` (`action` = `DOMAIN_ATTACH`/`DOMAIN_VALIDATED`/`DOMAIN_ISSUED`/`DOMAIN_ATTACHED`/`DOMAIN_ACTIVE`/`DOMAIN_REMOVED`/`DOMAIN_FAILED`) | `services/domains.ts` + domain-validator Lambda (Phase 3+5) |
+| `SESSION_HANDOFF#<jti>` | `META` | `infra/src/lib/handoffToken.ts` (single-use claim, TTL'd) |
+
+Rows with `ttl` are swept by DynamoDB TTL; the rest live indefinitely and are
+protected by the same deletion-protection / PITR / deny-policy layers above.
+
 ## Audit Log
 
 | Date | Action | Performed By |
@@ -128,6 +143,7 @@ AWS_PROFILE=myagency aws dynamodb update-table \
 | 2026-01-02 | Enabled PITR | Cursor AI |
 | 2026-01-02 | Created IAM deny policy | Cursor AI |
 | 2026-01-02 | Created this documentation | Cursor AI |
+| 2026-04-18 | Added auth session-mint audit rows + handoff-token single-use table | Cursor AI |
 
 ---
 

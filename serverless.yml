@@ -28,6 +28,18 @@ provider:
     SENTRY_DSN: ${env:SENTRY_DSN, ''}
     # S3 Media Bucket
     MEDIA_BUCKET: ${self:service}-media-${self:provider.stage}
+    # White-label custom-domain edge plumbing (Phase 5).
+    # Empty defaults are intentional: when unset, the /domains handlers skip
+    # the CloudFront alias attach/detach (DOMAIN# records still persist, ACM
+    # certs still issue). Populate these after the shared CloudFront
+    # distribution is provisioned by the edge stack or the attach flow.
+    EDGE_DISTRIBUTION_ID: ${env:EDGE_DISTRIBUTION_ID, ''}
+    EDGE_TRAFFIC_TARGET: ${env:EDGE_TRAFFIC_TARGET, ''}
+    # Hosts treated as canonical by /auth/handoff; comma-separated.
+    CANONICAL_HOSTS: ${env:CANONICAL_HOSTS, 'myrecruiteragency.com,www.myrecruiteragency.com,app.myrecruiteragency.com'}
+    # Rate limit on POST /domains per agency (per Lambda container).
+    DOMAIN_ATTACH_RATE_LIMIT: ${env:DOMAIN_ATTACH_RATE_LIMIT, '10'}
+    DOMAIN_ATTACH_RATE_WINDOW_MS: ${env:DOMAIN_ATTACH_RATE_WINDOW_MS, '3600000'}
   httpApi:
     cors:
       allowedOrigins:
@@ -113,6 +125,27 @@ functions:
     events:
       - httpApi:
           path: /auth/session
+          method: any
+  authHandoff:
+    handler: infra/src/handlers/auth-handoff.handler
+    events:
+      - httpApi:
+          path: /auth/handoff
+          method: any
+  domains:
+    handler: infra/src/handlers/domains.handler
+    events:
+      - httpApi:
+          path: /domains
+          method: any
+      - httpApi:
+          path: /domains/{hostname}
+          method: any
+  audit:
+    handler: infra/src/handlers/audit.handler
+    events:
+      - httpApi:
+          path: /audit
           method: any
   agencies:
     handler: infra/src/handlers/agencies.handler

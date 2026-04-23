@@ -16,7 +16,7 @@ if [ -n "$LOCALHOST_FILES" ]; then
 fi
 
 # Check for accidentally staged .env files with secrets
-ENV_FILES=$(git diff --cached --name-only | grep -E '^\.env\.local$|^\.env\.development\.local$|^\.env\.production\.local$' || true)
+ENV_FILES=$(git diff --cached --name-only | grep -E '^\.env(\..+)?\.local$|^\.env\.production$' || true)
 
 if [ -n "$ENV_FILES" ]; then
   echo ""
@@ -24,6 +24,30 @@ if [ -n "$ENV_FILES" ]; then
   echo "$ENV_FILES"
   echo ""
   echo "These files should NEVER be committed. They are in .gitignore."
+  exit 1
+fi
+
+# Block OAuth/client-secret JSON blobs from being committed
+SECRET_JSON=$(git diff --cached --name-only | grep -E '(^|/)client_secret_.*\.json$|(^|/)google-credentials.*\.json$|(^|/)[a-z0-9-]+-client-secret[a-z0-9-]*\.json$' || true)
+
+if [ -n "$SECRET_JSON" ]; then
+  echo ""
+  echo "❌ ERROR: Attempting to commit OAuth client-secret JSON:"
+  echo "$SECRET_JSON"
+  echo ""
+  echo "Rotate the key with the provider and store the new secret outside the repo."
+  exit 1
+fi
+
+# Block build/test artifacts from being committed
+ARTIFACT_FILES=$(git diff --cached --name-only | grep -E '^\.next/|^\.serverless/|^coverage/|^playwright-report/|^test-results/|tsconfig\.tsbuildinfo$' || true)
+
+if [ -n "$ARTIFACT_FILES" ]; then
+  echo ""
+  echo "❌ ERROR: Attempting to commit build/test artifacts:"
+  echo "$ARTIFACT_FILES"
+  echo ""
+  echo "Add/refresh patterns in .gitignore and run: git rm -r --cached <path>"
   exit 1
 fi
 
@@ -39,8 +63,8 @@ if [ -n "$HARDCODED_API" ]; then
 fi
 
 # Check for potential secrets (API keys, tokens)
-SECRETS_PATTERN='(sk_live_|pk_live_|AKIA[0-9A-Z]{16}|ghp_[a-zA-Z0-9]{36}|gho_[a-zA-Z0-9]{36})'
-SECRET_FILES=$(git diff --cached --name-only --diff-filter=ACMR | grep -E '\.(ts|tsx|js|jsx|json)$' | grep -v "node_modules" | xargs grep -lE "$SECRETS_PATTERN" 2>/dev/null || true)
+SECRETS_PATTERN='(sk_live_|pk_live_|AKIA[0-9A-Z]{16}|ghp_[a-zA-Z0-9]{36}|gho_[a-zA-Z0-9]{36}|-----BEGIN (RSA|EC|DSA|OPENSSH|PRIVATE) KEY-----)'
+SECRET_FILES=$(git diff --cached --name-only --diff-filter=ACMR | grep -E '\.(ts|tsx|js|jsx|json|pem|key)$' | grep -v "node_modules" | xargs grep -lE "$SECRETS_PATTERN" 2>/dev/null || true)
 
 if [ -n "$SECRET_FILES" ]; then
   echo ""

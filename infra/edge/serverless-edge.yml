@@ -1,0 +1,105 @@
+service: an-edge
+
+# Phase 5: CloudFront edge stack that owns the per-tenant custom-domain
+# distribution. This stack is SEPARATE from the main application service
+# (../../../serverless.yml). Running `serverless deploy` on this file should
+# produce exactly one CloudFormation stack, `an-edge-<stage>`, whose outputs
+# are consumed by the Phase 5 domain automation handlers (acmCerts + domains
+# lifecycle).
+#
+# The stack is deliberately thin scaffolding. The CloudFront distribution is
+# created on the first successful customer attach (see Phase 5 plan),
+# provisioned via the AWS SDK from the acmCerts handler, and referenced by
+# DistributionId stored in the DOMAIN# record. We keep a single shared
+# distribution (multi-tenant by Host header via CloudFront Functions or
+# Lambda@Edge) to stay under account distribution quotas; the ownership
+# runbook below walks through both that trade-off and the single-dist-per-
+# tenant alternative.
+
+frameworkVersion: ^4
+
+provider:
+  name: aws
+  runtime: nodejs20.x
+  region: ${env:AWS_REGION, 'us-east-1'}   # CloudFront + ACM for edge live in us-east-1
+  stage: ${env:STAGE, 'prd'}
+  stackName: an-edge-${self:provider.stage}
+  deploymentBucket:
+    name: ${env:EDGE_DEPLOYMENT_BUCKET, 'an-edge-deploy-${self:provider.stage}'}
+  # Edge stack never opens inbound HTTP itself. All traffic is served by
+  # the shared CloudFront distribution (created by the acmCerts handler).
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - acm:RequestCertificate
+            - acm:DescribeCertificate
+            - acm:ListCertificates
+            - acm:DeleteCertificate
+          Resource: '*'
+        - Effect: Allow
+          Action:
+            - cloudfront:GetDistribution
+            - cloudfront:GetDistributionConfig
+            - cloudfront:UpdateDistribution
+            - cloudfront:CreateInvalidation
+          Resource: '*'
+        - Effect: Allow
+          Action:
+            - route53:ChangeResourceRecordSets
+            - route53:ListHostedZones
+            - route53:GetHostedZone
+          Resource: '*'
+
+resources:
+  Resources:
+    # Log bucket for CloudFront access logs. Small, single-zone-IA with TTL.
+    EdgeLogBucket:
+      Type: AWS::S3::Bucket
+      DeletionPolicy: Retain
+      Properties:
+        BucketName: ${env:EDGE_LOG_BUCKET, 'an-edge-logs-${self:provider.stage}'}
+        LifecycleConfiguration:
+          Rules:
+            - Id: expire-90d
+              Status: Enabled
+              ExpirationInDays: 90
+        OwnershipControls:
+          Rules:
+            - ObjectOwnership: BucketOwnerPreferred
+        PublicAccessBlockConfiguration:
+          BlockPublicAcls: true
+          BlockPublicPolicy: true
+          IgnorePublicAcls: true
+          RestrictPublicBuckets: true
+
+    # Viewer-request CloudFront Function that maps Host header -> agencyId.
+    # Populated by the acmCerts/domains-attach pipeline via UpdateFunction.
+    # We ship the function here with a placeholder body; the pipeline edits
+    # the in-memory map at attach/detach time.
+    HostRouterFunction:
+      Type: AWS::CloudFront::Function
+      Properties:
+        Name: an-edge-host-router-${self:provider.stage}
+        FunctionConfig:
+          Comment: 'Phase 5: host -> agencyId router for white-label edge'
+          Runtime: cloudfront-js-1.0
+        AutoPublish: true
+        FunctionCode: |
+          function handler(event) {
+            var request = event.request;
+            var host = request.headers.host ? request.headers.host.value : '';
+            request.headers['x-tenant-host'] = { value: host };
+            return request;
+          }
+
+  Outputs:
+    EdgeLogBucketName:
+      Value: !Ref EdgeLogBucket
+      Export:
+        Name: an-edge-log-bucket-${self:provider.stage}
+    HostRouterFunctionArn:
+      Value: !GetAtt HostRouterFunction.FunctionMetadata.FunctionARN
+      Export:
+        Name: an-edge-host-router-arn-${self:provider.stage}

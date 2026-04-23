@@ -1,4 +1,5 @@
 import { getApiBaseUrl } from '@/config/env';
+import { isDynamicallyAllowedOrigin } from '../lib/dynamicOrigins';
 
 const envOrigins = (process.env.WEB_APP_ORIGINS || process.env.ALLOWED_ORIGINS || '')
   .split(',')
@@ -13,8 +14,23 @@ export const ALLOWED_ORIGINS = [
   getApiBaseUrl(),
 ];
 
-export function buildCors(origin?: string) {
-  const allow = origin && ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+/**
+ * Phase 5c: on handlers exposed to custom domains, prefer `resolveCorsOrigin`
+ * (async) over calling `buildCors` directly. It unions the static allowlist
+ * above with any ACTIVE `DOMAIN#<hostname>` row in DynamoDB.
+ */
+export async function resolveCorsOrigin(origin?: string): Promise<string | null> {
+  if (!origin) return null;
+  if (ALLOWED_ORIGINS.includes(origin)) return origin;
+  if (await isDynamicallyAllowedOrigin(origin)) return origin;
+  return null;
+}
+
+export function buildCors(origin?: string, trustOrigin = false) {
+  const allow =
+    origin && (trustOrigin || ALLOWED_ORIGINS.includes(origin))
+      ? origin
+      : ALLOWED_ORIGINS[0];
   return {
     'Content-Type': 'application/json',
     'Access-Control-Allow-Origin': allow,
@@ -31,9 +47,10 @@ export function response(
   body: unknown,
   origin?: string,
   extraHeaders?: Record<string, string>,
-  cookies?: string[]
+  cookies?: string[],
+  trustOrigin = false,
 ) {
-  const cors = buildCors(origin);
+  const cors = buildCors(origin, trustOrigin);
   const isLocal = origin?.includes('localhost');
   // Strip any set-cookie from extraHeaders (we handle cookies separately)
   const { 'set-cookie': _, 'Set-Cookie': __, ...cleanHeaders } = extraHeaders || {};
@@ -56,5 +73,29 @@ export function response(
   }
 
   return res;
+}
+
+/**
+ * Async variant of {@link response} that consults the dynamic DOMAIN# allowlist.
+ * Use this from handlers that may be called from a customer's white-label host
+ * (auth/session, auth/handoff, domains/*, and any endpoint a logged-in tenant
+ * dashboard calls once it redirects back to a custom domain).
+ */
+export async function responseDynamic(
+  statusCode: number,
+  body: unknown,
+  origin?: string,
+  extraHeaders?: Record<string, string>,
+  cookies?: string[],
+) {
+  const resolved = await resolveCorsOrigin(origin);
+  return response(
+    statusCode,
+    body,
+    resolved || origin,
+    extraHeaders,
+    cookies,
+    Boolean(resolved),
+  );
 }
 

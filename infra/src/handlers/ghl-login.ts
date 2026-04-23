@@ -7,6 +7,7 @@ import { randomUUID } from 'crypto';
 import { withSentry } from '../lib/sentry';
 import { queryGSI1 } from '../lib/dynamo';
 import { ALLOWED_ORIGINS } from './cors';
+import { mintHandoffToken } from '../lib/handoffToken';
 
 // --- Configuration ---
 // Use the existing table name and schema (PK/SK) consistent with the rest of the stack.
@@ -249,7 +250,28 @@ const ghlLoginHandler = async (event: APIGatewayProxyEventV2): Promise<APIGatewa
       }
     }
 
-    // 6. Return Success with Resolved ID
+    // 6. Mint a short-lived handoff token so /auth/session can verify this
+    // credential-verified call downstream without trusting raw body fields.
+    let handoffToken: string | undefined;
+    try {
+      handoffToken = mintHandoffToken({
+        agencyId: resolvedAgencyId,
+        email: String(contact.email || '').toLowerCase(),
+        role: 'agency',
+        userId: contact.id,
+        firstName: contact.firstName,
+        lastName: contact.lastName,
+        source: 'ghl-login',
+      });
+    } catch (tokenErr: any) {
+      console.error('[ghl-login] Failed to mint handoff token', tokenErr);
+      return {
+        statusCode: 500,
+        headers,
+        body: JSON.stringify({ ok: false, error: 'Failed to issue session handoff' }),
+      };
+    }
+
     return {
       statusCode: 200,
       headers,
@@ -270,6 +292,7 @@ const ghlLoginHandler = async (event: APIGatewayProxyEventV2): Promise<APIGatewa
           logoUrl: agencyLogo || undefined,
           isNew: false, // Always false now because we just handled the "new" case
         },
+        handoffToken,
       }),
     };
   } catch (e: any) {

@@ -4,7 +4,8 @@ import { LoginForm } from '@/features/auth/LoginForm';
 import { login, agentLogin } from '@/features/auth/service';
 import { clientLogin } from '@/services/clientAuth';
 import { useSession } from '@/features/auth/session';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { resolvePostLoginRedirect } from '@/features/auth/handoffRedirect';
 import { Box, Container, Typography, Paper, TextField } from '@mui/material';
 import { MarketingHeader } from '@/features/marketing/MarketingHeader';
 import { colors, gradients } from '@/theme/colors';
@@ -12,9 +13,26 @@ import { colors, gradients } from '@/theme/colors';
 export default function LoginPage() {
   const { setSession } = useSession();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [error, setError] = React.useState<string | null>(null);
   const [mode, setMode] = React.useState<'agency' | 'agent' | 'client'>('agency');
   const [agencyName, setAgencyName] = React.useState('');
+
+  const navigateAfterLogin = async (fallbackPath: string) => {
+    const returnTo = searchParams?.get('return_to') ?? null;
+    try {
+      const plan = await resolvePostLoginRedirect(returnTo, fallbackPath);
+      if (plan.kind === 'local') {
+        router.push(plan.path);
+      } else {
+        window.location.replace(plan.url);
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Redirect failed';
+      setError(message);
+      router.push(fallbackPath);
+    }
+  };
 
   const onSubmit = async (creds: { email: string; phone: string; accessCode: string }) => {
     try {
@@ -22,7 +40,7 @@ export default function LoginPage() {
       if (mode === 'agency') {
         const s = await login(creds);
         setSession(s);
-        router.push('/dashboard');
+        await navigateAfterLogin('/dashboard');
       } else if (mode === 'agent') {
         if (!agencyName.trim()) {
           setError('Agency name is required for agent login');
@@ -47,7 +65,7 @@ export default function LoginPage() {
           firstName: result.agent?.firstName,
           lastName: result.agent?.lastName,
         } as any);
-        router.push('/dashboard');
+        await navigateAfterLogin('/dashboard');
       } else {
         const result = await clientLogin({ email: creds.email, phone: creds.phone, accessCode: creds.accessCode });
         if (result.session) {
@@ -55,7 +73,7 @@ export default function LoginPage() {
         } else {
           setSession({ email: creds.email, role: 'client' } as any);
         }
-        router.push('/client/dashboard');
+        await navigateAfterLogin('/client/dashboard');
       }
     } catch (e: any) {
       setError(e?.message || 'Login failed');

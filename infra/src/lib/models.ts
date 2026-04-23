@@ -8,6 +8,26 @@ export type ProgramLevelConfig = {
   color: string;      // Hex color for UI
 };
 
+/**
+ * White-label landing config stored at AgencySettings.landing.
+ * Canonical schema consumed by middleware + /landing route (Phase 3-6).
+ * See docs/02-solutions-architect/whitelabel-audit.md §5.
+ */
+export type AgencyLandingConfig = {
+  templateId?: 'athleteClassic' | 'recruiterBold' | 'minimalDark';
+  seo?: { title?: string; description?: string; ogImageUrl?: string };
+  hero?: {
+    headline?: string;
+    subhead?: string;
+    ctaLabel?: string;
+    ctaHref?: string;
+    imageUrl?: string;
+  };
+  features?: Array<{ icon?: string; title: string; body: string }>;
+  testimonials?: Array<{ quote: string; author: string; role?: string; avatarUrl?: string }>;
+  footer?: { legal?: string; links?: Array<{ label: string; href: string }> };
+};
+
 export type AgencySettings = {
   primaryColor?: string;
   secondaryColor?: string;
@@ -27,10 +47,14 @@ export type AgencySettings = {
   infoColor?: string;
   borderColor?: string;
   dividerColor?: string;
+  logoUrl?: string;
   logoDataUrl?: string;
   preferredSport?: string;
   // Program level customization
   programLevels?: ProgramLevelConfig[];
+  // Phase 3+: white-label landing page config (single source of truth for
+  // public marketing surface when rendered on a custom / pilot domain).
+  landing?: AgencyLandingConfig;
 };
 
 export type AgencyRecord = {

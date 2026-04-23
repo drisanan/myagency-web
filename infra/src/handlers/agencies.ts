@@ -168,11 +168,32 @@ const agenciesHandler = async (event: APIGatewayProxyEventV2) => {
       if (!agency) {
         return response(404, { ok: false, error: 'Agency not found' }, origin);
       }
-      
-      // Replace settings entirely — frontend always sends complete color values
-      const updated = { ...agency, settings: parsed.settings || {} };
+
+      // Phase 6: validate settings.landing through the shared schema validator
+      // before we persist. Other settings fields (colors, logos, program
+      // levels) pass through unchanged — the validator is landing-specific.
+      const incoming = parsed.settings || {};
+      let landing;
+      try {
+        const { validateLandingConfig } = await import('../../../services/landingSchema');
+        landing = validateLandingConfig(incoming.landing);
+      } catch (err: any) {
+        return response(
+          400,
+          {
+            ok: false,
+            error: err?.message || 'invalid landing config',
+            code: err?.code || 'ERR_LANDING_INVALID',
+            path: err?.path,
+          },
+          origin,
+        );
+      }
+
+      const safeSettings = { ...incoming, landing };
+      const updated = { ...agency, settings: safeSettings };
       await putItem(updated);
-      
+
       console.log('agencies update settings', { email, settings: updated.settings });
       return response(200, { ok: true, settings: updated.settings }, origin);
     }

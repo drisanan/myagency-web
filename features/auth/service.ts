@@ -64,23 +64,17 @@ export type Session = {
   currentUserCount?: number;
 };
 
-async function postSession(session: Session) {
+export async function postSession(handoffToken: string) {
   const base = requireApiBase();
   if (typeof fetch === 'undefined') return null;
+  if (!handoffToken) {
+    throw new Error('postSession requires a handoffToken (Phase 1 hardening)');
+  }
   const res = await fetch(`${base}/auth/session`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
-    body: JSON.stringify({
-      agencyId: session.agencyId,
-      email: session.email,
-      role: session.role,
-      userId: session.contactId,
-      firstName: session.firstName,
-      lastName: session.lastName,
-      agencyLogo: session.agencyLogo,
-      agencySettings: session.agencySettings,
-    }),
+    body: JSON.stringify({ handoffToken }),
   });
   if (!res.ok) {
     const txt = await res.text();
@@ -178,12 +172,21 @@ export async function login(input: { email: string; phone: string; accessCode: s
     agencyLogo: agencyLogo,
     agencySettings,
   };
-  // Issue session cookie via API - this MUST succeed for persistent login
+  // Issue session cookie via API -- Phase 1 hardened: requires a handoffToken
+  // minted by the GHL login handler after credential verification. If the token
+  // is missing we refuse to proceed rather than fall back to a body-only mint
+  // (which the backend would reject with 401 anyway).
+  if (!result.handoffToken) {
+    throw new Error(
+      'Login response missing handoffToken. Backend may be running an older version.',
+    );
+  }
   try {
-    await postSession(session);
+    await postSession(result.handoffToken);
     console.log('[Auth] Session cookie set successfully for:', session.email);
   } catch (err: any) {
     console.error('[Auth] CRITICAL: Failed to set session cookie:', err?.message);
+    throw err;
   }
   return session;
 }

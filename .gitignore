@@ -56,3 +56,20 @@ playwright-report/
 
 # MCP memory data files (local context, not shareable)
 .cursor/project-memory.json
+
+# Cloud/OAuth client-secret JSON files (rotate + never commit)
+client_secret_*.json
+*-client-secret*.json
+google-credentials*.json
+
+# Build/test artifacts (never commit)
+.next/
+.serverless/
+coverage/
+playwright-report/
+test-results/
+tsconfig.tsbuildinfo
+
+# Generated MCP state
+mcps/**/cache/
+
