@@ -36,7 +36,9 @@ provider:
     EDGE_DISTRIBUTION_ID: ${env:EDGE_DISTRIBUTION_ID, ''}
     EDGE_TRAFFIC_TARGET: ${env:EDGE_TRAFFIC_TARGET, ''}
     # Hosts treated as canonical by /auth/handoff; comma-separated.
-    CANONICAL_HOSTS: ${env:CANONICAL_HOSTS, 'myrecruiteragency.com,www.myrecruiteragency.com,app.myrecruiteragency.com'}
+    # When unset, auth-handoff.ts falls back to the canonical
+    # myrecruiteragency.com + www + app trio.
+    CANONICAL_HOSTS: ${env:CANONICAL_HOSTS, ''}
     # Rate limit on POST /domains per agency (per Lambda container).
     DOMAIN_ATTACH_RATE_LIMIT: ${env:DOMAIN_ATTACH_RATE_LIMIT, '10'}
     DOMAIN_ATTACH_RATE_WINDOW_MS: ${env:DOMAIN_ATTACH_RATE_WINDOW_MS, '3600000'}

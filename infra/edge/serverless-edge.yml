@@ -24,8 +24,12 @@ provider:
   region: ${env:AWS_REGION, 'us-east-1'}   # CloudFront + ACM for edge live in us-east-1
   stage: ${env:STAGE, 'prd'}
   stackName: an-edge-${self:provider.stage}
-  deploymentBucket:
-    name: ${env:EDGE_DEPLOYMENT_BUCKET, 'an-edge-deploy-${self:provider.stage}'}
+  # Serverless manages its own deployment bucket (auto-created on first deploy).
+  # If you need a named bucket for compliance reasons, provision it manually
+  # and uncomment the deploymentBucket block below, pointing EDGE_DEPLOYMENT_BUCKET
+  # at the existing bucket name.
+  # deploymentBucket:
+  #   name: ${env:EDGE_DEPLOYMENT_BUCKET, 'an-edge-deploy-${self:provider.stage}'}
   # Edge stack never opens inbound HTTP itself. All traffic is served by
   # the shared CloudFront distribution (created by the acmCerts handler).
   iam:
