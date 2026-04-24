@@ -14,7 +14,24 @@ import { NextRequest, NextResponse } from 'next/server';
  * See docs/02-solutions-architect/whitelabel-audit.md sections 6-7.
  */
 
-const CANONICAL_SUFFIXES = ['myrecruiteragency.com', 'localhost'];
+// Hosts that render the canonical product surface (marketing, app shell).
+// Every other host — including arbitrary `*.myrecruiteragency.com`
+// subdomains like pilot / customer tenants — is treated as a custom host
+// and flows through the /landing resolver.
+//
+// IMPORTANT: this was previously a suffix match on `myrecruiteragency.com`,
+// which made every subdomain look canonical and silently disabled the
+// pilot / custom-domain rewrite. Keep this list as EXACT hosts only.
+const CANONICAL_HOSTS = new Set<string>([
+  'myrecruiteragency.com',
+  'www.myrecruiteragency.com',
+  'app.myrecruiteragency.com',
+  'localhost',
+]);
+
+// Build/preview hosts we must never tenant-rewrite even though they aren't
+// in the canonical set (Amplify default domain, branch previews, etc.).
+const NEVER_TENANT_SUFFIXES = ['.amplifyapp.com', '.vercel.app'];
 
 // Reserved paths we never rewrite, even on custom hosts: API, Next internals,
 // static assets, auth surface (handled separately in Phase 4).
@@ -34,7 +51,9 @@ function normalizeHostForEdge(raw: string): string {
 }
 
 function isCanonicalHost(host: string): boolean {
-  return CANONICAL_SUFFIXES.some((suffix) => host === suffix || host.endsWith(`.${suffix}`));
+  if (CANONICAL_HOSTS.has(host)) return true;
+  if (NEVER_TENANT_SUFFIXES.some((s) => host.endsWith(s))) return true;
+  return false;
 }
 
 export function middleware(request: NextRequest) {
