@@ -260,9 +260,6 @@ functions:
           path: /google/tokens
           method: any
       - httpApi:
-          path: /google/tokens
-          method: any
-      - httpApi:
           path: /google/status
           method: any
       - httpApi:
@@ -334,9 +331,6 @@ functions:
           method: any
       - httpApi:
           path: /ai/cleanup
-          method: any
-      - httpApi:
-          path: /ai/rules
           method: any
       - httpApi:
           path: /ai/rules
