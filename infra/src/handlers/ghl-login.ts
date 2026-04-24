@@ -6,7 +6,7 @@ import { fromIni } from '@aws-sdk/credential-provider-ini';
 import { randomUUID } from 'crypto';
 import { withSentry } from '../lib/sentry';
 import { queryGSI1 } from '../lib/dynamo';
-import { ALLOWED_ORIGINS } from './cors';
+import { ALLOWED_ORIGINS, isAllowedOrigin } from './cors';
 import { mintHandoffToken } from '../lib/handoffToken';
 
 // --- Configuration ---
@@ -32,7 +32,7 @@ const client = new DynamoDBClient({
 const docClient = DynamoDBDocumentClient.from(client);
 
 function getHeaders(origin?: string) {
-  const allowOrigin = origin && ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+  const allowOrigin = isAllowedOrigin(origin) ? origin : ALLOWED_ORIGINS[0];
   return {
     'Content-Type': 'application/json',
     'Access-Control-Allow-Origin': allowOrigin,

@@ -16,20 +16,40 @@ export const ALLOWED_ORIGINS = [
 ];
 
 /**
- * Phase 5c: on handlers exposed to custom domains, prefer `resolveCorsOrigin`
- * (async) over calling `buildCors` directly. It unions the static allowlist
- * above with any ACTIVE `DOMAIN#<hostname>` row in DynamoDB.
+ * We own the entire `myrecruiteragency.com` DNS zone, so any subdomain
+ * served from it is by definition ours (pilot / tenant hosts like
+ * `11.myrecruiteragency.com`). Recognize it without a DB round-trip.
+ */
+const OWNED_ROOT = 'myrecruiteragency.com';
+export function isOwnedZoneOrigin(origin: string): boolean {
+  if (!origin.startsWith('https://')) return false;
+  const host = origin.slice('https://'.length).split('/')[0].toLowerCase();
+  return host === OWNED_ROOT || host.endsWith(`.${OWNED_ROOT}`);
+}
+
+export function isAllowedOrigin(origin?: string | null): origin is string {
+  if (!origin) return false;
+  if (ALLOWED_ORIGINS.includes(origin)) return true;
+  if (isOwnedZoneOrigin(origin)) return true;
+  return false;
+}
+
+/**
+ * Phase 5c: on handlers exposed to external customer domains (non-owned),
+ * prefer `resolveCorsOrigin` (async) over calling `buildCors` directly. It
+ * unions the static allowlist + owned-zone check above with any ACTIVE
+ * `DOMAIN#<hostname>` row in DynamoDB.
  */
 export async function resolveCorsOrigin(origin?: string): Promise<string | null> {
   if (!origin) return null;
-  if (ALLOWED_ORIGINS.includes(origin)) return origin;
+  if (isAllowedOrigin(origin)) return origin;
   if (await isDynamicallyAllowedOrigin(origin)) return origin;
   return null;
 }
 
 export function buildCors(origin?: string, trustOrigin = false) {
   const allow =
-    origin && (trustOrigin || ALLOWED_ORIGINS.includes(origin))
+    origin && (trustOrigin || isAllowedOrigin(origin))
       ? origin
       : ALLOWED_ORIGINS[0];
   return {
