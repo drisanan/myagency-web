@@ -2,7 +2,7 @@
 
 import React from 'react';
 import NextLink from 'next/link';
-import { Box, Typography, Paper, Stack, Link as MuiLink } from '@mui/material';
+import { Box, Typography, Paper, Stack, Button } from '@mui/material';
 import { SettingsForm } from '@/features/settings/SettingsForm';
 
 export default function SettingsPage() {
@@ -12,9 +12,29 @@ export default function SettingsPage() {
         sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
       >
         <Typography variant="h4">Settings</Typography>
-        <MuiLink component={NextLink} href="/settings/domains" underline="hover">
+        <Button
+          component={NextLink}
+          href="/settings/domains"
+          variant="contained"
+          sx={{
+            bgcolor: '#000',
+            color: '#fff',
+            textTransform: 'none',
+            fontWeight: 600,
+            px: 2.5,
+            py: 1,
+            borderRadius: 1.5,
+            boxShadow: 'none',
+            '&:hover': { bgcolor: '#111', boxShadow: 'none' },
+            '&:focus-visible': {
+              outline: '2px solid',
+              outlineColor: 'primary.main',
+              outlineOffset: 2,
+            },
+          }}
+        >
           Custom domains →
-        </MuiLink>
+        </Button>
       </Box>
       <Paper variant="outlined" sx={{ p: 3, borderRadius: 2 }}>
         <SettingsForm />
