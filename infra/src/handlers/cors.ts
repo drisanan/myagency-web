@@ -10,6 +10,7 @@ export const ALLOWED_ORIGINS = [
   'https://master.d2yp6hyv6u0efd.amplifyapp.com',
   'https://myrecruiteragency.com',
   'https://www.myrecruiteragency.com',
+  'https://app.myrecruiteragency.com',
   ...envOrigins,
   getApiBaseUrl(),
 ];

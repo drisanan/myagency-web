@@ -53,6 +53,7 @@ provider:
       allowedOrigins:
         - https://www.myrecruiteragency.com
         - https://myrecruiteragency.com
+        - https://app.myrecruiteragency.com
         - https://master.d2yp6hyv6u0efd.amplifyapp.com
         - http://localhost:3000
         - http://localhost:3001
