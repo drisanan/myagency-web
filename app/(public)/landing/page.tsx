@@ -42,11 +42,18 @@ async function resolve(
     process.env.NEXT_PUBLIC_CANONICAL_HOST || 'https://app.myrecruiteragency.com';
 
   function buildSignInHref(targetHost: string | null): string {
-    const loginUrl = new URL('/auth/login', canonicalRoot);
+    // On a resolved tenant / custom host, keep the whole auth flow on
+    // the tenant's own domain. The /auth/login route is part of the
+    // same Next.js bundle served on every host, and session cookies use
+    // Domain=.myrecruiteragency.com (or the caller's zone) so the
+    // session is usable anywhere after sign-in. Staying on-host is
+    // required for the white-label UX to feel cohesive.
     if (targetHost) {
-      loginUrl.searchParams.set('return_to', `https://${targetHost}/dashboard`);
+      return `https://${targetHost}/auth/login`;
     }
-    return loginUrl.toString();
+    // Preview mode (no real host) and unresolved fallbacks route to the
+    // canonical app surface.
+    return new URL('/auth/login', canonicalRoot).toString();
   }
 
   if (agencyId) {
