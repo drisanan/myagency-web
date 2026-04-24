@@ -106,7 +106,7 @@ functions:
     events:
       - httpApi:
           path: /health
-          method: get
+          method: any
   authSession:
     handler: infra/src/handlers/auth.handler
     events:
@@ -228,19 +228,19 @@ functions:
     events:
       - httpApi:
           path: /update-forms/agency
-          method: get
+          method: any
       - httpApi:
           path: /update-forms/submit
-          method: post
+          method: any
       - httpApi:
           path: /update-forms/issue
-          method: post
+          method: any
       - httpApi:
           path: /update-forms/submissions
-          method: get
+          method: any
       - httpApi:
           path: /update-forms/consume
-          method: post
+          method: any
   gmail:
     handler: infra/src/handlers/gmail.handler
     events:
@@ -252,25 +252,25 @@ functions:
     events:
       - httpApi:
           path: /google/oauth/url
-          method: get
+          method: any
       - httpApi:
           path: /google/oauth/callback
-          method: get
+          method: any
       - httpApi:
           path: /google/tokens
-          method: post
+          method: any
       - httpApi:
           path: /google/tokens
-          method: get
+          method: any
       - httpApi:
           path: /google/status
-          method: get
+          method: any
       - httpApi:
           path: /google/refresh
-          method: post
+          method: any
       - httpApi:
           path: /google/disconnect
-          method: delete
+          method: any
   ghlLogin:
     handler: infra/src/handlers/ghl-login.handler
     events:
@@ -300,7 +300,7 @@ functions:
     events:
       - httpApi:
           path: /clients/{id}/interests
-          method: get
+          method: any
   tasks:
     handler: infra/src/handlers/tasks.handler
     events:
@@ -331,16 +331,16 @@ functions:
           method: any
       - httpApi:
           path: /ai/intro
-          method: post
+          method: any
       - httpApi:
           path: /ai/cleanup
-          method: post
+          method: any
       - httpApi:
           path: /ai/rules
-          method: get
+          method: any
       - httpApi:
           path: /ai/rules
-          method: put
+          method: any
   profile:
     handler: infra/src/handlers/profile.handler
     events:
@@ -352,10 +352,10 @@ functions:
     events:
       - httpApi:
           path: /athlete/{username}
-          method: get
+          method: any
       - httpApi:
           path: /athlete/check-username
-          method: get
+          method: any
   agents:
     handler: infra/src/handlers/agents.handler
     events:
@@ -370,26 +370,26 @@ functions:
     events:
       - httpApi:
           path: /uploads/presigned-url
-          method: post
+          method: any
   linkForward:
     handler: infra/src/handlers/link-forward.handler
     timeout: 10
     events:
       - httpApi:
           path: /r
-          method: get
+          method: any
       - httpApi:
           path: /track/click
-          method: get
+          method: any
   emailMetrics:
     handler: infra/src/handlers/email-metrics.handler
     events:
       - httpApi:
           path: /email-metrics/send
-          method: post
+          method: any
       - httpApi:
           path: /email-metrics/stats
-          method: get
+          method: any
   notes:
     handler: infra/src/handlers/notes.handler
     events:
@@ -422,7 +422,7 @@ functions:
     events:
       - httpApi:
           path: /task-templates/apply
-          method: post
+          method: any
   communications:
     handler: infra/src/handlers/communications.handler
     events:
@@ -437,7 +437,7 @@ functions:
     events:
       - httpApi:
           path: /communications/threads
-          method: get
+          method: any
   profileViews:
     handler: infra/src/handlers/profile-views.handler
     events:
@@ -449,7 +449,7 @@ functions:
     events:
       - httpApi:
           path: /profile-views/digest
-          method: get
+          method: any
   activity:
     handler: infra/src/handlers/activity.handler
     events:
@@ -461,7 +461,7 @@ functions:
     events:
       - httpApi:
           path: /activity/report
-          method: get
+          method: any
   meetings:
     handler: infra/src/handlers/meetings.handler
     events:
@@ -501,7 +501,7 @@ functions:
     events:
       - httpApi:
           path: /universities
-          method: get
+          method: any
 
 # NOTE: MediaBucket resources commented out - bucket already exists outside CloudFormation
 # To re-enable, import the existing bucket into the stack first
