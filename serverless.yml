@@ -155,6 +155,12 @@ functions:
       - httpApi:
           path: /audit
           method: any
+  landing:
+    handler: infra/src/handlers/landing.handler
+    events:
+      - httpApi:
+          path: /landing
+          method: any
   agencies:
     handler: infra/src/handlers/agencies.handler
     events:
